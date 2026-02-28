@@ -16,6 +16,8 @@ export type Database = {
     Tables: {
       inspection_items: {
         Row: {
+          ai_agreement: string | null
+          ai_visual_note: string | null
           annotation: string | null
           comment: string | null
           created_at: string
@@ -31,6 +33,8 @@ export type Database = {
           status: string
         }
         Insert: {
+          ai_agreement?: string | null
+          ai_visual_note?: string | null
           annotation?: string | null
           comment?: string | null
           created_at?: string
@@ -46,6 +50,8 @@ export type Database = {
           status: string
         }
         Update: {
+          ai_agreement?: string | null
+          ai_visual_note?: string | null
           annotation?: string | null
           comment?: string | null
           created_at?: string

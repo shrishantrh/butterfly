@@ -2,6 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { StatusBadge } from '@/components/StatusBadge';
+import { AIValidationIndicator } from '@/components/inspection/AIValidationIndicator';
 import { useInspectionStorage } from '@/hooks/useInspectionStorage';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -9,7 +10,8 @@ import {
   Shield, ShieldAlert, AlertTriangle, Loader2, ChevronDown, ChevronUp,
   Image, X, Wrench, Brain, Target, Package, GraduationCap, CheckCircle2,
   Clock, TrendingUp, ExternalLink, ArrowUpRight, Zap, Activity, CircleDot,
-  FileText, Download,
+  FileText, Download, Eye, Timer, Calendar, ShoppingCart, Truck,
+  ShieldCheck, ShieldX, AlertCircle, CheckCircle,
 } from 'lucide-react';
 
 export default function InspectionDetail() {
@@ -29,7 +31,6 @@ export default function InspectionDetail() {
       const data = await getInspectionDetail(inspectionId);
       if (data) {
         setDetail(data);
-        // Expand all sections by default
         const sectionIds = new Set(data.items.map((i: any) => i.section_id));
         setExpandedSections(sectionIds);
       }
@@ -73,6 +74,12 @@ export default function InspectionDetail() {
     DOWN: 'text-status-fail',
   };
 
+  const clearanceConfig: Record<string, { icon: React.ReactNode; bg: string; text: string; label: string }> = {
+    GO: { icon: <ShieldCheck className="w-6 h-6" />, bg: 'bg-status-pass/10 border-status-pass/20', text: 'text-status-pass', label: 'CLEARED TO OPERATE' },
+    CONDITIONAL: { icon: <ShieldAlert className="w-6 h-6" />, bg: 'bg-status-monitor/10 border-status-monitor/20', text: 'text-status-monitor', label: 'CONDITIONAL' },
+    NO_GO: { icon: <ShieldX className="w-6 h-6" />, bg: 'bg-status-fail/10 border-status-fail/20', text: 'text-status-fail', label: 'DO NOT OPERATE' },
+  };
+
   const toggleSection = (id: string) => {
     setExpandedSections(prev => {
       const next = new Set(prev);
@@ -85,6 +92,10 @@ export default function InspectionDetail() {
   const monitorCount = items.filter((i: any) => i.status === 'monitor').length;
   const passCount = items.filter((i: any) => i.status === 'pass').length;
   const photoCount = items.filter((i: any) => i.photo_url).length;
+  const disagreementCount = items.filter((i: any) => i.ai_agreement === 'disagree').length;
+
+  const safetyClearance = analysis?.executiveSummary?.safetyClearance;
+  const clearanceCfg = safetyClearance ? clearanceConfig[safetyClearance] : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -107,15 +118,64 @@ export default function InspectionDetail() {
       />
 
       <div className="px-5 py-4 space-y-3 pb-32">
-        {/* Health Score Hero */}
-        {insp.health_score != null && (
+        {/* Safety Clearance Hero (if analysis available) */}
+        {clearanceCfg && (
+          <div className={`card-elevated overflow-hidden border-2 ${clearanceCfg.bg}`}>
+            <div className="p-4 flex items-center gap-3">
+              <div className={clearanceCfg.text}>{clearanceCfg.icon}</div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-base font-black tracking-tight ${clearanceCfg.text}`}>{clearanceCfg.label}</p>
+                {analysis?.executiveSummary?.safetyClearanceReason && (
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{analysis.executiveSummary.safetyClearanceReason}</p>
+                )}
+              </div>
+              {insp.health_score != null && (
+                <div className="text-right shrink-0">
+                  <div className="relative">
+                    <svg className="w-14 h-14 -rotate-90" viewBox="0 0 80 80">
+                      <circle cx="40" cy="40" r="34" fill="none" stroke="hsl(var(--surface-2))" strokeWidth="5" />
+                      <circle cx="40" cy="40" r="34" fill="none"
+                        stroke={safetyClearance === 'GO' ? 'hsl(var(--status-pass))' : safetyClearance === 'NO_GO' ? 'hsl(var(--status-fail))' : 'hsl(var(--status-monitor))'}
+                        strokeWidth="5" strokeLinecap="round"
+                        strokeDasharray={`${(insp.health_score / 100) * 213.6} 213.6`}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-lg font-bold font-mono">{insp.health_score}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-4 gap-px bg-border/30">
+              <div className="bg-card p-2.5 text-center">
+                <p className="text-base font-bold font-mono">{items.length}</p>
+                <p className="text-[8px] text-muted-foreground uppercase tracking-wider">Checked</p>
+              </div>
+              <div className="bg-card p-2.5 text-center">
+                <p className="text-base font-bold font-mono text-status-pass">{passCount}</p>
+                <p className="text-[8px] text-muted-foreground uppercase tracking-wider">Pass</p>
+              </div>
+              <div className="bg-card p-2.5 text-center">
+                <p className="text-base font-bold font-mono text-status-monitor">{monitorCount}</p>
+                <p className="text-[8px] text-muted-foreground uppercase tracking-wider">Monitor</p>
+              </div>
+              <div className="bg-card p-2.5 text-center">
+                <p className="text-base font-bold font-mono text-status-fail">{failCount}</p>
+                <p className="text-[8px] text-muted-foreground uppercase tracking-wider">Fail</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Health Score Hero (fallback if no clearance) */}
+        {!clearanceCfg && insp.health_score != null && (
           <div className="card-elevated overflow-hidden">
             <div className="p-5 flex items-center gap-4">
               <div className="relative">
                 <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
                   <circle cx="40" cy="40" r="34" fill="none" stroke="hsl(var(--surface-2))" strokeWidth="6" />
-                  <circle
-                    cx="40" cy="40" r="34" fill="none"
+                  <circle cx="40" cy="40" r="34" fill="none"
                     stroke={insp.status === 'READY' ? 'hsl(var(--status-pass))' : insp.status === 'CAUTION' ? 'hsl(var(--status-monitor))' : 'hsl(var(--status-fail))'}
                     strokeWidth="6" strokeLinecap="round"
                     strokeDasharray={`${(insp.health_score / 100) * 213.6} 213.6`}
@@ -130,16 +190,12 @@ export default function InspectionDetail() {
                   <span className={`text-sm font-bold ${statusColor[insp.status] || 'text-foreground'}`}>
                     {insp.status || 'ANALYZED'}
                   </span>
-                  {insp.status === 'READY' && <Shield className="w-4 h-4 text-status-pass" />}
-                  {insp.status === 'CAUTION' && <ShieldAlert className="w-4 h-4 text-status-monitor" />}
-                  {insp.status === 'DOWN' && <AlertTriangle className="w-4 h-4 text-status-fail" />}
                 </div>
                 {insp.executive_summary && (
                   <p className="text-xs text-muted-foreground leading-relaxed">{insp.executive_summary}</p>
                 )}
               </div>
             </div>
-
             <div className="grid grid-cols-4 gap-px bg-border/30">
               <div className="bg-card p-3 text-center">
                 <p className="text-lg font-bold font-mono">{items.length}</p>
@@ -158,6 +214,19 @@ export default function InspectionDetail() {
                 <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Fail</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* AI Validation Banner */}
+        {disagreementCount > 0 && (
+          <div className="card-elevated p-4 border-accent/20">
+            <div className="flex items-center gap-2 mb-2">
+              <Eye className="w-4 h-4 text-accent" />
+              <h3 className="text-sm font-bold">AI Flagged {disagreementCount} Discrepanc{disagreementCount !== 1 ? 'ies' : 'y'}</h3>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The AI's visual analysis disagreed with the inspector on some items. Review flagged items below.
+            </p>
           </div>
         )}
 
@@ -217,7 +286,7 @@ export default function InspectionDetail() {
                 {expandedSections.has(section.id) && (
                   <div>
                     {section.items.map((item: any, idx: number) => (
-                      <div key={item.id} className={`px-4 py-3 ${idx > 0 ? 'border-t border-border/20' : 'border-t border-border/20'}`}>
+                      <div key={item.id} className={`px-4 py-3 ${idx > 0 ? 'border-t border-border/20' : 'border-t border-border/20'} ${item.ai_agreement === 'disagree' ? 'bg-accent/4' : ''}`}>
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-start gap-2 min-w-0">
                             <span className="text-[11px] font-mono text-muted-foreground/50 shrink-0 w-7 pt-0.5">{item.item_id}</span>
@@ -226,9 +295,21 @@ export default function InspectionDetail() {
                               {item.comment && <p className="text-xs text-muted-foreground/70 mt-1 leading-relaxed">{item.comment}</p>}
                               {item.annotation && <p className="text-[10px] text-sensor mt-1 italic">🔍 {item.annotation}</p>}
                               {item.fault_code && <p className="text-[10px] font-mono text-sensor mt-1">{item.fault_code}</p>}
+                              {/* AI Validation */}
+                              {item.ai_agreement && (
+                                <div className="mt-1.5">
+                                  <AIValidationIndicator
+                                    agreement={item.ai_agreement}
+                                    visualNote={item.ai_visual_note}
+                                  />
+                                </div>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
+                            {item.ai_agreement && (
+                              <AIValidationIndicator agreement={item.ai_agreement} compact />
+                            )}
                             {item.photo_url && (
                               <button onClick={() => setViewingPhoto(item.photo_url)} className="p-0.5">
                                 <Image className="w-3.5 h-3.5 text-primary" />
@@ -259,6 +340,41 @@ export default function InspectionDetail() {
               </div>
             ) : (
               <>
+                {/* AI Validation Summary */}
+                {analysis.aiValidationSummary && (
+                  <div className="card-elevated p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Eye className="w-4 h-4 text-sensor" />
+                        <h3 className="text-sm font-bold">AI Visual Validation</h3>
+                      </div>
+                      <span className="text-xs font-mono font-bold text-sensor">{analysis.aiValidationSummary.agreementScore}%</span>
+                    </div>
+                    <Progress value={analysis.aiValidationSummary.agreementScore} className="h-1.5 mb-2" />
+                    {analysis.aiValidationSummary.disagreements?.length > 0 ? (
+                      <div className="space-y-2 mt-3">
+                        {analysis.aiValidationSummary.disagreements.map((d: any, i: number) => (
+                          <div key={i} className={`rounded-lg p-3 border ${d.severity === 'high' ? 'bg-status-fail/5 border-status-fail/15' : d.severity === 'medium' ? 'bg-status-monitor/5 border-status-monitor/15' : 'bg-muted/30 border-border/30'}`}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-mono text-[11px] text-muted-foreground">{d.itemId}</span>
+                              <span className="text-xs font-semibold">{d.itemLabel}</span>
+                            </div>
+                            <p className="text-xs text-foreground/70">
+                              Inspector: <span className="font-semibold uppercase">{d.inspectorRating}</span> → AI: <span className="font-semibold">{d.aiAssessment}</span>
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-1 italic">{d.concern}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-status-pass flex items-center gap-1.5 mt-1">
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        All items validated — AI agrees with inspector
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Root Cause Analysis */}
                 {analysis.rootCauseAnalysis?.length > 0 && (
                   <div className="card-elevated p-4">
@@ -276,8 +392,7 @@ export default function InspectionDetail() {
                           <p className="text-xs text-foreground/80 leading-relaxed">{rca.rootCause}</p>
                           {rca.cascadeRisk && (
                             <p className="text-[11px] text-status-monitor mt-1.5 flex items-center gap-1">
-                              <TrendingUp className="w-3 h-3" />
-                              <span className="font-medium">Cascade:</span> {rca.cascadeRisk}
+                              <TrendingUp className="w-3 h-3" /> {rca.cascadeRisk}
                             </p>
                           )}
                         </div>
@@ -332,6 +447,34 @@ export default function InspectionDetail() {
                             </p>
                           )}
                           <p className="text-[11px] text-primary mt-1.5 font-medium">{insight.recommendation}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Predictive Maintenance Schedule */}
+                {analysis.predictiveMaintenanceSchedule?.length > 0 && (
+                  <div className="card-elevated p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Calendar className="w-4 h-4 text-primary" />
+                      <h3 className="text-sm font-bold">Maintenance Schedule</h3>
+                    </div>
+                    <div className="space-y-2.5">
+                      {analysis.predictiveMaintenanceSchedule.map((item: any, i: number) => (
+                        <div key={i} className="inset-surface p-3.5 rounded-lg">
+                          <p className="text-sm font-bold">{item.partName}</p>
+                          <p className="text-xs text-muted-foreground">{item.itemLabel}</p>
+                          <div className="flex items-center gap-3 mt-2 text-xs">
+                            <span className="font-mono">{item.estimatedRemainingLife} hrs remaining</span>
+                            {item.estimatedCost && <span className="text-primary font-bold">${item.estimatedCost}</span>}
+                          </div>
+                          {item.recommendedOrderDate && (
+                            <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-primary">
+                              <Truck className="w-3 h-3" />
+                              Order by {new Date(item.recommendedOrderDate).toLocaleDateString()}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -396,10 +539,11 @@ export default function InspectionDetail() {
                     <div className="p-2">
                       <div className="flex items-center gap-1.5">
                         <StatusBadge status={item.status} showLabel={false} className="scale-75" />
+                        {item.ai_agreement && <AIValidationIndicator agreement={item.ai_agreement} compact />}
                         <p className="text-[10px] font-semibold truncate">{item.item_id} {item.label}</p>
                       </div>
-                      {item.annotation && (
-                        <p className="text-[9px] text-sensor mt-0.5 truncate">🔍 {item.annotation}</p>
+                      {item.ai_visual_note && (
+                        <p className="text-[9px] text-muted-foreground mt-0.5 truncate">{item.ai_visual_note}</p>
                       )}
                     </div>
                   </div>
