@@ -8,7 +8,7 @@ export interface AnalysisResult {
   comment: string;
   evidence: ('audio' | 'video' | 'sensor')[];
   faultCode?: string;
-  photoUrl?: string; // captured frame for FAIL/MONITOR items
+  photoUrl?: string;
 }
 
 export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string) {
@@ -16,6 +16,7 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string)
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const transcriptBuffer = useRef<string>('');
+  const frameBuffer = useRef<string[]>([]); // base64 frames
   const analysisTimer = useRef<number | null>(null);
   const captureFrameFn = useRef<(() => string | null) | null>(null);
 
@@ -23,13 +24,18 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string)
     ? faultCodes.map(fc => `${fc.code}: ${fc.description} (${fc.severity})`).join('\n')
     : 'None';
 
-  // Register a function that captures a video frame as data URL
   const registerFrameCapture = useCallback((fn: () => string | null) => {
     captureFrameFn.current = fn;
   }, []);
 
-  const runAnalysis = useCallback(async (transcript: string) => {
-    if (!transcript.trim()) return;
+  // Add a video frame to the buffer for the next analysis cycle
+  const addFrame = useCallback((base64: string) => {
+    // Keep only last 2 frames to limit payload size
+    frameBuffer.current = [...frameBuffer.current.slice(-1), base64];
+  }, []);
+
+  const runAnalysis = useCallback(async (transcript: string, frames: string[]) => {
+    if (!transcript.trim() && frames.length === 0) return;
 
     setIsAnalyzing(true);
     setError(null);
@@ -42,6 +48,7 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string)
       const { data, error: fnError } = await supabase.functions.invoke('analyze-inspection', {
         body: {
           transcript,
+          frames, // base64 JPEG frames for vision analysis
           faultCodes: faultCodesStr,
           previousItems: prevItemsStr || previousItems || 'None',
         },
@@ -50,7 +57,7 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string)
       if (fnError) throw fnError;
 
       if (data?.items && Array.isArray(data.items)) {
-        // Capture frame for FAIL/MONITOR items
+        // Capture frame for FAIL/MONITOR evidence
         let frameUrl: string | null = null;
         const hasIssue = data.items.some((i: AnalysisResult) => i.status === 'fail' || i.status === 'monitor');
         if (hasIssue && captureFrameFn.current) {
@@ -61,12 +68,13 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string)
           const next = new Map(prev);
           for (const item of data.items as AnalysisResult[]) {
             const existing = next.get(item.id);
-            // Only update if new result is more severe or item doesn't exist
             const severityOrder = { fail: 3, monitor: 2, pass: 1, normal: 0 };
             if (!existing || severityOrder[item.status] >= severityOrder[existing.status]) {
               next.set(item.id, {
                 ...item,
-                photoUrl: (item.status === 'fail' || item.status === 'monitor') ? (frameUrl || existing?.photoUrl) : existing?.photoUrl,
+                photoUrl: (item.status === 'fail' || item.status === 'monitor') 
+                  ? (frameUrl || existing?.photoUrl) 
+                  : existing?.photoUrl,
               });
             }
           }
@@ -93,10 +101,12 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string)
     }
     analysisTimer.current = window.setTimeout(() => {
       const fullTranscript = transcriptBuffer.current.trim();
-      if (fullTranscript.length > 20) {
-        runAnalysis(fullTranscript);
+      const frames = [...frameBuffer.current];
+      frameBuffer.current = []; // clear after sending
+      if (fullTranscript.length > 20 || frames.length > 0) {
+        runAnalysis(fullTranscript, frames);
       }
-    }, 6000); // 6 second debounce for faster feedback
+    }, 6000);
   }, [runAnalysis]);
 
   const analyzeNow = useCallback(async () => {
@@ -104,8 +114,10 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string)
       clearTimeout(analysisTimer.current);
     }
     const fullTranscript = transcriptBuffer.current.trim();
-    if (fullTranscript.length > 0) {
-      await runAnalysis(fullTranscript);
+    const frames = [...frameBuffer.current];
+    frameBuffer.current = [];
+    if (fullTranscript.length > 0 || frames.length > 0) {
+      await runAnalysis(fullTranscript, frames);
     }
   }, [runAnalysis]);
 
@@ -113,7 +125,6 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string)
     return transcriptBuffer.current.trim();
   }, []);
 
-  // Allow manual override of any item
   const setManualItem = useCallback((id: string, result: AnalysisResult) => {
     setAnalyzedItems(prev => {
       const next = new Map(prev);
@@ -127,6 +138,7 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string)
     isAnalyzing,
     error,
     addTranscript,
+    addFrame,
     analyzeNow,
     getFullTranscript,
     itemCount: analyzedItems.size,
