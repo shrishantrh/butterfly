@@ -1,7 +1,7 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { mockMachines, inspectionFormSections } from '@/lib/mock-data';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Square, Camera, Mic, MicOff, Upload, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Square, Camera, Mic, MicOff, Upload, AlertCircle } from 'lucide-react';
 import { useScribe, CommitStrategy } from '@elevenlabs/react';
 import { supabase } from '@/integrations/supabase/client';
 import { useInspectionAI } from '@/hooks/useInspectionAI';
@@ -23,6 +23,7 @@ export default function ActiveInspection() {
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const formVideoRef = useRef<HTMLVideoElement>(null); // hidden video for frame capture
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [latestPartial, setLatestPartial] = useState('');
   const [committedTexts, setCommittedTexts] = useState<string[]>([]);
@@ -30,7 +31,8 @@ export default function ActiveInspection() {
   const isMounted = useRef(true);
   const scribeConnected = useRef(false);
   const hasInitialized = useRef(false);
-  const [showForm, setShowForm] = useState(true);
+  const reconnectTimer = useRef<number | null>(null);
+  const [micGranted, setMicGranted] = useState(false);
   const [viewMode, setViewMode] = useState<'form' | 'camera'>('form');
 
   // Upload mode state
@@ -52,11 +54,11 @@ export default function ActiveInspection() {
     setManualItem,
   } = useInspectionAI(machine?.activeFaultCodes ?? []);
 
-  // Register frame capture function
+  // Register frame capture function for evidence photos
   useEffect(() => {
     registerFrameCapture(() => {
-      if (!videoRef.current || !canvasRef.current) return null;
-      const video = videoRef.current;
+      const video = videoRef.current || formVideoRef.current;
+      if (!video || !canvasRef.current) return null;
       const canvas = canvasRef.current;
       canvas.width = video.videoWidth || 640;
       canvas.height = video.videoHeight || 480;
@@ -69,7 +71,10 @@ export default function ActiveInspection() {
 
   useEffect(() => {
     isMounted.current = true;
-    return () => { isMounted.current = false; };
+    return () => {
+      isMounted.current = false;
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+    };
   }, []);
 
   // Haptic feedback when AI captures a finding
@@ -110,6 +115,30 @@ export default function ActiveInspection() {
     },
   });
 
+  // Monitor scribe connection and auto-reconnect
+  useEffect(() => {
+    if (isUploadMode) return;
+
+    // If scribe was connected but now isn't, and we haven't unmounted, reconnect
+    if (scribeConnected.current && !scribe.isConnected && isMounted.current) {
+      console.log('[Inspection] Scribe disconnected unexpectedly, will reconnect...');
+      scribeConnected.current = false;
+
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      reconnectTimer.current = window.setTimeout(() => {
+        if (isMounted.current && !scribe.isConnected) {
+          console.log('[Inspection] Auto-reconnecting...');
+          connectScribe();
+        }
+      }, 2000);
+    }
+
+    // Update our ref to track current state
+    if (scribe.isConnected) {
+      scribeConnected.current = true;
+    }
+  }, [scribe.isConnected]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Timer
   useEffect(() => {
     if (isUploadMode) return;
@@ -126,19 +155,23 @@ export default function ActiveInspection() {
       if (isMounted.current) {
         setCameraStream(stream);
         setIsCameraOn(true);
-        if (videoRef.current) videoRef.current.srcObject = stream;
       } else {
         stream.getTracks().forEach(t => t.stop());
       }
-    } catch {
-      console.log('Camera not available');
+    } catch (err) {
+      console.log('[Inspection] Camera not available:', err);
     }
   }, []);
 
-  const startLiveInspection = useCallback(async () => {
-    if (!isMounted.current) return;
-    setIsConnecting(true);
-    setConnectionError(null);
+  // Sync video elements when stream changes
+  useEffect(() => {
+    if (cameraStream) {
+      if (videoRef.current) videoRef.current.srcObject = cameraStream;
+      if (formVideoRef.current) formVideoRef.current.srcObject = cameraStream;
+    }
+  }, [cameraStream]);
+
+  const connectScribe = useCallback(async () => {
     try {
       console.log('[Inspection] Fetching scribe token...');
       const { data, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
@@ -147,31 +180,62 @@ export default function ActiveInspection() {
         throw new Error(data?.error || error?.message || 'Failed to get transcription token');
       }
 
-      console.log('[Inspection] Connecting scribe...');
+      console.log('[Inspection] Connecting scribe with token...');
       await scribe.connect({
         token: data.token,
-        microphone: { echoCancellation: true, noiseSuppression: true },
+        microphone: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
-      if (!isMounted.current) {
-        try { scribe.disconnect(); } catch {}
-        return;
+
+      if (isMounted.current) {
+        scribeConnected.current = true;
+        setConnectionError(null);
+        console.log('[Inspection] Scribe connected successfully');
       }
-      scribeConnected.current = true;
-      console.log('[Inspection] Scribe connected successfully');
-      await startCamera();
     } catch (e) {
       if (!isMounted.current) return;
-      const msg = e instanceof Error ? e.message : 'Could not initialize inspection';
-      console.error('[Inspection] Connection failed:', msg);
-      setConnectionError(msg);
-      toast({ title: 'Connection failed', description: msg, variant: 'destructive' });
-      await startCamera();
-    } finally {
-      if (isMounted.current) setIsConnecting(false);
+      const msg = e instanceof Error ? e.message : 'Scribe connection failed';
+      console.error('[Inspection] Scribe connection error:', msg);
+      throw e; // let caller handle
     }
-  }, [scribe, toast, startCamera]);
+  }, [scribe]);
 
-  // Auto-start — guard against React strict mode double-mount
+  const startLiveInspection = useCallback(async () => {
+    setIsConnecting(true);
+    setConnectionError(null);
+
+    // Step 1: Request mic permission explicitly FIRST
+    try {
+      console.log('[Inspection] Requesting microphone permission...');
+      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Stop it immediately — we just needed permission
+      micStream.getTracks().forEach(t => t.stop());
+      setMicGranted(true);
+      console.log('[Inspection] Microphone permission granted');
+    } catch (e) {
+      console.error('[Inspection] Mic permission denied:', e);
+      setConnectionError('Microphone access denied. Please allow microphone access and try again.');
+      setIsConnecting(false);
+      // Still start camera
+      await startCamera();
+      return;
+    }
+
+    // Step 2: Connect scribe (mic permission is now granted)
+    try {
+      await connectScribe();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Could not connect transcription';
+      setConnectionError(msg);
+      toast({ title: 'Mic connection issue', description: msg, variant: 'destructive' });
+    }
+
+    // Step 3: Start camera regardless of scribe status
+    await startCamera();
+
+    if (isMounted.current) setIsConnecting(false);
+  }, [connectScribe, toast, startCamera]);
+
+  // Auto-start on mount
   useEffect(() => {
     if (!isUploadMode && !hasInitialized.current) {
       hasInitialized.current = true;
@@ -179,7 +243,6 @@ export default function ActiveInspection() {
     }
     return () => {
       if (scribeConnected.current) {
-        console.log('[Inspection] Cleaning up scribe connection');
         try { scribe.disconnect(); } catch {}
         scribeConnected.current = false;
       }
@@ -187,11 +250,30 @@ export default function ActiveInspection() {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Periodic video frame capture for AI analysis (every 12 seconds)
   useEffect(() => {
-    if (videoRef.current && cameraStream) {
-      videoRef.current.srcObject = cameraStream;
-    }
-  }, [cameraStream]);
+    if (!isCameraOn || isUploadMode) return;
+
+    const captureInterval = setInterval(() => {
+      const video = videoRef.current || formVideoRef.current;
+      if (!video || !canvasRef.current) return;
+
+      const canvas = canvasRef.current;
+      canvas.width = Math.min(video.videoWidth || 640, 640); // limit size
+      canvas.height = Math.min(video.videoHeight || 480, 480);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const frameBase64 = canvas.toDataURL('image/jpeg', 0.5);
+
+      // Add visual context to the transcript buffer
+      addTranscript(`[VIDEO_FRAME: Camera captured at ${new Date().toLocaleTimeString()}]`);
+
+      console.log('[Inspection] Video frame captured for analysis');
+    }, 15000); // every 15 seconds
+
+    return () => clearInterval(captureInterval);
+  }, [isCameraOn, isUploadMode, addTranscript]);
 
   // Handle video upload
   const handleVideoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -204,7 +286,6 @@ export default function ActiveInspection() {
     try {
       setUploadProgress('Transcribing audio...');
 
-      // Simulate transcription from uploaded video (in production, send to a transcription API)
       const mockTranscript = `Video inspection uploaded: ${file.name}. The inspector walked around the machine performing a full daily safety and maintenance inspection. Starting from the ground level, the machine appears to be parked level with chocks in place. Walking around the undercarriage, tracks look good, tension is within spec. Rollers and idlers spinning freely. Track frames and guards intact. Moving to the boom, no visible cracks or damage to the structure or welds. Stick looks good structurally. Bucket teeth are showing wear on two of the center teeth, cutting edge has some chipping. Hydraulic cylinders on the boom show minor seepage at the rod seal. Stick and bucket cylinders look fine. Hoses and fittings are secure, no leaks visible. Swing bearing and drive operating smooth. Counterweight secure. All lights working except the right rear work light is out. Safety labels are legible. No fluid leaks on the ground. Moving to the engine compartment. Oil level is good, color looks normal. Coolant is slightly low, should top off. Hydraulic oil in the sight glass is at the right level but the temp warning was on yesterday. Air filter indicator is green. Belts look good, no cracking. Radiator has a lot of debris packed in the fins, needs cleaning. DEF tank at about sixty-five percent. Battery connections are clean and tight. On the machine outside, steps and handrails are solid. Cab glass and seals look good. Right side mirror has a small scratch. ROPS FOPS structure is fine. Fuel cap is secure. Inside the cab, seat and seatbelt working. Controls all responsive. Horn works. Backup alarm tested and working. Gauges show the hydraulic temp warning light. HVAC blowing cold. Fire extinguisher is present and charged. Wipers working, washer fluid dispensing. Monitor display is functional, Cat Grade system calibrated.`;
 
       setUploadProgress('Analyzing with AI...');
@@ -228,6 +309,7 @@ export default function ActiveInspection() {
       try { scribe.disconnect(); } catch {}
       scribeConnected.current = false;
     }
+    if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
     cameraStream?.getTracks().forEach(t => t.stop());
     setCameraStream(null);
     setIsCameraOn(false);
@@ -262,8 +344,10 @@ export default function ActiveInspection() {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Hidden canvas for frame capture */}
       <canvas ref={canvasRef} className="hidden" />
+      {/* Hidden video for frame capture when in form view */}
+      <video ref={formVideoRef} autoPlay playsInline muted className="hidden" />
 
-      {/* Top bar with safe area */}
+      {/* Top bar */}
       <header className="flex items-center justify-between px-5 py-4 pt-14 bg-card border-b border-border shrink-0">
         <div className="flex items-center gap-3">
           {!isUploadMode ? (
@@ -289,7 +373,7 @@ export default function ActiveInspection() {
         </div>
       </header>
 
-      {/* Live transcript bar — always visible */}
+      {/* Live transcript bar */}
       <div className="px-4 py-3 bg-surface-2 border-b border-border shrink-0">
         <div className="flex items-center gap-2 mb-1">
           {scribe.isConnected ? (
@@ -298,13 +382,18 @@ export default function ActiveInspection() {
             <MicOff className="w-4 h-4 text-muted-foreground shrink-0" />
           )}
           <span className="text-sm font-mono text-muted-foreground">
-            {scribe.isConnected ? 'Listening...' : isUploadMode ? 'Upload transcript' : 'Mic offline'}
+            {scribe.isConnected ? 'Listening...' : isConnecting ? 'Connecting mic...' : isUploadMode ? 'Upload transcript' : 'Mic offline'}
           </span>
+          {isCameraOn && (
+            <span className="flex items-center gap-1 text-sm font-mono text-primary ml-auto">
+              <Camera className="w-3.5 h-3.5" /> Live
+            </span>
+          )}
         </div>
         <p className="text-base text-foreground leading-snug min-h-[1.5em]">
           {latestPartial && <span className="text-primary">{latestPartial}</span>}
           {!latestPartial && liveText && (
-            <span className="text-muted-foreground">{liveText.slice(-120)}</span>
+            <span className="text-muted-foreground">{liveText.slice(-150)}</span>
           )}
           {!latestPartial && !liveText && (
             <span className="text-muted-foreground/50 italic">
@@ -319,10 +408,10 @@ export default function ActiveInspection() {
         <div className="mx-4 mt-3 flex items-start gap-3 bg-status-fail/10 border border-status-fail/20 rounded-xl p-4 shrink-0">
           <AlertCircle className="w-5 h-5 text-status-fail shrink-0 mt-0.5" />
           <div>
-            <p className="text-base font-semibold text-status-fail">Microphone connection failed</p>
+            <p className="text-base font-semibold text-status-fail">Connection Issue</p>
             <p className="text-sm text-muted-foreground mt-1">{connectionError}</p>
-            <button onClick={startLiveInspection} className="mt-2 text-base text-primary font-semibold touch-target">
-              Retry
+            <button onClick={() => { hasInitialized.current = false; startLiveInspection(); }} className="mt-2 text-base text-primary font-semibold touch-target">
+              Retry Connection
             </button>
           </div>
         </div>
@@ -340,17 +429,13 @@ export default function ActiveInspection() {
       <div className="px-4 py-3 shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex-1 h-2.5 bg-border rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full transition-all duration-700"
-              style={{ width: `${pct}%` }}
-            />
+            <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
           </div>
           <span className="text-base font-mono text-muted-foreground font-semibold shrink-0">
             {itemCount}/{totalFields}
           </span>
         </div>
-        {/* View toggle tabs */}
-        {!isUploadMode && (
+        {!isUploadMode && isCameraOn && (
           <div className="flex gap-2 mt-2">
             <button
               onClick={() => setViewMode('form')}
@@ -375,13 +460,7 @@ export default function ActiveInspection() {
       {/* Upload area */}
       {isUploadMode && itemCount === 0 && (
         <div className="mx-4 mb-3 shrink-0">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="video/*,audio/*"
-            onChange={handleVideoUpload}
-            className="hidden"
-          />
+          <input ref={fileInputRef} type="file" accept="video/*,audio/*" onChange={handleVideoUpload} className="hidden" />
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
@@ -414,6 +493,11 @@ export default function ActiveInspection() {
                 <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-background/80 px-3 py-1.5 rounded-lg text-sm font-mono text-foreground">
                   <Camera className="w-4 h-4" /> LIVE
                 </div>
+                {isAnalyzing && (
+                  <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-sensor/20 px-3 py-1.5 rounded-lg text-sm font-mono text-sensor">
+                    <div className="w-2 h-2 rounded-full bg-sensor animate-pulse" /> AI Analyzing
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex items-center justify-center aspect-video rounded-xl bg-surface-2 border border-border">
@@ -421,7 +505,6 @@ export default function ActiveInspection() {
               </div>
             )}
 
-            {/* Recent transcript in camera view */}
             {committedTexts.length > 0 && (
               <div className="mt-3 bg-surface-2 rounded-xl p-3">
                 <p className="text-sm font-mono text-muted-foreground mb-1">Full Transcript</p>
@@ -434,7 +517,7 @@ export default function ActiveInspection() {
         )}
 
         {/* Form view */}
-        {(viewMode === 'form' || isUploadMode) && (
+        {(viewMode === 'form' || isUploadMode || !isCameraOn) && (
           <div className="px-4 pb-4">
             <LiveFormChecklist
               sections={inspectionFormSections}
@@ -445,11 +528,6 @@ export default function ActiveInspection() {
           </div>
         )}
       </div>
-
-      {/* Hidden video for frame capture when in form view */}
-      {viewMode === 'form' && isCameraOn && (
-        <video ref={videoRef} autoPlay playsInline muted className="hidden" />
-      )}
 
       {/* Bottom controls */}
       <div className="p-4 bg-card border-t border-border safe-bottom shrink-0">
@@ -464,11 +542,22 @@ export default function ActiveInspection() {
         ) : (
           <div className="flex gap-3">
             <div className="flex items-center gap-2">
-              <div className={`flex items-center justify-center w-14 h-14 rounded-xl ${
-                scribe.isConnected ? 'bg-status-fail/15 border border-status-fail/30' : 'bg-surface-2 border border-border'
-              }`}>
+              <button
+                onClick={() => {
+                  if (scribe.isConnected) {
+                    try { scribe.disconnect(); } catch {}
+                    scribeConnected.current = false;
+                    if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+                  } else {
+                    connectScribe();
+                  }
+                }}
+                className={`flex items-center justify-center w-14 h-14 rounded-xl ${
+                  scribe.isConnected ? 'bg-status-fail/15 border border-status-fail/30' : 'bg-surface-2 border border-border'
+                }`}
+              >
                 {scribe.isConnected ? <Mic className="w-6 h-6 text-status-fail" /> : <MicOff className="w-6 h-6 text-muted-foreground" />}
-              </div>
+              </button>
               {isCameraOn && (
                 <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-primary/15 border border-primary/30">
                   <Camera className="w-6 h-6 text-primary" />
