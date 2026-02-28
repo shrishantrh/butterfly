@@ -13,7 +13,7 @@ const statusConfig: Record<InspectionStatus, { label: string; dotClass: string; 
   monitor: { label: 'MONITOR', dotClass: 'status-dot-monitor', bgClass: 'bg-status-monitor/15 text-status-monitor' },
   fail: { label: 'FAIL', dotClass: 'status-dot-fail', bgClass: 'bg-status-fail/15 text-status-fail' },
   normal: { label: 'NORMAL', dotClass: 'status-dot-normal', bgClass: 'bg-muted text-muted-foreground' },
-  unconfirmed: { label: 'UNCONFIRMED', dotClass: 'bg-border', bgClass: 'bg-border/30 text-muted-foreground' },
+  unconfirmed: { label: '—', dotClass: 'bg-border', bgClass: 'bg-border/30 text-muted-foreground' },
 };
 
 export const StatusBadge = forwardRef<HTMLSpanElement, StatusBadgeProps>(
@@ -23,7 +23,7 @@ export const StatusBadge = forwardRef<HTMLSpanElement, StatusBadgeProps>(
       <span
         ref={ref}
         className={cn(
-          'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-semibold uppercase tracking-wider',
+          'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-mono font-semibold uppercase tracking-wider',
           config.bgClass,
           className
         )}
@@ -39,7 +39,7 @@ StatusBadge.displayName = 'StatusBadge';
 export const StatusSummary = forwardRef<HTMLDivElement, { pass: number; monitor: number; fail: number; normal: number }>(
   ({ pass, monitor, fail, normal }, ref) => {
     return (
-      <div ref={ref} className="flex items-center gap-3 text-sm font-mono font-semibold">
+      <div ref={ref} className="flex items-center gap-3 text-base font-mono font-semibold">
         <span className="flex items-center gap-1"><span className="status-dot status-dot-pass" />{pass}</span>
         <span className="flex items-center gap-1"><span className="status-dot status-dot-monitor" />{monitor}</span>
         <span className="flex items-center gap-1"><span className="status-dot status-dot-fail" />{fail}</span>

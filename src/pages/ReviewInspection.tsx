@@ -1,5 +1,5 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { mockMachines, inspectionFormSections, completedInspection, getStatusCounts, InspectionSection, InspectionItem, InspectionStatus } from '@/lib/mock-data';
+import { mockMachines, inspectionFormSections, completedInspection, getStatusCounts, InspectionSection, InspectionStatus } from '@/lib/mock-data';
 import { PageHeader } from '@/components/PageHeader';
 import { StatusBadge, StatusSummary } from '@/components/StatusBadge';
 import { Video, Mic2, Cpu, Send, PenLine, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
@@ -73,10 +73,10 @@ export default function ReviewInspection() {
 
   const handleSubmit = useCallback(() => {
     if (hasUnconfirmed) {
-      toast({ title: 'Cannot submit', description: `${unconfirmedCount} fields still unconfirmed.`, variant: 'destructive' });
+      toast({ title: 'Cannot submit', description: `${unconfirmedCount} fields still unconfirmed. Tap each to resolve.`, variant: 'destructive' });
       return;
     }
-    toast({ title: 'Report submitted', description: 'PDF generated and synced.' });
+    toast({ title: 'Report submitted', description: 'PDF generated and synced to VisionLink.' });
     navigate(`/debrief/${machineId}`, {
       state: { sections, transcript: routerState?.transcript, elapsed: routerState?.elapsed },
     });
@@ -93,26 +93,26 @@ export default function ReviewInspection() {
         right={<StatusSummary {...counts} />}
       />
 
-      <div className="px-5 py-5 space-y-4 pb-32">
+      <div className="px-5 py-5 space-y-4 pb-36">
         {/* General info */}
         <div className="bg-card border border-border rounded-xl p-5">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4 font-mono">General Information</h3>
-          <div className="grid grid-cols-2 gap-3 text-sm">
+          <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4 font-mono">General Information</h3>
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-xs text-muted-foreground">Inspector</p>
-              <p className="font-semibold">Marcus Chen</p>
+              <p className="text-sm text-muted-foreground">Inspector</p>
+              <p className="font-semibold text-base">Marcus Chen</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Date</p>
-              <p className="font-mono font-semibold">{new Date().toISOString().split('T')[0]}</p>
+              <p className="text-sm text-muted-foreground">Date</p>
+              <p className="font-mono font-semibold text-base">{new Date().toISOString().split('T')[0]}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">SMU Hours</p>
-              <p className="font-mono font-semibold">{machine.smuHours.toLocaleString()}</p>
+              <p className="text-sm text-muted-foreground">SMU Hours</p>
+              <p className="font-mono font-semibold text-base">{machine.smuHours.toLocaleString()}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Duration</p>
-              <p className="font-mono font-semibold">
+              <p className="text-sm text-muted-foreground">Duration</p>
+              <p className="font-mono font-semibold text-base">
                 {routerState?.elapsed ? `${Math.floor(routerState.elapsed / 60)}m ${routerState.elapsed % 60}s` : '—'}
               </p>
             </div>
@@ -122,8 +122,8 @@ export default function ReviewInspection() {
         {/* Unconfirmed warning */}
         {hasUnconfirmed && (
           <div className="flex items-center gap-3 bg-status-monitor/10 border border-status-monitor/20 rounded-xl p-4">
-            <AlertCircle className="w-5 h-5 text-status-monitor shrink-0" />
-            <p className="text-sm text-status-monitor">
+            <AlertCircle className="w-6 h-6 text-status-monitor shrink-0" />
+            <p className="text-base text-status-monitor">
               <span className="font-semibold">{unconfirmedCount} field{unconfirmedCount !== 1 ? 's' : ''} unconfirmed.</span> Tap to resolve.
             </p>
           </div>
@@ -134,27 +134,27 @@ export default function ReviewInspection() {
           <div key={section.id} className="bg-card border border-border rounded-xl overflow-hidden">
             <button
               onClick={() => toggleSection(section.id)}
-              className="w-full px-5 py-3.5 bg-surface-2 border-b border-border flex items-center justify-between touch-target"
+              className="w-full px-5 py-4 bg-surface-2 border-b border-border flex items-center justify-between touch-target"
             >
-              <h3 className="text-sm font-bold">{section.title}</h3>
+              <h3 className="text-base font-bold">{section.title}</h3>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono text-muted-foreground">
+                <span className="text-sm font-mono text-muted-foreground">
                   {section.items.filter(i => i.status !== 'unconfirmed').length}/{section.items.length}
                 </span>
                 {expandedSections.has(section.id)
-                  ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                  : <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  ? <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                  : <ChevronDown className="w-5 h-5 text-muted-foreground" />
                 }
               </div>
             </button>
             {expandedSections.has(section.id) && (
               <div className="divide-y divide-border">
                 {section.items.map((item) => (
-                  <div key={item.id} className={`px-5 py-3.5 ${item.status === 'unconfirmed' ? 'bg-surface-2/30' : ''}`}>
+                  <div key={item.id} className={`px-5 py-4 ${item.status === 'unconfirmed' ? 'bg-surface-2/30' : ''}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="text-xs font-mono text-muted-foreground shrink-0 w-7">{item.id}</span>
-                        <span className="text-sm font-medium text-foreground">{item.label}</span>
+                        <span className="text-sm font-mono text-muted-foreground shrink-0 w-8">{item.id}</span>
+                        <span className="text-base font-medium text-foreground">{item.label}</span>
                       </div>
                       {item.status === 'unconfirmed' ? (
                         <button
@@ -170,7 +170,7 @@ export default function ReviewInspection() {
 
                     {/* Quick resolve buttons */}
                     {editingItem === item.id && item.status === 'unconfirmed' && (
-                      <div className="flex gap-2 mt-3 pl-9">
+                      <div className="flex gap-2 mt-3 pl-10 flex-wrap">
                         {(['pass', 'monitor', 'fail', 'normal'] as InspectionStatus[]).map(s => (
                           <button
                             key={s}
@@ -184,16 +184,16 @@ export default function ReviewInspection() {
                     )}
 
                     {item.comment && (
-                      <p className="text-xs text-muted-foreground mt-1.5 pl-9 leading-relaxed">{item.comment}</p>
+                      <p className="text-sm text-muted-foreground mt-2 pl-10 leading-relaxed">{item.comment}</p>
                     )}
                     {item.evidence && item.evidence.length > 0 && (
-                      <div className="flex items-center gap-2.5 mt-1.5 pl-9">
-                        {item.evidence.includes('video') && <Video className="w-3.5 h-3.5 text-primary" />}
-                        {item.evidence.includes('audio') && <Mic2 className="w-3.5 h-3.5 text-status-monitor" />}
+                      <div className="flex items-center gap-3 mt-2 pl-10">
+                        {item.evidence.includes('video') && <Video className="w-4 h-4 text-primary" />}
+                        {item.evidence.includes('audio') && <Mic2 className="w-4 h-4 text-status-monitor" />}
                         {item.evidence.includes('sensor') && (
                           <span className="flex items-center gap-1">
-                            <Cpu className="w-3.5 h-3.5 text-sensor" />
-                            {item.faultCode && <span className="text-xs font-mono text-sensor">{item.faultCode}</span>}
+                            <Cpu className="w-4 h-4 text-sensor" />
+                            {item.faultCode && <span className="text-sm font-mono text-sensor">{item.faultCode}</span>}
                           </span>
                         )}
                       </div>
@@ -210,19 +210,23 @@ export default function ReviewInspection() {
       <div className="fixed bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-background via-background to-transparent flex gap-3 safe-bottom">
         <button
           onClick={() => {
-            toast({ title: 'Edit mode', description: 'Tap any field status to change it.' });
+            // Toggle all unconfirmed items' edit state
+            const firstUnconfirmed = sections.flatMap(s => s.items).find(i => i.status === 'unconfirmed');
+            if (firstUnconfirmed) {
+              setEditingItem(firstUnconfirmed.id);
+              toast({ title: 'Edit mode', description: 'Tap unconfirmed badges to set status.' });
+            }
           }}
-          className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl bg-secondary text-secondary-foreground font-semibold text-sm border border-border active:scale-[0.98] transition-all"
+          className="flex items-center justify-center gap-2 py-4 px-6 rounded-xl bg-secondary text-secondary-foreground font-semibold text-base border border-border active:scale-[0.98] transition-all"
         >
-          <PenLine className="w-4 h-4" />
-          Edit
+          <PenLine className="w-5 h-5" />
         </button>
         <button
           onClick={handleSubmit}
           disabled={hasUnconfirmed}
-          className="flex-[2] flex items-center justify-center gap-2 py-4 rounded-xl bg-primary text-primary-foreground font-bold text-sm glow-primary hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl bg-primary text-primary-foreground font-bold text-lg glow-primary hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <Send className="w-4 h-4" />
+          <Send className="w-5 h-5" />
           Submit Report
         </button>
       </div>
