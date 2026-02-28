@@ -76,7 +76,7 @@ export default function Debrief() {
   };
 
   const zones = [
-  { label: 'Bucket',     ids: ['1.7'],                                                                    top: '55%', left: '79%' },
+  { label: 'Bucket',     ids: ['1.7'],                                                                    top: '0%', left: '0%' },
   { label: 'Arm/Stick',  ids: ['1.9', '1.10'],                                                            top: '47%', left: '74%' },
   { label: 'Boom',       ids: ['1.5', '1.8'],                                                             top: '29%', left: '58%' },
   { label: 'Cab',        ids: ['4.1','4.2','4.3','4.4','4.5','4.6','4.7','4.8','4.9','3.2','3.3','3.4'], top: '48%', left: '40%' },
