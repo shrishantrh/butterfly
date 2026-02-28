@@ -64,6 +64,17 @@ You receive BOTH audio transcripts and camera frames. Use them together:
 - If you see something concerning in a frame that the inspector didn't mention, flag it
 - If the inspector describes an issue, look for visual confirmation in the frames
 
+## AI CROSS-VALIDATION (CRITICAL)
+For EVERY item you identify, you MUST provide:
+- aiAgreement: whether your visual analysis AGREES with the inspector's verbal assessment
+  - "agree" = your visual assessment matches the inspector's stated condition
+  - "disagree" = you see evidence that contradicts the inspector (e.g., they say PASS but you see damage)
+  - "uncertain" = insufficient visual evidence to confirm or deny
+- aiVisualNote: a brief (1 sentence) independent visual observation describing what YOU see, regardless of what the inspector said
+  - For PASS items: describe the visual confirmation (e.g., "Track pads appear intact with normal wear patterns")
+  - For disagreements: describe what you see that differs (e.g., "Visible fluid residue at seal junction despite inspector marking PASS")
+  - DO NOT override the inspector's rating — just note your observation
+
 ## RATING RULES (CAT Inspect standard)
 - PASS (Green): Functioning normally. Keywords: "good", "fine", "within spec", "no issues".
 - MONITOR (Yellow): Wear or minor issue, doesn't affect immediate safety. Keywords: "wearing", "minor", "seepage", "slightly low", "debris".
@@ -76,7 +87,7 @@ You receive BOTH audio transcripts and camera frames. Use them together:
 - One sentence can cover multiple items.
 
 ## FAULT CODE CORRELATION
-Cross-reference active fault codes with visual findings. If they match, include the fault code and add "sensor" to evidence.
+Cross-reference active fault codes with visual findings.
 
 ## ACTIVE FAULT CODES
 {faultCodes}
@@ -86,7 +97,8 @@ Cross-reference active fault codes with visual findings. If they match, include 
 - Always include "audio" in evidence if identified from speech.
 - Add "video" if identified or confirmed from camera frames.
 - Add "sensor" if correlating with a fault code.
-- Write professional, concise comments (1-2 sentences).`;
+- Write professional, concise comments (1-2 sentences).
+- ALWAYS include aiAgreement and aiVisualNote for every item.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -107,10 +119,7 @@ serve(async (req) => {
 
     const systemPrompt = SYSTEM_PROMPT.replace("{faultCodes}", faultCodes || "None");
 
-    // Build multimodal message content
     const userContent: any[] = [];
-
-    // Add text context
     let textPart = "";
     if (previousItems && previousItems !== "None") {
       textPart += `Previously identified items (update if new info): ${previousItems}\n\n`;
@@ -122,11 +131,9 @@ serve(async (req) => {
     }
     userContent.push({ type: "text", text: textPart });
 
-    // Add camera frames as images (Gemini supports inline base64 images)
     if (frames && Array.isArray(frames) && frames.length > 0) {
       userContent.push({ type: "text", text: "\n\nCamera frames from the live inspection:" });
       for (const frame of frames.slice(0, 2)) {
-        // frames are data URLs like "data:image/jpeg;base64,..."
         const base64Match = frame.match(/^data:image\/(\w+);base64,(.+)$/);
         if (base64Match) {
           userContent.push({
@@ -172,9 +179,11 @@ serve(async (req) => {
                           items: { type: "string", enum: ["audio", "video", "sensor"] },
                         },
                         faultCode: { type: "string", description: "Active fault code if correlated" },
-                        annotation: { type: "string", description: "Brief visual annotation describing what was seen in the frame (e.g. 'Oil seepage visible at rod seal junction', 'Debris buildup on radiator fins'). Only include if visual evidence was used." },
+                        annotation: { type: "string", description: "Brief visual annotation describing what was seen in the frame" },
+                        aiAgreement: { type: "string", enum: ["agree", "disagree", "uncertain"], description: "Whether AI visual analysis agrees with inspector's assessment" },
+                        aiVisualNote: { type: "string", description: "AI's independent 1-sentence visual observation of component condition" },
                       },
-                      required: ["id", "status", "comment", "evidence"],
+                      required: ["id", "status", "comment", "evidence", "aiAgreement", "aiVisualNote"],
                       additionalProperties: false,
                     },
                   },

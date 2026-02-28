@@ -10,6 +10,8 @@ export interface AnalysisResult {
   faultCode?: string;
   photoUrl?: string;
   annotation?: string; // AI-generated annotation for photo evidence
+  aiAgreement?: 'agree' | 'disagree' | 'uncertain'; // AI cross-validation
+  aiVisualNote?: string; // AI's independent visual assessment
 }
 
 export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string) {
@@ -60,10 +62,9 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string)
       if (fnError) throw fnError;
 
       if (data?.items && Array.isArray(data.items)) {
-        // Capture frame for FAIL/MONITOR evidence
+        // Capture frame for ALL items — universal visual evidence
         let frameUrl: string | null = null;
-        const hasIssue = data.items.some((i: AnalysisResult) => i.status === 'fail' || i.status === 'monitor');
-        if (hasIssue && captureFrameFn.current) {
+        if (captureFrameFn.current) {
           frameUrl = captureFrameFn.current();
         }
 
@@ -73,11 +74,10 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string)
             const existing = next.get(item.id);
             const severityOrder = { fail: 3, monitor: 2, pass: 1, normal: 0 };
             if (!existing || severityOrder[item.status] >= severityOrder[existing.status]) {
+              // Capture photo for ALL items (not just fail/monitor) for universal visual evidence
               next.set(item.id, {
                 ...item,
-                photoUrl: (item.status === 'fail' || item.status === 'monitor') 
-                  ? (frameUrl || existing?.photoUrl) 
-                  : existing?.photoUrl,
+                photoUrl: frameUrl || existing?.photoUrl,
                 annotation: item.annotation || existing?.annotation,
               });
             }

@@ -11,10 +11,16 @@ const SYSTEM_PROMPT = `You are an expert CAT heavy equipment maintenance analyst
 ## YOUR ANALYSIS MUST INCLUDE:
 
 ### 1. Executive Summary
-A 2-3 sentence overall machine health assessment. Include a health score (0-100) and operational readiness status (READY, CAUTION, DOWN).
+A 2-3 sentence overall machine health assessment. Include:
+- healthScore (0-100)
+- status: READY, CAUTION, or DOWN
+- summary text
+- safetyClearance: GO (safe to operate full shift), CONDITIONAL (can operate with restrictions), NO_GO (must not operate)
+- safetyClearanceReason: brief explanation of clearance decision
+- immediateActions: list of things that MUST be done before the machine can operate (empty if GO)
 
 ### 2. Root Cause Analysis
-For every FAIL and MONITOR item, determine the likely root cause. Cross-reference fault codes with physical findings. Identify cascading failures (e.g., clogged radiator → high hydraulic temp → accelerated seal wear).
+For every FAIL and MONITOR item, determine the likely root cause. Cross-reference fault codes with physical findings. Identify cascading failures.
 
 ### 3. Action Items (Work Orders)
 Generate prioritized work orders with:
@@ -29,18 +35,33 @@ Based on the inspection data, fault code history, and SMU hours:
 - Identify components approaching end-of-life based on wear patterns
 - Flag any unusual correlations between findings
 
-### 5. Parts Recommendations
-For each FAIL and MONITOR item, suggest the specific CAT part category and search terms that would help find the right replacement parts. Include:
+### 5. Predictive Maintenance Schedule
+For each component showing wear or issues, provide:
+- estimatedRemainingLife in SMU hours
+- recommendedOrderDate: when to order replacement parts (accounting for lead time)
+- nextServiceInterval: when the next service should be scheduled
+- estimatedCost: rough cost estimate for the replacement/service
+- partNumber: CAT part number if known, or best guess
+- partName: specific part name
+- This is CRITICAL — provide actionable scheduling so maintenance teams can plan ahead
+
+### 6. Parts Recommendations
+For each FAIL and MONITOR item, suggest the specific CAT part and search terms:
 - Component name
 - Likely part type (seal kit, filter, bulb, teeth, etc.)
 - Search keywords for parts.cat.com
 - Urgency (immediate, soon, scheduled)
+- estimatedPartCost: rough estimate in USD
+- catPartNumber: if known
 
-### 6. Inspector Coaching
-Brief feedback on inspection quality:
-- Coverage completeness
-- Evidence quality (video/audio/sensor mix)
-- Any zones that seem rushed or under-documented
+### 7. AI Validation Summary
+Review the AI cross-validation results from the inspection:
+- List any items where AI DISAGREED with the inspector
+- Provide a brief assessment of whether the disagreement is concerning
+- Overall validation score (percentage of items where AI agreed)
+
+### 8. Inspector Coaching
+Brief feedback on inspection quality.
 
 ## MACHINE CONTEXT
 Model: CAT 320 Hydraulic Excavator
@@ -66,10 +87,9 @@ serve(async (req) => {
       });
     }
 
-    // Build inspection summary for the AI
     const inspectionText = sections.map((s: any) => {
       const items = s.items.map((i: any) =>
-        `  ${i.id} ${i.label}: ${i.status.toUpperCase()}${i.comment ? ` — ${i.comment}` : ''}${i.faultCode ? ` [Fault: ${i.faultCode}]` : ''}${i.evidence?.length ? ` (Evidence: ${i.evidence.join(', ')})` : ''}`
+        `  ${i.id} ${i.label}: ${(i.status || 'unconfirmed').toUpperCase()}${i.comment ? ` — ${i.comment}` : ''}${i.faultCode ? ` [Fault: ${i.faultCode}]` : ''}${i.evidence?.length ? ` (Evidence: ${i.evidence.join(', ')})` : ''}${(i as any).aiAgreement ? ` [AI: ${(i as any).aiAgreement}${(i as any).aiVisualNote ? ' — ' + (i as any).aiVisualNote : ''}]` : ''}`
       ).join('\n');
       return `${s.title}\n${items}`;
     }).join('\n\n');
@@ -115,11 +135,14 @@ ${inspectionText}`;
                   executiveSummary: {
                     type: "object",
                     properties: {
-                      healthScore: { type: "number", description: "0-100 machine health score" },
+                      healthScore: { type: "number" },
                       status: { type: "string", enum: ["READY", "CAUTION", "DOWN"] },
-                      summary: { type: "string", description: "2-3 sentence assessment" },
+                      summary: { type: "string" },
+                      safetyClearance: { type: "string", enum: ["GO", "CONDITIONAL", "NO_GO"] },
+                      safetyClearanceReason: { type: "string" },
+                      immediateActions: { type: "array", items: { type: "string" } },
                     },
-                    required: ["healthScore", "status", "summary"],
+                    required: ["healthScore", "status", "summary", "safetyClearance", "safetyClearanceReason", "immediateActions"],
                     additionalProperties: false,
                   },
                   rootCauseAnalysis: {
@@ -131,8 +154,8 @@ ${inspectionText}`;
                         itemLabel: { type: "string" },
                         status: { type: "string" },
                         rootCause: { type: "string" },
-                        cascadeRisk: { type: "string", description: "What this could lead to if unaddressed" },
-                        relatedItems: { type: "array", items: { type: "string" }, description: "IDs of related inspection items" },
+                        cascadeRisk: { type: "string" },
+                        relatedItems: { type: "array", items: { type: "string" } },
                       },
                       required: ["itemId", "itemLabel", "status", "rootCause"],
                       additionalProperties: false,
@@ -148,8 +171,8 @@ ${inspectionText}`;
                         priority: { type: "string", enum: ["CRITICAL", "HIGH", "MEDIUM", "LOW"] },
                         description: { type: "string" },
                         estimatedHours: { type: "number" },
-                        canOperate: { type: "boolean", description: "Can machine operate pending this repair?" },
-                        procedure: { type: "string", description: "Brief repair procedure" },
+                        canOperate: { type: "boolean" },
+                        procedure: { type: "string" },
                       },
                       required: ["itemId", "title", "priority", "description", "estimatedHours", "canOperate"],
                       additionalProperties: false,
@@ -164,10 +187,29 @@ ${inspectionText}`;
                         itemLabel: { type: "string" },
                         prediction: { type: "string" },
                         confidence: { type: "string", enum: ["high", "medium", "low"] },
-                        estimatedHoursToFailure: { type: "number", description: "Estimated SMU hours until failure" },
+                        estimatedHoursToFailure: { type: "number" },
                         recommendation: { type: "string" },
                       },
                       required: ["itemId", "itemLabel", "prediction", "confidence", "recommendation"],
+                      additionalProperties: false,
+                    },
+                  },
+                  predictiveMaintenanceSchedule: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        itemId: { type: "string" },
+                        itemLabel: { type: "string" },
+                        estimatedRemainingLife: { type: "number", description: "SMU hours remaining" },
+                        recommendedOrderDate: { type: "string", description: "ISO date to order parts" },
+                        nextServiceInterval: { type: "number", description: "SMU hours until next service" },
+                        estimatedCost: { type: "number", description: "Estimated cost in USD" },
+                        partNumber: { type: "string" },
+                        partName: { type: "string" },
+                        urgency: { type: "string", enum: ["order-now", "order-soon", "schedule", "monitor"] },
+                      },
+                      required: ["itemId", "itemLabel", "estimatedRemainingLife", "partName", "urgency"],
                       additionalProperties: false,
                     },
                   },
@@ -178,19 +220,46 @@ ${inspectionText}`;
                       properties: {
                         itemId: { type: "string" },
                         itemLabel: { type: "string" },
-                        partType: { type: "string", description: "e.g. seal kit, filter, bulb, teeth" },
-                        searchKeywords: { type: "string", description: "Search terms for parts.cat.com" },
+                        partType: { type: "string" },
+                        searchKeywords: { type: "string" },
                         urgency: { type: "string", enum: ["immediate", "soon", "scheduled"] },
+                        estimatedPartCost: { type: "number" },
+                        catPartNumber: { type: "string" },
                       },
                       required: ["itemId", "itemLabel", "partType", "searchKeywords", "urgency"],
                       additionalProperties: false,
                     },
                   },
+                  aiValidationSummary: {
+                    type: "object",
+                    properties: {
+                      agreementScore: { type: "number", description: "Percentage 0-100 of items where AI agreed" },
+                      disagreements: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            itemId: { type: "string" },
+                            itemLabel: { type: "string" },
+                            inspectorRating: { type: "string" },
+                            aiAssessment: { type: "string" },
+                            concern: { type: "string", description: "Brief explanation of why this is concerning" },
+                            severity: { type: "string", enum: ["low", "medium", "high"] },
+                          },
+                          required: ["itemId", "itemLabel", "inspectorRating", "aiAssessment", "concern", "severity"],
+                          additionalProperties: false,
+                        },
+                      },
+                      overallNote: { type: "string" },
+                    },
+                    required: ["agreementScore", "disagreements", "overallNote"],
+                    additionalProperties: false,
+                  },
                   inspectorCoaching: {
                     type: "object",
                     properties: {
                       overallGrade: { type: "string", enum: ["A", "B", "C", "D"] },
-                      coverageScore: { type: "number", description: "0-100" },
+                      coverageScore: { type: "number" },
                       strengths: { type: "array", items: { type: "string" } },
                       improvements: { type: "array", items: { type: "string" } },
                     },
@@ -198,7 +267,7 @@ ${inspectionText}`;
                     additionalProperties: false,
                   },
                 },
-                required: ["executiveSummary", "rootCauseAnalysis", "workOrders", "predictiveInsights", "partsRecommendations", "inspectorCoaching"],
+                required: ["executiveSummary", "rootCauseAnalysis", "workOrders", "predictiveInsights", "predictiveMaintenanceSchedule", "partsRecommendations", "aiValidationSummary", "inspectorCoaching"],
                 additionalProperties: false,
               },
             },
@@ -238,7 +307,6 @@ ${inspectionText}`;
     }
 
     if (!analysis) {
-      // Fallback: try parsing content
       const content = data.choices?.[0]?.message?.content || "";
       try {
         const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
