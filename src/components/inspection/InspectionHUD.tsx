@@ -20,7 +20,7 @@ export function InspectionHUD({ pct, itemCount, totalFields, sectionProgress, is
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6">
       {/* Progress ring */}
-      <div className="relative w-40 h-40 mb-6">
+      <div className="relative w-44 h-44 mb-6">
         <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
           <circle cx="50" cy="50" r="44" fill="none" stroke="hsl(var(--border))" strokeWidth="3" />
           <circle
@@ -33,24 +33,24 @@ export function InspectionHUD({ pct, itemCount, totalFields, sectionProgress, is
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-3xl font-bold font-mono text-foreground">{pct}%</span>
-          <span className="text-[9px] text-muted-foreground uppercase tracking-widest mt-1 font-mono">
+          <span className="text-4xl font-bold font-mono text-foreground">{pct}%</span>
+          <span className="text-xs text-muted-foreground uppercase tracking-widest mt-1 font-mono">
             {itemCount}/{totalFields}
           </span>
         </div>
       </div>
 
       {/* Section breakdown */}
-      <div className="w-full max-w-xs space-y-2 mb-6">
+      <div className="w-full max-w-xs space-y-3 mb-6">
         {sectionProgress.map(s => {
           const sp = s.total > 0 ? (s.covered / s.total) * 100 : 0;
           return (
             <div key={s.id}>
-              <div className="flex items-center justify-between text-[10px] mb-0.5">
+              <div className="flex items-center justify-between text-xs mb-1">
                 <span className="text-muted-foreground truncate">{s.title}</span>
                 <span className="font-mono text-muted-foreground">{s.covered}/{s.total}</span>
               </div>
-              <div className="h-1 bg-border rounded-full overflow-hidden">
+              <div className="h-1.5 bg-border rounded-full overflow-hidden">
                 <div
                   className="h-full bg-primary rounded-full transition-all duration-500"
                   style={{ width: `${sp}%` }}
@@ -63,20 +63,20 @@ export function InspectionHUD({ pct, itemCount, totalFields, sectionProgress, is
 
       {/* Active indicators */}
       <div className="flex items-center gap-3">
-        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-semibold ${
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold ${
           isConnected
             ? 'bg-status-fail/10 text-status-fail border border-status-fail/20'
             : 'bg-surface-2 text-muted-foreground border border-border'
         }`}>
-          {isConnected ? <Mic className="w-3 h-3" /> : <MicOff className="w-3 h-3" />}
+          {isConnected ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
           Audio
         </div>
-        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-semibold ${
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold ${
           isCameraOn
             ? 'bg-primary/10 text-primary border border-primary/20'
             : 'bg-surface-2 text-muted-foreground border border-border'
         }`}>
-          {isCameraOn ? <Camera className="w-3 h-3" /> : <VideoOff className="w-3 h-3" />}
+          {isCameraOn ? <Camera className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
           Video
         </div>
       </div>
