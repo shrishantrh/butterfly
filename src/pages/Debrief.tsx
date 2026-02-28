@@ -115,17 +115,7 @@ export default function Debrief() {
     </div>
   );
 })()}
-          <div className="relative bg-background p-3">
-            <img src={excavatorSchematic} alt="Machine Schematic" className="w-full opacity-50" />
-<div className="absolute top-[38%] right-[18%] w-5 h-5 rounded-full bg-status-monitor border-2 border-background" title="Arm/Stick — 1.4 Lift Cylinders (PASS), 1.5 Lift arm attachment (MONITOR)" />
-              <div className="absolute top-[22%] left-[58%] w-5 h-5 rounded-full bg-gray-400 border-2 border-background" title="Boom — 2.4 Hoses (NORMAL)" />
-              <div className="absolute top-[42%] left-[42%] w-5 h-5 rounded-full bg-status-monitor border-2 border-background" title="Cab — Interior all PASS, General Info (MONITOR)" />
-              <div className="absolute top-[48%] left-[18%] w-5 h-5 rounded-full bg-status-fail border-2 border-background" title="Engine — 2.3 Radiator (FAIL), 2.2 Coolant (MONITOR), 2.7 Air Filter (MONITOR)" />
-              <div className="absolute top-[68%] left-[38%] w-5 h-5 rounded-full bg-status-fail border-2 border-background" title="Drivetrain — 1.7 Transmission (FAIL), 1.8 Differential Oil (MONITOR), 1.12 Axles (MONITOR)" />
-              <div className="absolute top-[82%] left-[22%] w-5 h-5 rounded-full bg-gray-400 border-2 border-background" title="Tracks — 1.1 Tires and Rims (NORMAL)" />
-              <div className="absolute top-[60%] left-[30%] w-5 h-5 rounded-full bg-status-pass border-2 border-background" title="Exterior — 1.9 Steps (PASS), 3.3 Fire Extinguisher (PASS), 1.15 Work Lights (PASS)" />
-          </div>
-        </div>
+          
 
         {/* Stats bar */}
         <div className="grid grid-cols-3 gap-3">
