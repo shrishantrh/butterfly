@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
@@ -78,11 +78,7 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family:
-      "Inter",
-      system-ui,
-      -apple-system,
-      sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     font-size: 15px;
     line-height: 1.55;
     letter-spacing: -0.01em;
@@ -92,21 +88,16 @@
     overscroll-behavior: none;
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
+  h1, h2, h3, h4, h5, h6 {
     @apply font-semibold;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
     letter-spacing: -0.025em;
   }
 }
 
 @layer utilities {
   .font-mono {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     letter-spacing: -0.02em;
   }
 
@@ -117,17 +108,15 @@
 
   .glass-surface {
     @apply bg-card/80 backdrop-blur-xl border border-border/60;
-    box-shadow:
-      0 1px 0 0 hsl(0 0% 100% / 0.03) inset,
-      0 1px 3px 0 hsl(0 0% 0% / 0.2);
+    box-shadow: 0 1px 0 0 hsl(0 0% 100% / 0.03) inset,
+                0 1px 3px 0 hsl(0 0% 0% / 0.2);
   }
 
   .glass-surface-elevated {
     @apply bg-card/90 backdrop-blur-xl border border-border/50;
-    box-shadow:
-      0 1px 0 0 hsl(0 0% 100% / 0.04) inset,
-      0 4px 16px -2px hsl(0 0% 0% / 0.3),
-      0 1px 3px 0 hsl(0 0% 0% / 0.15);
+    box-shadow: 0 1px 0 0 hsl(0 0% 100% / 0.04) inset,
+                0 4px 16px -2px hsl(0 0% 0% / 0.3),
+                0 1px 3px 0 hsl(0 0% 0% / 0.15);
   }
 
   .status-dot {
@@ -154,9 +143,7 @@
   }
 
   .glow-primary {
-    box-shadow:
-      0 0 20px hsl(var(--primary) / 0.2),
-      0 0 60px hsl(var(--primary) / 0.06);
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.2), 0 0 60px hsl(var(--primary) / 0.06);
   }
 
   .glow-sensor {
@@ -185,9 +172,8 @@
   /* Refined card */
   .card-elevated {
     @apply bg-card border border-border/50 rounded-xl;
-    box-shadow:
-      0 1px 0 0 hsl(0 0% 100% / 0.03) inset,
-      0 2px 8px -2px hsl(0 0% 0% / 0.25);
+    box-shadow: 0 1px 0 0 hsl(0 0% 100% / 0.03) inset,
+                0 2px 8px -2px hsl(0 0% 0% / 0.25);
   }
 
   /* Subtle divider */
@@ -198,10 +184,6 @@
   /* Label style */
   .label-caps {
     @apply text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
   }
-}
-
-#lovable-badge {
-  display: none !important;
 }
