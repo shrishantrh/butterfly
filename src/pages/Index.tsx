@@ -12,63 +12,63 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="px-4 pt-4 pb-3 border-b border-border bg-card sticky top-0 z-40">
+      <header className="px-5 pt-5 pb-4 border-b border-border bg-card sticky top-0 z-40">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xs font-mono">AI</span>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-sm font-mono">AI</span>
             </div>
             <div>
-              <h1 className="text-sm font-bold tracking-tight text-foreground">InspectAI</h1>
-              <p className="text-[10px] text-muted-foreground font-mono tracking-wide">SAFETY & MAINTENANCE</p>
+              <h1 className="text-lg font-bold tracking-tight text-foreground">InspectAI</h1>
+              <p className="text-xs text-muted-foreground font-mono tracking-wide">SAFETY & MAINTENANCE</p>
             </div>
           </div>
-          <div className="w-8 h-8 rounded-full bg-surface-2 border border-border flex items-center justify-center">
-            <span className="text-xs font-semibold text-muted-foreground">MC</span>
+          <div className="w-10 h-10 rounded-full bg-surface-2 border border-border flex items-center justify-center">
+            <span className="text-sm font-semibold text-muted-foreground">MC</span>
           </div>
         </div>
       </header>
 
       {/* Greeting */}
-      <div className="px-4 pt-5 pb-1">
+      <div className="px-5 pt-6 pb-2">
         <p className="text-sm text-muted-foreground">{greeting}, Marcus</p>
-        <h2 className="text-xl font-bold mt-0.5 text-foreground">Today's Inspections</h2>
+        <h2 className="text-2xl font-bold mt-1 text-foreground">Today's Inspections</h2>
       </div>
 
       {/* Fleet alerts */}
       {(totalFaults > 0 || totalFails > 0) && (
-        <div className="px-4 py-3">
-          <div className="flex items-center gap-3 bg-surface-2 border border-border rounded p-3">
-            <div className="flex items-center gap-4 text-xs flex-1">
+        <div className="px-5 py-3">
+          <div className="flex items-center gap-3 bg-surface-2 border border-border rounded-xl p-4">
+            <div className="flex items-center gap-4 text-sm flex-1">
               <span className="font-mono text-muted-foreground">{mockMachines.length} machines</span>
               {totalFaults > 0 && (
                 <>
-                  <span className="w-px h-3 bg-border" />
-                  <span className="flex items-center gap-1 text-status-monitor font-semibold">
-                    <AlertTriangle className="w-3 h-3" />
+                  <span className="w-px h-4 bg-border" />
+                  <span className="flex items-center gap-1.5 text-status-monitor font-semibold">
+                    <AlertTriangle className="w-4 h-4" />
                     {totalFaults} fault{totalFaults !== 1 ? 's' : ''}
                   </span>
                 </>
               )}
               {totalFails > 0 && (
                 <>
-                  <span className="w-px h-3 bg-border" />
-                  <span className="text-status-fail font-semibold">{totalFails} open FAIL{totalFails !== 1 ? 's' : ''}</span>
+                  <span className="w-px h-4 bg-border" />
+                  <span className="text-status-fail font-semibold">{totalFails} FAIL{totalFails !== 1 ? 's' : ''}</span>
                 </>
               )}
             </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <ChevronRight className="w-5 h-5 text-muted-foreground" />
           </div>
         </div>
       )}
 
       {/* Section label */}
-      <div className="px-4 pt-1 pb-2">
-        <p className="text-[11px] text-muted-foreground font-mono uppercase tracking-wider">Select machine to inspect</p>
+      <div className="px-5 pt-2 pb-3">
+        <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">Select machine to inspect</p>
       </div>
 
       {/* Machine list */}
-      <div className="px-4 pb-8 space-y-3">
+      <div className="px-5 pb-10 space-y-3">
         {mockMachines.map((machine) => (
           <MachineCard key={machine.id} machine={machine} />
         ))}
