@@ -37,17 +37,26 @@ export function VoiceAgent({ formState, setFormState, speechTranscript }: VoiceA
   const formStateRef = useRef<FormState>(formState);
   formStateRef.current = formState;
   const lastProcessedTranscript = useRef('');
+  // Conversation memory — persists across activations
+  const conversationHistory = useRef<Array<{ role: 'user' | 'agent'; text: string }>>([]);
+  // Track speaking state to detect when agent finishes responding
+  const wasSpeakingRef = useRef(false);
+  const autoDisconnectTimer = useRef<number | null>(null);
 
   const conversation = useConversation({
     onConnect: () => {
       console.log('[VoiceAgent] Connected');
-      // Send rich context on connect
+      // Send rich context + conversation memory on connect
       setTimeout(() => {
         try {
           const context = {
             formSchema: buildFormSchemaDescription(),
             currentState: formStateRef.current,
             summary: buildProgressSummary(formStateRef.current),
+            previousConversation: conversationHistory.current.length > 0
+              ? conversationHistory.current
+              : 'No previous conversation — this is the first activation.',
+            instruction: 'Answer the user\'s question concisely, then stop. You will be disconnected after responding. The user will say "Hey Cat" again if they need you.',
           };
           conversation.sendContextualUpdate(JSON.stringify(context));
         } catch (e) {
@@ -57,8 +66,22 @@ export function VoiceAgent({ formState, setFormState, speechTranscript }: VoiceA
     },
     onDisconnect: () => {
       console.log('[VoiceAgent] Disconnected');
+      if (autoDisconnectTimer.current) clearTimeout(autoDisconnectTimer.current);
       // Allow wake word again after disconnect
       setTimeout(() => setWakeWordCooldown(false), 2000);
+    },
+    onMessage: (message: any) => {
+      // Capture conversation history for memory
+      if (message.type === 'user_transcript' && message.user_transcription_event?.user_transcript) {
+        conversationHistory.current.push({ role: 'user', text: message.user_transcription_event.user_transcript });
+      }
+      if (message.type === 'agent_response' && message.agent_response_event?.agent_response) {
+        conversationHistory.current.push({ role: 'agent', text: message.agent_response_event.agent_response });
+      }
+      // Keep memory bounded
+      if (conversationHistory.current.length > 50) {
+        conversationHistory.current = conversationHistory.current.slice(-40);
+      }
     },
     onError: (error) => console.error('[VoiceAgent] Error:', error),
   });
@@ -90,8 +113,32 @@ export function VoiceAgent({ formState, setFormState, speechTranscript }: VoiceA
     }
   }, [speechTranscript, wakeWordCooldown, conversation.status]);
 
+  // Auto-disconnect after agent finishes speaking
   useEffect(() => {
-    return () => { conversation.endSession().catch(() => {}); };
+    const speaking = conversation.isSpeaking;
+    if (wasSpeakingRef.current && !speaking && conversation.status === 'connected') {
+      // Agent just stopped speaking — schedule auto-disconnect
+      console.log('[VoiceAgent] Agent finished speaking, auto-disconnecting in 3s...');
+      autoDisconnectTimer.current = window.setTimeout(() => {
+        if (conversation.status === 'connected') {
+          console.log('[VoiceAgent] Auto-disconnecting');
+          conversation.endSession().catch(() => {});
+        }
+      }, 3000); // 3s grace period in case user speaks again
+    }
+    // If agent starts speaking again, cancel pending disconnect
+    if (speaking && autoDisconnectTimer.current) {
+      clearTimeout(autoDisconnectTimer.current);
+      autoDisconnectTimer.current = null;
+    }
+    wasSpeakingRef.current = speaking;
+  }, [conversation.isSpeaking, conversation.status]);
+
+  useEffect(() => {
+    return () => {
+      conversation.endSession().catch(() => {});
+      if (autoDisconnectTimer.current) clearTimeout(autoDisconnectTimer.current);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startSession = useCallback(async () => {
