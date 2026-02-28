@@ -1,7 +1,7 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { mockMachines, inspectionFormSections } from '@/lib/mock-data';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Square, Camera, Mic, MicOff, Upload, AlertCircle, Volume2 } from 'lucide-react';
+import { Square, Camera, Mic, MicOff, Upload, AlertCircle, Volume2, Play, Pause, SkipForward, Film } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useInspectionAI } from '@/hooks/useInspectionAI';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
@@ -30,9 +30,20 @@ export default function ActiveInspection() {
   const isMounted = useRef(true);
   const hasStarted = useRef(false);
 
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState('');
+  // Upload mode state
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploadVideoUrl, setUploadVideoUrl] = useState<string | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [uploadPhase, setUploadPhase] = useState<'select' | 'transcribing' | 'playing' | 'done'>('select');
+  const uploadVideoRef = useRef<HTMLVideoElement>(null);
+  const uploadCanvasRef = useRef<HTMLCanvasElement>(null);
+  const frameIntervalRef = useRef<number | null>(null);
+  const analysisQueueRef = useRef<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const totalFields = inspectionFormSections.reduce((acc, s) => acc + s.items.length, 0);
 
@@ -49,12 +60,13 @@ export default function ActiveInspection() {
     onPartial: useCallback((text: string) => { setLatestPartial(text); }, []),
   });
 
-  // Register frame capture for evidence photos
+  // Register frame capture — works for both camera and uploaded video
   useEffect(() => {
     registerFrameCapture(() => {
-      const video = videoRef.current;
-      if (!video || !canvasRef.current) return null;
-      const canvas = canvasRef.current;
+      // Try upload video first, then camera
+      const video = uploadVideoRef.current || videoRef.current;
+      const canvas = uploadCanvasRef.current || canvasRef.current;
+      if (!video || !canvas || video.readyState < 2) return null;
       canvas.width = video.videoWidth || 640;
       canvas.height = video.videoHeight || 480;
       const ctx = canvas.getContext('2d');
@@ -62,7 +74,7 @@ export default function ActiveInspection() {
       ctx.drawImage(video, 0, 0);
       return canvas.toDataURL('image/jpeg', 0.8);
     });
-  }, [registerFrameCapture]);
+  }, [registerFrameCapture, uploadPhase]);
 
   useEffect(() => {
     isMounted.current = true;
@@ -85,12 +97,14 @@ export default function ActiveInspection() {
     }
   }, [itemCount, analyzedItems, toast]);
 
+  // Timer for live mode
   useEffect(() => {
     if (isUploadMode) return;
     const timer = setInterval(() => setElapsed(e => e + 1), 1000);
     return () => clearInterval(timer);
   }, [isUploadMode]);
 
+  // ─── LIVE CAMERA MODE ───
   const startCamera = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
@@ -99,14 +113,13 @@ export default function ActiveInspection() {
     } catch (err) { console.log('[Inspection] Camera not available:', err); }
   }, []);
 
-  // Capture frames every 6s (reduced from 12s) for more robust visual analysis
+  // Capture frames every 6s for live camera
   useEffect(() => {
     if (!isCameraOn || isUploadMode) return;
     const captureInterval = setInterval(() => {
       const video = videoRef.current;
       if (!video || !canvasRef.current || video.readyState < 2) return;
       const canvas = canvasRef.current;
-      // Use higher resolution for better analysis
       const scale = Math.min(640 / video.videoWidth, 640 / video.videoHeight, 1);
       canvas.width = Math.round(video.videoWidth * scale);
       canvas.height = Math.round(video.videoHeight * scale);
@@ -127,33 +140,242 @@ export default function ActiveInspection() {
     return () => { speech.stop(); cameraStream?.getTracks().forEach(t => t.stop()); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleVideoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploading(true);
-    setUploadProgress('Extracting audio...');
+  // ─── UPLOAD MODE: VIDEO PLAYBACK + FRAME EXTRACTION ───
+
+  // Extract audio from video and transcribe via ElevenLabs Scribe
+  const transcribeVideoAudio = useCallback(async (file: File): Promise<string> => {
+    setIsTranscribing(true);
+    setUploadPhase('transcribing');
     try {
-      setUploadProgress('Transcribing audio...');
-      const mockTranscript = `Video inspection uploaded: ${file.name}. The inspector walked around the machine performing a full daily safety and maintenance inspection. Starting from the ground level, the machine appears to be parked level with chocks in place. Walking around the undercarriage, tracks look good, tension is within spec. Rollers and idlers spinning freely. Track frames and guards intact. Moving to the boom, no visible cracks or damage to the structure or welds. Stick looks good structurally. Bucket teeth are showing wear on two of the center teeth, cutting edge has some chipping. Hydraulic cylinders on the boom show minor seepage at the rod seal. Stick and bucket cylinders look fine. Hoses and fittings are secure, no leaks visible. Swing bearing and drive operating smooth. Counterweight secure. All lights working except the right rear work light is out. Safety labels are legible. No fluid leaks on the ground. Moving to the engine compartment. Oil level is good, color looks normal. Coolant is slightly low, should top off. Hydraulic oil in the sight glass is at the right level but the temp warning was on yesterday. Air filter indicator is green. Belts look good, no cracking. Radiator has a lot of debris packed in the fins, needs cleaning. DEF tank at about sixty-five percent. Battery connections are clean and tight. On the machine outside, steps and handrails are solid. Cab glass and seals look good. Right side mirror has a small scratch. ROPS FOPS structure is fine. Fuel cap is secure. Inside the cab, seat and seatbelt working. Controls all responsive. Horn works. Backup alarm tested and working. Gauges show the hydraulic temp warning light. HVAC blowing cold. Fire extinguisher is present and charged. Wipers working, washer fluid dispensing. Monitor display is functional, Cat Grade system calibrated.`;
-      setUploadProgress('Analyzing with AI...');
-      addTranscript(mockTranscript);
-      setCommittedTexts([mockTranscript]);
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      await analyzeNow();
-      setUploadProgress('Complete');
-      toast({ title: 'Video analyzed', description: 'AI has processed the inspection recording.' });
-    } catch (err) {
-      toast({ title: 'Upload failed', description: err instanceof Error ? err.message : 'Failed to process video', variant: 'destructive' });
+      // Send the file directly — ElevenLabs Scribe accepts video files too
+      const formData = new FormData();
+      formData.append('audio', file);
+
+      const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+        body: formData,
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const transcript = data?.text || '';
+      console.log('[Upload] Transcription complete:', transcript.length, 'chars');
+      return transcript;
+    } catch (e) {
+      console.error('[Upload] Transcription failed:', e);
+      toast({ title: 'Transcription issue', description: 'Could not extract audio — proceeding with visual analysis only.', variant: 'destructive' });
+      return '';
     } finally {
-      setIsUploading(false);
+      setIsTranscribing(false);
     }
-  }, [addTranscript, analyzeNow, toast]);
+  }, [toast]);
+
+  // Start video playback and frame extraction
+  const startVideoAnalysis = useCallback((transcript: string) => {
+    const video = uploadVideoRef.current;
+    if (!video) return;
+
+    setUploadPhase('playing');
+
+    // Feed transcript to AI
+    if (transcript.trim()) {
+      addTranscript(transcript);
+      setCommittedTexts([transcript]);
+    }
+
+    // Play video
+    video.currentTime = 0;
+    video.playbackRate = 2.0; // 2x speed for faster processing
+    video.play().catch(console.error);
+    setIsVideoPlaying(true);
+
+    // Capture frames every 3s of real time (= every 6s of video at 2x)
+    frameIntervalRef.current = window.setInterval(() => {
+      if (!video || video.paused || video.ended) return;
+      const canvas = uploadCanvasRef.current;
+      if (!canvas || video.readyState < 2) return;
+
+      const scale = Math.min(640 / video.videoWidth, 640 / video.videoHeight, 1);
+      canvas.width = Math.round(video.videoWidth * scale);
+      canvas.height = Math.round(video.videoHeight * scale);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const frameBase64 = canvas.toDataURL('image/jpeg', 0.6);
+      addFrame(frameBase64);
+
+      // Trigger analysis periodically
+      analysisQueueRef.current++;
+      if (analysisQueueRef.current >= 2) {
+        analysisQueueRef.current = 0;
+        analyzeNow();
+      }
+    }, 3000);
+  }, [addTranscript, addFrame, analyzeNow]);
+
+  // Handle video time updates
+  useEffect(() => {
+    const video = uploadVideoRef.current;
+    if (!video) return;
+
+    const onTimeUpdate = () => {
+      setVideoProgress(video.currentTime);
+      setElapsed(Math.round(video.currentTime));
+    };
+    const onLoadedMetadata = () => {
+      setVideoDuration(video.duration);
+    };
+    const onEnded = () => {
+      setIsVideoPlaying(false);
+      setUploadPhase('done');
+      if (frameIntervalRef.current) {
+        clearInterval(frameIntervalRef.current);
+        frameIntervalRef.current = null;
+      }
+      // Final analysis pass
+      analyzeNow();
+      toast({ title: 'Video analysis complete', description: 'All frames processed. Review results below.' });
+    };
+    const onPlay = () => setIsVideoPlaying(true);
+    const onPause = () => setIsVideoPlaying(false);
+
+    video.addEventListener('timeupdate', onTimeUpdate);
+    video.addEventListener('loadedmetadata', onLoadedMetadata);
+    video.addEventListener('ended', onEnded);
+    video.addEventListener('play', onPlay);
+    video.addEventListener('pause', onPause);
+
+    return () => {
+      video.removeEventListener('timeupdate', onTimeUpdate);
+      video.removeEventListener('loadedmetadata', onLoadedMetadata);
+      video.removeEventListener('ended', onEnded);
+      video.removeEventListener('play', onPlay);
+      video.removeEventListener('pause', onPause);
+      if (frameIntervalRef.current) clearInterval(frameIntervalRef.current);
+    };
+  }, [uploadedFile, analyzeNow, toast]);
+
+  // Handle file selection (from input or drop)
+  const handleFileSelected = useCallback(async (file: File) => {
+    if (!file.type.startsWith('video/') && !file.type.startsWith('audio/')) {
+      toast({ title: 'Invalid file', description: 'Please upload a video (MP4, MOV) or audio file.', variant: 'destructive' });
+      return;
+    }
+
+    setUploadedFile(file);
+    const url = URL.createObjectURL(file);
+    setUploadVideoUrl(url);
+
+    // Step 1: Transcribe audio
+    const transcript = await transcribeVideoAudio(file);
+
+    // Step 2: Start playback + frame analysis (for video files)
+    if (file.type.startsWith('video/')) {
+      // Wait for video to load before starting
+      const waitForVideo = () => {
+        const video = uploadVideoRef.current;
+        if (video && video.readyState >= 2) {
+          startVideoAnalysis(transcript);
+        } else {
+          setTimeout(waitForVideo, 200);
+        }
+      };
+      setTimeout(waitForVideo, 500);
+    } else {
+      // Audio-only — just feed transcript
+      if (transcript.trim()) {
+        addTranscript(transcript);
+        setCommittedTexts([transcript]);
+        setUploadPhase('done');
+        await analyzeNow();
+        toast({ title: 'Audio analysis complete', description: 'Transcript processed.' });
+      }
+    }
+  }, [transcribeVideoAudio, startVideoAnalysis, addTranscript, analyzeNow, toast]);
+
+  const handleVideoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFileSelected(file);
+  }, [handleFileSelected]);
+
+  // Drag and drop
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileSelected(file);
+  }, [handleFileSelected]);
+
+  // Video playback controls
+  const togglePlayPause = useCallback(() => {
+    const video = uploadVideoRef.current;
+    if (!video) return;
+    if (video.paused) {
+      video.play();
+      // Restart frame capture if stopped
+      if (!frameIntervalRef.current) {
+        frameIntervalRef.current = window.setInterval(() => {
+          if (!video || video.paused || video.ended) return;
+          const canvas = uploadCanvasRef.current;
+          if (!canvas || video.readyState < 2) return;
+          const scale = Math.min(640 / video.videoWidth, 640 / video.videoHeight, 1);
+          canvas.width = Math.round(video.videoWidth * scale);
+          canvas.height = Math.round(video.videoHeight * scale);
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          addFrame(canvas.toDataURL('image/jpeg', 0.6));
+          analysisQueueRef.current++;
+          if (analysisQueueRef.current >= 2) {
+            analysisQueueRef.current = 0;
+            analyzeNow();
+          }
+        }, 3000);
+      }
+    } else {
+      video.pause();
+      if (frameIntervalRef.current) {
+        clearInterval(frameIntervalRef.current);
+        frameIntervalRef.current = null;
+      }
+    }
+  }, [addFrame, analyzeNow]);
+
+  const skipForward = useCallback(() => {
+    const video = uploadVideoRef.current;
+    if (video) video.currentTime = Math.min(video.currentTime + 10, video.duration);
+  }, []);
+
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      if (uploadVideoUrl) URL.revokeObjectURL(uploadVideoUrl);
+      if (frameIntervalRef.current) clearInterval(frameIntervalRef.current);
+    };
+  }, [uploadVideoUrl]);
 
   const handleStop = useCallback(async () => {
     speech.stop();
     cameraStream?.getTracks().forEach(t => t.stop());
     setCameraStream(null);
     setIsCameraOn(false);
+    // Stop upload video too
+    const uploadVideo = uploadVideoRef.current;
+    if (uploadVideo) {
+      uploadVideo.pause();
+      if (frameIntervalRef.current) {
+        clearInterval(frameIntervalRef.current);
+        frameIntervalRef.current = null;
+      }
+    }
     await analyzeNow();
     navigate(`/review/${machine?.id}`, { state: { analyzedItems: Object.fromEntries(analyzedItems), transcript: committedTexts.join(' '), elapsed } });
   }, [speech, cameraStream, analyzeNow, navigate, machine, analyzedItems, committedTexts, elapsed]);
@@ -185,7 +407,7 @@ export default function ActiveInspection() {
 
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
-    const sec = s % 60;
+    const sec = Math.round(s) % 60;
     return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
 
@@ -195,8 +417,9 @@ export default function ActiveInspection() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <canvas ref={canvasRef} className="hidden" />
+      <canvas ref={uploadCanvasRef} className="hidden" />
 
-      {/* Floating camera overlay */}
+      {/* Floating camera overlay — live mode only */}
       {!isUploadMode && (
         <CameraOverlay
           videoRef={videoRef}
@@ -218,7 +441,17 @@ export default function ActiveInspection() {
               <span className="text-xs font-mono text-muted-foreground/60">{formatTime(elapsed)}</span>
             </>
           ) : (
-            <span className="text-xs font-mono font-bold text-primary tracking-wider">UPLOAD MODE</span>
+            <>
+              <Film className="w-4 h-4 text-primary" />
+              <span className="text-xs font-mono font-bold text-primary tracking-wider">
+                {uploadPhase === 'select' ? 'UPLOAD' : uploadPhase === 'transcribing' ? 'TRANSCRIBING' : uploadPhase === 'playing' ? 'ANALYZING' : 'COMPLETE'}
+              </span>
+              {videoDuration > 0 && (
+                <span className="text-xs font-mono text-muted-foreground/60">
+                  {formatTime(videoProgress)} / {formatTime(videoDuration)}
+                </span>
+              )}
+            </>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -235,7 +468,14 @@ export default function ActiveInspection() {
       {/* Live transcript bar */}
       <div className="px-4 py-2.5 bg-surface-2/40 border-b border-border/30 shrink-0">
         <div className="flex items-center gap-2 mb-1">
-          {speech.isListening ? (
+          {isUploadMode ? (
+            <div className="flex items-center gap-1.5">
+              <Film className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[10px] font-mono text-primary font-bold tracking-wider">
+                {uploadPhase === 'transcribing' ? 'EXTRACTING AUDIO...' : uploadPhase === 'playing' ? 'LIVE ANALYSIS' : uploadPhase === 'done' ? 'COMPLETE' : 'AWAITING FILE'}
+              </span>
+            </div>
+          ) : speech.isListening ? (
             <div className="flex items-center gap-1.5">
               <Volume2 className="w-3.5 h-3.5 text-status-pass animate-pulse" />
               <span className="text-[10px] font-mono text-status-pass font-bold tracking-wider">LISTENING</span>
@@ -244,7 +484,7 @@ export default function ActiveInspection() {
             <div className="flex items-center gap-1.5">
               <MicOff className="w-3.5 h-3.5 text-muted-foreground/40" />
               <span className="text-[10px] font-mono text-muted-foreground/60 tracking-wider">
-                {isUploadMode ? 'UPLOAD' : speech.error ? 'ERROR' : 'MIC OFF'}
+                {speech.error ? 'ERROR' : 'MIC OFF'}
               </span>
             </div>
           )}
@@ -257,10 +497,10 @@ export default function ActiveInspection() {
           {latestPartial ? (
             <p className="text-sm text-primary leading-snug animate-fade-in">{latestPartial}</p>
           ) : liveText ? (
-            <p className="text-sm text-foreground/60 leading-snug">{liveText.slice(-200)}</p>
+            <p className="text-sm text-foreground/60 leading-snug line-clamp-3">{liveText.slice(-300)}</p>
           ) : (
             <p className="text-sm text-muted-foreground/30 italic">
-              {isUploadMode ? 'Upload a video to begin analysis' : speech.isListening ? 'Start speaking to inspect...' : 'Tap mic to begin'}
+              {isUploadMode ? 'Drop a video file or tap below to begin' : speech.isListening ? 'Start speaking to inspect...' : 'Tap mic to begin'}
             </p>
           )}
         </div>
@@ -303,32 +543,101 @@ export default function ActiveInspection() {
         </div>
       </div>
 
-      {/* Upload area */}
-      {isUploadMode && itemCount === 0 && (
+      {/* ─── UPLOAD MODE: File Drop + Video Player ─── */}
+      {isUploadMode && uploadPhase === 'select' && (
         <div className="mx-4 mb-3 shrink-0">
           <input ref={fileInputRef} type="file" accept="video/*,audio/*" onChange={handleVideoUpload} className="hidden" />
           <button
             onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            className="w-full flex flex-col items-center justify-center gap-3 py-12 rounded-xl border border-dashed border-border/40 bg-surface-2/30 hover:border-primary/30 active:scale-[0.99] transition-all"
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`w-full flex flex-col items-center justify-center gap-3 py-14 rounded-xl border-2 border-dashed transition-all active:scale-[0.99] ${
+              isDragging
+                ? 'border-primary bg-primary/5'
+                : 'border-border/40 bg-surface-2/30 hover:border-primary/30'
+            }`}
           >
-            {isUploading ? (
-              <>
-                <div className="w-7 h-7 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                <p className="text-sm text-foreground font-semibold">{uploadProgress}</p>
-              </>
-            ) : (
-              <>
-                <Upload className="w-8 h-8 text-muted-foreground/40" />
-                <p className="text-sm font-bold text-foreground">Upload inspection video</p>
-                <p className="text-xs text-muted-foreground/60">MP4, MOV, MP3 — AI transcribes & analyzes</p>
-              </>
-            )}
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <Upload className="w-7 h-7 text-primary" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-bold text-foreground">Drop video here or tap to browse</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">MP4, MOV, WebM, MP3 — AI analyzes frames + audio</p>
+            </div>
           </button>
         </div>
       )}
 
-      {/* Main content — form checklist (always visible, camera is floating) */}
+      {/* Transcribing state */}
+      {isUploadMode && uploadPhase === 'transcribing' && (
+        <div className="mx-4 mb-3 shrink-0">
+          <div className="card-elevated p-6 flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <div className="text-center">
+              <p className="text-sm font-bold text-foreground">Extracting & Transcribing Audio</p>
+              <p className="text-xs text-muted-foreground mt-1">Processing {uploadedFile?.name}...</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Video player — shown during playback and after */}
+      {isUploadMode && uploadVideoUrl && (uploadPhase === 'playing' || uploadPhase === 'done') && (
+        <div className="mx-4 mb-3 shrink-0">
+          <div className="card-elevated overflow-hidden">
+            <div className="relative">
+              <video
+                ref={uploadVideoRef}
+                src={uploadVideoUrl}
+                className="w-full aspect-video bg-black"
+                playsInline
+                muted={false}
+              />
+              {/* AI scanning overlay */}
+              {isAnalyzing && uploadPhase === 'playing' && (
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-md">
+                    <div className="w-2 h-2 rounded-full bg-sensor animate-pulse" />
+                    <span className="text-[10px] font-mono text-sensor font-bold">AI SCANNING</span>
+                  </div>
+                </div>
+              )}
+              {uploadPhase === 'done' && (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <div className="bg-card/90 backdrop-blur-xl rounded-xl px-5 py-3 text-center">
+                    <p className="text-sm font-bold text-status-pass">✓ Analysis Complete</p>
+                    <p className="text-xs text-muted-foreground mt-1">{itemCount} items detected</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* Video controls */}
+            <div className="p-3 flex items-center gap-3 bg-surface-2/60">
+              <button onClick={togglePlayPause} className="w-9 h-9 rounded-lg bg-card border border-border/50 flex items-center justify-center active:scale-95 transition-transform">
+                {isVideoPlaying ? <Pause className="w-4 h-4 text-foreground" /> : <Play className="w-4 h-4 text-foreground" />}
+              </button>
+              <button onClick={skipForward} className="w-9 h-9 rounded-lg bg-card border border-border/50 flex items-center justify-center active:scale-95 transition-transform">
+                <SkipForward className="w-4 h-4 text-muted-foreground" />
+              </button>
+              <div className="flex-1 h-1.5 bg-border/30 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all"
+                  style={{ width: videoDuration > 0 ? `${(videoProgress / videoDuration) * 100}%` : '0%' }}
+                />
+              </div>
+              <span className="text-[10px] font-mono text-muted-foreground">
+                {formatTime(videoProgress)}
+              </span>
+              <span className="text-[10px] font-mono text-primary px-1.5 py-0.5 bg-primary/10 rounded">
+                2×
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main content — form checklist */}
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="px-4 pb-4">
           <LiveFormChecklist
@@ -347,7 +656,7 @@ export default function ActiveInspection() {
         {isUploadMode ? (
           <button
             onClick={handleStop}
-            disabled={itemCount === 0}
+            disabled={uploadPhase === 'select' || uploadPhase === 'transcribing'}
             className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-base active:scale-[0.98] transition-all disabled:opacity-30 touch-target"
           >
             Review Results ({itemCount}/{totalFields})
