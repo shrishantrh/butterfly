@@ -78,6 +78,7 @@ export function VoiceAgent({ formState, setFormState, speechTranscript }: VoiceA
     const wakePatterns = [
       'hey cat', 'hey kat', 'a cat', 'hey cap',
       'hey cats', 'hay cat', 'hey cut',
+      'hey butterfly', 'hey butter fly', 'a butterfly',
     ];
 
     const hasWakeWord = wakePatterns.some(pattern => newContent.includes(pattern));
