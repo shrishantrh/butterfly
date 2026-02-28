@@ -1,10 +1,10 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { mockMachines, inspectionFormSections } from '@/lib/mock-data';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Square, Camera, Mic, MicOff, Upload, AlertCircle } from 'lucide-react';
-import { useScribe, CommitStrategy } from '@elevenlabs/react';
+import { Square, Camera, Mic, MicOff, Upload, AlertCircle, Eye, List, Volume2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useInspectionAI } from '@/hooks/useInspectionAI';
+import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import type { AnalysisResult } from '@/hooks/useInspectionAI';
 import { useToast } from '@/hooks/use-toast';
 import { LiveFormChecklist } from '@/components/inspection/LiveFormChecklist';
@@ -18,22 +18,16 @@ export default function ActiveInspection() {
   const machine = mockMachines.find(m => m.id === machineId);
 
   const [elapsed, setElapsed] = useState(0);
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [connectionError, setConnectionError] = useState<string | null>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const formVideoRef = useRef<HTMLVideoElement>(null); // hidden video for frame capture
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [latestPartial, setLatestPartial] = useState('');
   const [committedTexts, setCommittedTexts] = useState<string[]>([]);
   const prevItemCount = useRef(0);
   const isMounted = useRef(true);
-  const scribeConnected = useRef(false);
-  const hasInitialized = useRef(false);
-  const reconnectTimer = useRef<number | null>(null);
-  const [micGranted, setMicGranted] = useState(false);
   const [viewMode, setViewMode] = useState<'form' | 'camera'>('form');
+  const hasStarted = useRef(false);
 
   // Upload mode state
   const [isUploading, setIsUploading] = useState(false);
@@ -47,17 +41,29 @@ export default function ActiveInspection() {
     isAnalyzing,
     error: aiError,
     addTranscript,
+    addFrame,
     analyzeNow,
     itemCount,
-    getFullTranscript,
     registerFrameCapture,
     setManualItem,
   } = useInspectionAI(machine?.activeFaultCodes ?? []);
 
-  // Register frame capture function for evidence photos
+  // Native Speech Recognition
+  const speech = useSpeechRecognition({
+    onTranscript: useCallback((text: string) => {
+      setCommittedTexts(prev => [...prev, text]);
+      setLatestPartial('');
+      addTranscript(text);
+    }, [addTranscript]),
+    onPartial: useCallback((text: string) => {
+      setLatestPartial(text);
+    }, []),
+  });
+
+  // Register frame capture for evidence photos
   useEffect(() => {
     registerFrameCapture(() => {
-      const video = videoRef.current || formVideoRef.current;
+      const video = videoRef.current;
       if (!video || !canvasRef.current) return null;
       const canvas = canvasRef.current;
       canvas.width = video.videoWidth || 640;
@@ -71,10 +77,7 @@ export default function ActiveInspection() {
 
   useEffect(() => {
     isMounted.current = true;
-    return () => {
-      isMounted.current = false;
-      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-    };
+    return () => { isMounted.current = false; };
   }, []);
 
   // Haptic feedback when AI captures a finding
@@ -100,45 +103,6 @@ export default function ActiveInspection() {
     }
   }, [itemCount, analyzedItems, toast]);
 
-  const scribe = useScribe({
-    modelId: 'scribe_v2_realtime',
-    commitStrategy: CommitStrategy.VAD,
-    onPartialTranscript: (data) => {
-      if (isMounted.current) setLatestPartial(data.text);
-    },
-    onCommittedTranscript: (data) => {
-      if (isMounted.current) {
-        setCommittedTexts(prev => [...prev, data.text]);
-        setLatestPartial('');
-        addTranscript(data.text);
-      }
-    },
-  });
-
-  // Monitor scribe connection and auto-reconnect
-  useEffect(() => {
-    if (isUploadMode) return;
-
-    // If scribe was connected but now isn't, and we haven't unmounted, reconnect
-    if (scribeConnected.current && !scribe.isConnected && isMounted.current) {
-      console.log('[Inspection] Scribe disconnected unexpectedly, will reconnect...');
-      scribeConnected.current = false;
-
-      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-      reconnectTimer.current = window.setTimeout(() => {
-        if (isMounted.current && !scribe.isConnected) {
-          console.log('[Inspection] Auto-reconnecting...');
-          connectScribe();
-        }
-      }, 2000);
-    }
-
-    // Update our ref to track current state
-    if (scribe.isConnected) {
-      scribeConnected.current = true;
-    }
-  }, [scribe.isConnected]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Timer
   useEffect(() => {
     if (isUploadMode) return;
@@ -163,117 +127,55 @@ export default function ActiveInspection() {
     }
   }, []);
 
-  // Sync video elements when stream changes
+  // Sync video element
   useEffect(() => {
-    if (cameraStream) {
-      if (videoRef.current) videoRef.current.srcObject = cameraStream;
-      if (formVideoRef.current) formVideoRef.current.srcObject = cameraStream;
+    if (cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
     }
-  }, [cameraStream]);
+  }, [cameraStream, viewMode]);
 
-  const connectScribe = useCallback(async () => {
-    try {
-      console.log('[Inspection] Fetching scribe token...');
-      const { data, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
-      if (!isMounted.current) return;
-      if (error || !data?.token) {
-        throw new Error(data?.error || error?.message || 'Failed to get transcription token');
-      }
-
-      console.log('[Inspection] Connecting scribe with token...');
-      await scribe.connect({
-        token: data.token,
-        microphone: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      });
-
-      if (isMounted.current) {
-        scribeConnected.current = true;
-        setConnectionError(null);
-        console.log('[Inspection] Scribe connected successfully');
-      }
-    } catch (e) {
-      if (!isMounted.current) return;
-      const msg = e instanceof Error ? e.message : 'Scribe connection failed';
-      console.error('[Inspection] Scribe connection error:', msg);
-      throw e; // let caller handle
-    }
-  }, [scribe]);
-
-  const startLiveInspection = useCallback(async () => {
-    setIsConnecting(true);
-    setConnectionError(null);
-
-    // Step 1: Request mic permission explicitly FIRST
-    try {
-      console.log('[Inspection] Requesting microphone permission...');
-      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // Stop it immediately — we just needed permission
-      micStream.getTracks().forEach(t => t.stop());
-      setMicGranted(true);
-      console.log('[Inspection] Microphone permission granted');
-    } catch (e) {
-      console.error('[Inspection] Mic permission denied:', e);
-      setConnectionError('Microphone access denied. Please allow microphone access and try again.');
-      setIsConnecting(false);
-      // Still start camera
-      await startCamera();
-      return;
-    }
-
-    // Step 2: Connect scribe (mic permission is now granted)
-    try {
-      await connectScribe();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Could not connect transcription';
-      setConnectionError(msg);
-      toast({ title: 'Mic connection issue', description: msg, variant: 'destructive' });
-    }
-
-    // Step 3: Start camera regardless of scribe status
-    await startCamera();
-
-    if (isMounted.current) setIsConnecting(false);
-  }, [connectScribe, toast, startCamera]);
-
-  // Auto-start on mount
-  useEffect(() => {
-    if (!isUploadMode && !hasInitialized.current) {
-      hasInitialized.current = true;
-      startLiveInspection();
-    }
-    return () => {
-      if (scribeConnected.current) {
-        try { scribe.disconnect(); } catch {}
-        scribeConnected.current = false;
-      }
-      cameraStream?.getTracks().forEach(t => t.stop());
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Periodic video frame capture for AI analysis (every 12 seconds)
+  // Periodic video frame capture for multimodal AI analysis
   useEffect(() => {
     if (!isCameraOn || isUploadMode) return;
 
     const captureInterval = setInterval(() => {
-      const video = videoRef.current || formVideoRef.current;
-      if (!video || !canvasRef.current) return;
+      const video = videoRef.current;
+      if (!video || !canvasRef.current || video.readyState < 2) return;
 
       const canvas = canvasRef.current;
-      canvas.width = Math.min(video.videoWidth || 640, 640); // limit size
-      canvas.height = Math.min(video.videoHeight || 480, 480);
+      // Resize to 512px max for efficient transfer
+      const scale = Math.min(512 / video.videoWidth, 512 / video.videoHeight, 1);
+      canvas.width = Math.round(video.videoWidth * scale);
+      canvas.height = Math.round(video.videoHeight * scale);
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const frameBase64 = canvas.toDataURL('image/jpeg', 0.5);
-
-      // Add visual context to the transcript buffer
-      addTranscript(`[VIDEO_FRAME: Camera captured at ${new Date().toLocaleTimeString()}]`);
-
-      console.log('[Inspection] Video frame captured for analysis');
-    }, 15000); // every 15 seconds
+      const frameBase64 = canvas.toDataURL('image/jpeg', 0.4);
+      addFrame(frameBase64);
+      console.log('[Inspection] Frame captured for vision analysis');
+    }, 12000); // every 12 seconds
 
     return () => clearInterval(captureInterval);
-  }, [isCameraOn, isUploadMode, addTranscript]);
+  }, [isCameraOn, isUploadMode, addFrame]);
+
+  // Auto-start on mount
+  useEffect(() => {
+    if (isUploadMode || hasStarted.current) return;
+    hasStarted.current = true;
+
+    const init = async () => {
+      // Start camera
+      await startCamera();
+      // Start speech recognition
+      speech.start();
+    };
+    init();
+
+    return () => {
+      speech.stop();
+      cameraStream?.getTracks().forEach(t => t.stop());
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle video upload
   const handleVideoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -305,11 +207,7 @@ export default function ActiveInspection() {
   }, [addTranscript, analyzeNow, toast]);
 
   const handleStop = useCallback(async () => {
-    if (scribeConnected.current) {
-      try { scribe.disconnect(); } catch {}
-      scribeConnected.current = false;
-    }
-    if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+    speech.stop();
     cameraStream?.getTracks().forEach(t => t.stop());
     setCameraStream(null);
     setIsCameraOn(false);
@@ -323,7 +221,7 @@ export default function ActiveInspection() {
         elapsed,
       },
     });
-  }, [scribe, cameraStream, analyzeNow, navigate, machine, analyzedItems, committedTexts, elapsed]);
+  }, [speech, cameraStream, analyzeNow, navigate, machine, analyzedItems, committedTexts, elapsed]);
 
   const handleManualEdit = useCallback((id: string, result: AnalysisResult) => {
     setManualItem(id, result);
@@ -342,76 +240,83 @@ export default function ActiveInspection() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Hidden canvas for frame capture */}
       <canvas ref={canvasRef} className="hidden" />
-      {/* Hidden video for frame capture when in form view */}
-      <video ref={formVideoRef} autoPlay playsInline muted className="hidden" />
 
-      {/* Top bar */}
-      <header className="flex items-center justify-between px-5 py-4 pt-14 bg-card border-b border-border shrink-0">
+      {/* Top bar — recording status */}
+      <header className="flex items-center justify-between px-5 py-3 pt-14 bg-card/95 backdrop-blur-xl border-b border-border shrink-0 z-40">
         <div className="flex items-center gap-3">
           {!isUploadMode ? (
             <>
-              <div className={`w-3.5 h-3.5 rounded-full ${scribe.isConnected ? 'bg-status-fail animate-pulse' : 'bg-muted-foreground'}`} />
-              <span className={`text-base font-mono font-semibold ${scribe.isConnected ? 'text-status-fail' : 'text-muted-foreground'}`}>
-                {scribe.isConnected ? 'REC' : isConnecting ? 'CONNECTING...' : 'OFF'}
+              <div className={`w-3 h-3 rounded-full ${speech.isListening ? 'bg-status-fail animate-recording-pulse' : 'bg-muted-foreground'}`} />
+              <span className={`text-sm font-mono font-bold tracking-wider ${speech.isListening ? 'text-status-fail' : 'text-muted-foreground'}`}>
+                {speech.isListening ? 'REC' : 'STANDBY'}
               </span>
-              <span className="text-base font-mono text-muted-foreground">{formatTime(elapsed)}</span>
+              <span className="text-sm font-mono text-muted-foreground">{formatTime(elapsed)}</span>
             </>
           ) : (
-            <span className="text-base font-mono font-semibold text-primary">UPLOAD MODE</span>
+            <span className="text-sm font-mono font-bold text-primary tracking-wider">UPLOAD MODE</span>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {isAnalyzing && (
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-sensor animate-pulse" />
-              <span className="text-base font-mono text-sensor font-semibold">AI</span>
+            <div className="flex items-center gap-1.5 bg-sensor/10 px-2.5 py-1 rounded-lg">
+              <div className="w-2 h-2 rounded-full bg-sensor animate-pulse" />
+              <span className="text-xs font-mono text-sensor font-bold">AI</span>
             </div>
           )}
-          <span className="text-base font-mono text-muted-foreground">{machine.assetId}</span>
+          {isCameraOn && (
+            <div className="flex items-center gap-1.5 bg-primary/10 px-2.5 py-1 rounded-lg">
+              <Eye className="w-3 h-3 text-primary" />
+              <span className="text-xs font-mono text-primary font-bold">VISION</span>
+            </div>
+          )}
+          <span className="text-sm font-mono text-muted-foreground ml-1">{machine.assetId}</span>
         </div>
       </header>
 
       {/* Live transcript bar */}
-      <div className="px-4 py-3 bg-surface-2 border-b border-border shrink-0">
-        <div className="flex items-center gap-2 mb-1">
-          {scribe.isConnected ? (
-            <Mic className="w-4 h-4 text-status-fail shrink-0" />
+      <div className="px-4 py-3 bg-surface-2/80 backdrop-blur-sm border-b border-border/50 shrink-0">
+        <div className="flex items-center gap-2 mb-1.5">
+          {speech.isListening ? (
+            <div className="flex items-center gap-1.5">
+              <Volume2 className="w-4 h-4 text-status-pass animate-pulse" />
+              <span className="text-xs font-mono text-status-pass font-bold tracking-wider">LISTENING</span>
+            </div>
           ) : (
-            <MicOff className="w-4 h-4 text-muted-foreground shrink-0" />
+            <div className="flex items-center gap-1.5">
+              <MicOff className="w-4 h-4 text-muted-foreground" />
+              <span className="text-xs font-mono text-muted-foreground tracking-wider">
+                {isUploadMode ? 'UPLOAD' : speech.error ? 'ERROR' : 'MIC OFF'}
+              </span>
+            </div>
           )}
-          <span className="text-sm font-mono text-muted-foreground">
-            {scribe.isConnected ? 'Listening...' : isConnecting ? 'Connecting mic...' : isUploadMode ? 'Upload transcript' : 'Mic offline'}
+          <div className="flex-1" />
+          <span className="text-xs font-mono text-muted-foreground">
+            {committedTexts.length} segment{committedTexts.length !== 1 ? 's' : ''}
           </span>
-          {isCameraOn && (
-            <span className="flex items-center gap-1 text-sm font-mono text-primary ml-auto">
-              <Camera className="w-3.5 h-3.5" /> Live
-            </span>
+        </div>
+        <div className="min-h-[2.5em] flex items-start">
+          {latestPartial ? (
+            <p className="text-sm text-primary leading-snug animate-fade-in">{latestPartial}</p>
+          ) : liveText ? (
+            <p className="text-sm text-foreground/70 leading-snug">{liveText.slice(-200)}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground/40 italic">
+              {isUploadMode ? 'Upload a video to begin analysis' : speech.isListening ? 'Start speaking to inspect...' : 'Tap mic to begin'}
+            </p>
           )}
         </div>
-        <p className="text-base text-foreground leading-snug min-h-[1.5em]">
-          {latestPartial && <span className="text-primary">{latestPartial}</span>}
-          {!latestPartial && liveText && (
-            <span className="text-muted-foreground">{liveText.slice(-150)}</span>
-          )}
-          {!latestPartial && !liveText && (
-            <span className="text-muted-foreground/50 italic">
-              {isUploadMode ? 'Upload a video to begin analysis' : 'Speak to begin inspection...'}
-            </span>
-          )}
-        </p>
       </div>
 
       {/* Connection error */}
-      {connectionError && !isUploadMode && (
-        <div className="mx-4 mt-3 flex items-start gap-3 bg-status-fail/10 border border-status-fail/20 rounded-xl p-4 shrink-0">
+      {speech.error && !isUploadMode && (
+        <div className="mx-4 mt-3 flex items-start gap-3 bg-status-fail/8 border border-status-fail/15 rounded-xl p-4 shrink-0">
           <AlertCircle className="w-5 h-5 text-status-fail shrink-0 mt-0.5" />
           <div>
-            <p className="text-base font-semibold text-status-fail">Connection Issue</p>
-            <p className="text-sm text-muted-foreground mt-1">{connectionError}</p>
-            <button onClick={() => { hasInitialized.current = false; startLiveInspection(); }} className="mt-2 text-base text-primary font-semibold touch-target">
-              Retry Connection
+            <p className="text-sm font-semibold text-status-fail">Microphone Issue</p>
+            <p className="text-xs text-muted-foreground mt-1">{speech.error}</p>
+            <button onClick={speech.start} className="mt-2 text-sm text-primary font-semibold touch-target">
+              Retry
             </button>
           </div>
         </div>
@@ -419,38 +324,46 @@ export default function ActiveInspection() {
 
       {/* AI error */}
       {aiError && (
-        <div className="mx-4 mt-3 flex items-center gap-2 bg-status-monitor/10 border border-status-monitor/20 rounded-xl p-3 shrink-0">
+        <div className="mx-4 mt-3 flex items-center gap-2 bg-status-monitor/8 border border-status-monitor/15 rounded-xl p-3 shrink-0">
           <AlertCircle className="w-4 h-4 text-status-monitor shrink-0" />
-          <p className="text-sm text-status-monitor">{aiError}</p>
+          <p className="text-xs text-status-monitor">{aiError}</p>
         </div>
       )}
 
       {/* Progress bar + view toggle */}
       <div className="px-4 py-3 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-2.5 bg-border rounded-full overflow-hidden">
-            <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+        <div className="flex items-center gap-3 mb-2">
+          <div className="flex-1 h-2 bg-border/50 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-700 ease-out"
+              style={{
+                width: `${pct}%`,
+                background: pct >= 80 ? 'hsl(var(--status-pass))' : pct >= 40 ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+              }}
+            />
           </div>
-          <span className="text-base font-mono text-muted-foreground font-semibold shrink-0">
-            {itemCount}/{totalFields}
+          <span className="text-sm font-mono text-muted-foreground font-bold shrink-0">
+            {itemCount}<span className="text-muted-foreground/50">/{totalFields}</span>
           </span>
         </div>
         {!isUploadMode && isCameraOn && (
-          <div className="flex gap-2 mt-2">
+          <div className="flex gap-1.5 bg-surface-2 rounded-lg p-1">
             <button
               onClick={() => setViewMode('form')}
-              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                viewMode === 'form' ? 'bg-primary text-primary-foreground' : 'bg-surface-2 text-muted-foreground'
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-bold transition-all ${
+                viewMode === 'form' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              Form ({itemCount}/{totalFields})
+              <List className="w-3.5 h-3.5" />
+              Checklist
             </button>
             <button
               onClick={() => setViewMode('camera')}
-              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                viewMode === 'camera' ? 'bg-primary text-primary-foreground' : 'bg-surface-2 text-muted-foreground'
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-bold transition-all ${
+                viewMode === 'camera' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
+              <Camera className="w-3.5 h-3.5" />
               Camera
             </button>
           </div>
@@ -464,18 +377,18 @@ export default function ActiveInspection() {
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            className="w-full flex flex-col items-center justify-center gap-3 py-12 rounded-xl border-2 border-dashed border-border bg-surface-2 hover:border-primary/40 active:scale-[0.98] transition-all"
+            className="w-full flex flex-col items-center justify-center gap-3 py-14 rounded-xl border-2 border-dashed border-border/60 bg-surface-2/50 hover:border-primary/40 active:scale-[0.98] transition-all"
           >
             {isUploading ? (
               <>
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                <p className="text-lg text-foreground font-semibold">{uploadProgress}</p>
+                <p className="text-base text-foreground font-semibold">{uploadProgress}</p>
               </>
             ) : (
               <>
-                <Upload className="w-10 h-10 text-muted-foreground" />
-                <p className="text-lg font-semibold text-foreground">Tap to upload video or audio</p>
-                <p className="text-base text-muted-foreground">MP4, MOV, MP3 — AI will transcribe & analyze</p>
+                <Upload className="w-10 h-10 text-muted-foreground/60" />
+                <p className="text-base font-bold text-foreground">Upload inspection video</p>
+                <p className="text-sm text-muted-foreground">MP4, MOV, MP3 — AI transcribes & analyzes</p>
               </>
             )}
           </button>
@@ -488,27 +401,36 @@ export default function ActiveInspection() {
         {viewMode === 'camera' && !isUploadMode && (
           <div className="px-4 pb-4">
             {isCameraOn ? (
-              <div className="relative rounded-xl overflow-hidden border border-border">
+              <div className="relative rounded-xl overflow-hidden border border-border/50 shadow-lg">
                 <video ref={videoRef} autoPlay playsInline muted className="w-full aspect-video object-cover" />
-                <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-background/80 px-3 py-1.5 rounded-lg text-sm font-mono text-foreground">
-                  <Camera className="w-4 h-4" /> LIVE
+                <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-lg">
+                  <div className="w-2 h-2 rounded-full bg-status-fail animate-pulse" />
+                  <span className="text-xs font-mono text-foreground font-bold">LIVE</span>
                 </div>
                 {isAnalyzing && (
-                  <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-sensor/20 px-3 py-1.5 rounded-lg text-sm font-mono text-sensor">
-                    <div className="w-2 h-2 rounded-full bg-sensor animate-pulse" /> AI Analyzing
+                  <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-sensor/20 backdrop-blur-sm px-3 py-1.5 rounded-lg">
+                    <div className="w-2 h-2 rounded-full bg-sensor animate-pulse" />
+                    <span className="text-xs font-mono text-sensor font-bold">ANALYZING</span>
                   </div>
                 )}
+                {/* Vision analysis indicator */}
+                <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 bg-background/70 backdrop-blur-sm px-2.5 py-1 rounded-lg">
+                    <Eye className="w-3 h-3 text-primary" />
+                    <span className="text-[10px] font-mono text-primary font-bold">VISION AI ACTIVE</span>
+                  </div>
+                </div>
               </div>
             ) : (
-              <div className="flex items-center justify-center aspect-video rounded-xl bg-surface-2 border border-border">
-                <p className="text-muted-foreground">Camera not available</p>
+              <div className="flex items-center justify-center aspect-video rounded-xl bg-surface-2 border border-border/50">
+                <p className="text-muted-foreground text-sm">Camera not available</p>
               </div>
             )}
 
             {committedTexts.length > 0 && (
-              <div className="mt-3 bg-surface-2 rounded-xl p-3">
-                <p className="text-sm font-mono text-muted-foreground mb-1">Full Transcript</p>
-                <p className="text-base text-foreground/80 leading-relaxed max-h-40 overflow-y-auto">
+              <div className="mt-3 bg-surface-2/50 rounded-xl p-3 border border-border/30">
+                <p className="text-xs font-mono text-muted-foreground mb-1 tracking-wider">TRANSCRIPT</p>
+                <p className="text-sm text-foreground/70 leading-relaxed max-h-32 overflow-y-auto">
                   {committedTexts.join(' ')}
                 </p>
               </div>
@@ -519,6 +441,25 @@ export default function ActiveInspection() {
         {/* Form view */}
         {(viewMode === 'form' || isUploadMode || !isCameraOn) && (
           <div className="px-4 pb-4">
+            {/* Show mini camera preview in form view */}
+            {isCameraOn && viewMode === 'form' && (
+              <div className="mb-3 relative rounded-xl overflow-hidden border border-border/30 h-28">
+                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-transparent" />
+                <div className="absolute bottom-2 left-2 flex items-center gap-2">
+                  <div className="flex items-center gap-1 bg-background/70 backdrop-blur-sm px-2 py-0.5 rounded">
+                    <div className="w-1.5 h-1.5 rounded-full bg-status-fail animate-pulse" />
+                    <span className="text-[10px] font-mono text-foreground font-bold">LIVE</span>
+                  </div>
+                  {isAnalyzing && (
+                    <div className="flex items-center gap-1 bg-sensor/20 backdrop-blur-sm px-2 py-0.5 rounded">
+                      <Eye className="w-3 h-3 text-sensor" />
+                      <span className="text-[10px] font-mono text-sensor font-bold">AI VISION</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             <LiveFormChecklist
               sections={inspectionFormSections}
               analyzedItems={analyzedItems}
@@ -530,7 +471,7 @@ export default function ActiveInspection() {
       </div>
 
       {/* Bottom controls */}
-      <div className="p-4 bg-card border-t border-border safe-bottom shrink-0">
+      <div className="p-4 bg-card/95 backdrop-blur-xl border-t border-border safe-bottom shrink-0">
         {isUploadMode ? (
           <button
             onClick={handleStop}
@@ -541,32 +482,27 @@ export default function ActiveInspection() {
           </button>
         ) : (
           <div className="flex gap-3">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  if (scribe.isConnected) {
-                    try { scribe.disconnect(); } catch {}
-                    scribeConnected.current = false;
-                    if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-                  } else {
-                    connectScribe();
-                  }
-                }}
-                className={`flex items-center justify-center w-14 h-14 rounded-xl ${
-                  scribe.isConnected ? 'bg-status-fail/15 border border-status-fail/30' : 'bg-surface-2 border border-border'
-                }`}
-              >
-                {scribe.isConnected ? <Mic className="w-6 h-6 text-status-fail" /> : <MicOff className="w-6 h-6 text-muted-foreground" />}
-              </button>
-              {isCameraOn && (
-                <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-primary/15 border border-primary/30">
-                  <Camera className="w-6 h-6 text-primary" />
-                </div>
-              )}
-            </div>
+            <button
+              onClick={speech.toggle}
+              className={`flex items-center justify-center w-14 h-14 rounded-xl transition-all ${
+                speech.isListening 
+                  ? 'bg-status-pass/15 border-2 border-status-pass/40 shadow-[0_0_12px_hsl(var(--status-pass)/0.2)]' 
+                  : 'bg-surface-2 border border-border hover:border-muted-foreground'
+              }`}
+            >
+              {speech.isListening 
+                ? <Mic className="w-6 h-6 text-status-pass" /> 
+                : <MicOff className="w-6 h-6 text-muted-foreground" />
+              }
+            </button>
+            {isCameraOn && (
+              <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-primary/10 border border-primary/20">
+                <Camera className="w-6 h-6 text-primary" />
+              </div>
+            )}
             <button
               onClick={handleStop}
-              className="flex-1 flex items-center justify-center gap-3 py-4 rounded-xl bg-status-fail text-accent-foreground font-bold text-lg active:scale-[0.98] transition-all touch-target"
+              className="flex-1 flex items-center justify-center gap-3 py-4 rounded-xl bg-status-fail text-accent-foreground font-bold text-base active:scale-[0.98] transition-all touch-target"
             >
               <Square className="w-5 h-5" />
               End Inspection

@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `You are an expert CAT 320 Hydraulic Excavator daily inspection AI. You analyze inspector speech transcripts to map observations to a 38-item Safety & Maintenance form.
+const SYSTEM_PROMPT = `You are an expert CAT 320 Hydraulic Excavator daily inspection AI. You analyze inspector speech transcripts AND live camera frames to map observations to a 38-item Safety & Maintenance form.
 
 ## FORM SCHEMA
 
@@ -56,17 +56,24 @@ const SYSTEM_PROMPT = `You are an expert CAT 320 Hydraulic Excavator daily inspe
 4.8 Windshield Wipers & Washer
 4.9 Monitor Display & Cat Grade System
 
+## MULTIMODAL ANALYSIS
+You receive BOTH audio transcripts and camera frames. Use them together:
+- AUDIO: Inspector's verbal observations, descriptions, and callouts
+- VIDEO FRAMES: Visual evidence of machine condition — look for leaks, damage, wear, fluid levels, lights, debris, cracks, missing parts
+- Cross-reference what the inspector says with what you see in the frames
+- If you see something concerning in a frame that the inspector didn't mention, flag it
+- If the inspector describes an issue, look for visual confirmation in the frames
+
 ## RATING RULES (CAT Inspect standard)
-- PASS (Green): Functioning normally. Keywords: "good", "fine", "within spec", "no issues", "working", "operational", "clean", "secure", "intact", "charged".
-- MONITOR (Yellow): Wear or minor issue, doesn't affect immediate safety. Keywords: "wearing", "minor", "seepage" (not dripping), "slightly low", "trending", "debris", "small scratch", "should top off", "needs cleaning", "approaching".
-- FAIL (Red): Safety hazard or immediate action. Keywords: "broken", "not working", "out", "cracked", "leaking" (dripping), "damaged", "failed", "requires replacement", "won't", "inoperative".
-- NORMAL (Gray): Routine factual confirmation. Keywords: "in place", "torqued", "secure" for baseline items.
+- PASS (Green): Functioning normally. Keywords: "good", "fine", "within spec", "no issues".
+- MONITOR (Yellow): Wear or minor issue, doesn't affect immediate safety. Keywords: "wearing", "minor", "seepage", "slightly low", "debris".
+- FAIL (Red): Safety hazard or immediate action. Keywords: "broken", "not working", "cracked", "leaking", "damaged".
+- NORMAL (Gray): Routine factual confirmation.
 
 ## LANGUAGE RULES
 - Understand jobsite slang: "she's sweating" = seepage = MONITOR. "Grinding" = mechanical issue.
-- Context matters: "tracks look good, tension within spec" → 1.2 PASS. "Two teeth showing wear" → 1.7 MONITOR.
-- Shorthand: "oil good" → 2.1 PASS. "coolant low" → 2.2 MONITOR. "light out" → 1.14 FAIL.
-- One sentence can cover multiple items: "belts look good, no cracking" → 2.5 PASS.
+- Context matters: "tracks look good, tension within spec" → 1.2 PASS.
+- One sentence can cover multiple items.
 
 ## FAULT CODE CORRELATION
 Cross-reference active fault codes with visual findings. If they match, include the fault code and add "sensor" to evidence.
@@ -75,11 +82,11 @@ Cross-reference active fault codes with visual findings. If they match, include 
 {faultCodes}
 
 ## RULES
-- Only return items you can CONFIDENTLY identify from the transcript. Never fabricate.
-- Always include "audio" in evidence since this comes from speech.
-- Add "video" if inspector describes seeing something visually.
+- Only return items you can CONFIDENTLY identify from transcript or frames. Never fabricate.
+- Always include "audio" in evidence if identified from speech.
+- Add "video" if identified or confirmed from camera frames.
 - Add "sensor" if correlating with a fault code.
-- Write professional, concise comments (1-2 sentences) that a maintenance supervisor would understand.`;
+- Write professional, concise comments (1-2 sentences).`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -90,20 +97,45 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const { transcript, faultCodes, previousItems } = await req.json();
+    const { transcript, frames, faultCodes, previousItems } = await req.json();
 
-    if (!transcript || transcript.trim().length === 0) {
+    if ((!transcript || transcript.trim().length === 0) && (!frames || frames.length === 0)) {
       return new Response(JSON.stringify({ items: [] }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const systemPrompt = SYSTEM_PROMPT
-      .replace("{faultCodes}", faultCodes || "None");
+    const systemPrompt = SYSTEM_PROMPT.replace("{faultCodes}", faultCodes || "None");
 
-    const userMessage = previousItems && previousItems !== 'None'
-      ? `Previously identified items (update if new info contradicts): ${previousItems}\n\nNew inspector transcript:\n"${transcript}"`
-      : `Inspector transcript:\n"${transcript}"`;
+    // Build multimodal message content
+    const userContent: any[] = [];
+
+    // Add text context
+    let textPart = "";
+    if (previousItems && previousItems !== "None") {
+      textPart += `Previously identified items (update if new info): ${previousItems}\n\n`;
+    }
+    if (transcript && transcript.trim()) {
+      textPart += `Inspector transcript:\n"${transcript}"`;
+    } else {
+      textPart += "No speech transcript available — analyze from camera frames only.";
+    }
+    userContent.push({ type: "text", text: textPart });
+
+    // Add camera frames as images (Gemini supports inline base64 images)
+    if (frames && Array.isArray(frames) && frames.length > 0) {
+      userContent.push({ type: "text", text: "\n\nCamera frames from the live inspection:" });
+      for (const frame of frames.slice(0, 2)) {
+        // frames are data URLs like "data:image/jpeg;base64,..."
+        const base64Match = frame.match(/^data:image\/(\w+);base64,(.+)$/);
+        if (base64Match) {
+          userContent.push({
+            type: "image_url",
+            image_url: { url: frame },
+          });
+        }
+      }
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -112,10 +144,10 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage },
+          { role: "user", content: userContent },
         ],
         temperature: 0.05,
         tools: [
@@ -123,7 +155,7 @@ serve(async (req) => {
             type: "function",
             function: {
               name: "submit_inspection_findings",
-              description: "Submit the inspection form items identified from the inspector's transcript",
+              description: "Submit the inspection form items identified from the inspector's transcript and camera frames",
               parameters: {
                 type: "object",
                 properties: {
@@ -159,17 +191,14 @@ serve(async (req) => {
     if (!response.ok) {
       const errText = await response.text();
       console.error("AI gateway error:", response.status, errText);
-
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limited, please wait a moment" }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        return new Response(JSON.stringify({ error: "Rate limited, please wait" }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (response.status === 402) {
         return new Response(JSON.stringify({ error: "AI credits exhausted" }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       throw new Error(`AI gateway error: ${response.status}`);
@@ -178,7 +207,6 @@ serve(async (req) => {
     const data = await response.json();
     console.log("AI response:", JSON.stringify(data).slice(0, 500));
 
-    // Extract from tool call response
     let items: any[] = [];
     const toolCalls = data.choices?.[0]?.message?.tool_calls;
     if (toolCalls && toolCalls.length > 0) {
@@ -189,7 +217,6 @@ serve(async (req) => {
         console.error("Failed to parse tool call arguments:", e);
       }
     } else {
-      // Fallback: try parsing content directly
       const content = data.choices?.[0]?.message?.content || "[]";
       try {
         let jsonStr = content.trim();
@@ -202,7 +229,6 @@ serve(async (req) => {
       }
     }
 
-    // Validate
     items = items.filter((item: any) =>
       item && item.id && item.status &&
       ['pass', 'monitor', 'fail', 'normal'].includes(item.status)
@@ -217,10 +243,7 @@ serve(async (req) => {
     console.error("analyze-inspection error:", e);
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
