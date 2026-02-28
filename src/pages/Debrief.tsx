@@ -98,7 +98,7 @@ export default function Debrief() {
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-gray-600" />Incomplete</span>
         </div>
       </div>
-      <div className="relative bg-background p-3">
+      <div className="relative bg-background">
         <img src={excavatorSchematic} alt="Machine Schematic" className="w-full opacity-50" />
         {zones.map(zone => {
           const status = worstStatus(zone.ids);
