@@ -1,6 +1,6 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { mockMachines, inspectionFormSections } from '@/lib/mock-data';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Square, Camera, Mic, MicOff, Upload, AlertCircle, Eye, List, Volume2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useInspectionAI } from '@/hooks/useInspectionAI';
@@ -8,6 +8,7 @@ import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import type { AnalysisResult } from '@/hooks/useInspectionAI';
 import { useToast } from '@/hooks/use-toast';
 import { LiveFormChecklist } from '@/components/inspection/LiveFormChecklist';
+import { VoiceAgent, FormState } from '@/components/inspection/VoiceAgent';
 
 export default function ActiveInspection() {
   const { machineId } = useParams();
@@ -226,6 +227,39 @@ export default function ActiveInspection() {
   const handleManualEdit = useCallback((id: string, result: AnalysisResult) => {
     setManualItem(id, result);
   }, [setManualItem]);
+
+  // Build formState for VoiceAgent from analyzedItems + schema
+  const formState: FormState = React.useMemo(() => {
+    const components: FormState['components'] = {};
+    inspectionFormSections.forEach(section => {
+      section.items.forEach(item => {
+        const result = analyzedItems.get(item.id);
+        components[item.id] = {
+          id: item.id,
+          name: item.label,
+          status: result ? result.status : null,
+          notes: result?.comment || '',
+          inspected: !!result,
+        };
+      });
+    });
+    return { components };
+  }, [analyzedItems]);
+
+  const setFormState = useCallback((updater: React.SetStateAction<FormState>) => {
+    const next = typeof updater === 'function' ? updater(formState) : updater;
+    Object.entries(next.components).forEach(([id, comp]) => {
+      const prev = formState.components[id];
+      if (comp.inspected && (!prev || prev.status !== comp.status || prev.notes !== comp.notes)) {
+        setManualItem(id, {
+          id,
+          status: (comp.status || 'normal') as AnalysisResult['status'],
+          comment: comp.notes,
+          evidence: ['audio'],
+        });
+      }
+    });
+  }, [formState, setManualItem]);
 
   if (!machine) return null;
 
@@ -470,6 +504,9 @@ export default function ActiveInspection() {
           </div>
         )}
       </div>
+
+      {/* Voice Agent FAB */}
+      {!isUploadMode && <VoiceAgent formState={formState} setFormState={setFormState} />}
 
       {/* Bottom controls */}
       <div className="p-4 bg-card/95 backdrop-blur-xl border-t border-border safe-bottom shrink-0">
