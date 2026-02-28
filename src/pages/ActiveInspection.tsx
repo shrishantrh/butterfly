@@ -408,7 +408,7 @@ export default function ActiveInspection() {
         )}
       </div>
 
-      {!isUploadMode && <VoiceAgent formState={formState} setFormState={setFormState} />}
+      {!isUploadMode && <VoiceAgent formState={formState} setFormState={setFormState} speechTranscript={committedTexts.join(' ')} />}
 
       {/* Bottom controls */}
       <div className="p-4 bg-background/80 backdrop-blur-2xl border-t border-border/40 safe-bottom shrink-0">
