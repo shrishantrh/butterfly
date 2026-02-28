@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { InspectionSection, Machine } from '@/lib/mock-data';
 
@@ -6,6 +6,9 @@ export interface ExecutiveSummary {
   healthScore: number;
   status: 'READY' | 'CAUTION' | 'DOWN';
   summary: string;
+  safetyClearance: 'GO' | 'CONDITIONAL' | 'NO_GO';
+  safetyClearanceReason: string;
+  immediateActions: string[];
 }
 
 export interface RootCause {
@@ -36,12 +39,41 @@ export interface PredictiveInsight {
   recommendation: string;
 }
 
+export interface PredictiveMaintenanceItem {
+  itemId: string;
+  itemLabel: string;
+  estimatedRemainingLife: number;
+  recommendedOrderDate?: string;
+  nextServiceInterval?: number;
+  estimatedCost?: number;
+  partNumber?: string;
+  partName: string;
+  urgency: 'order-now' | 'order-soon' | 'schedule' | 'monitor';
+}
+
 export interface PartRecommendation {
   itemId: string;
   itemLabel: string;
   partType: string;
   searchKeywords: string;
   urgency: 'immediate' | 'soon' | 'scheduled';
+  estimatedPartCost?: number;
+  catPartNumber?: string;
+}
+
+export interface AIValidationDisagreement {
+  itemId: string;
+  itemLabel: string;
+  inspectorRating: string;
+  aiAssessment: string;
+  concern: string;
+  severity: 'low' | 'medium' | 'high';
+}
+
+export interface AIValidationSummary {
+  agreementScore: number;
+  disagreements: AIValidationDisagreement[];
+  overallNote: string;
 }
 
 export interface InspectorCoaching {
@@ -56,7 +88,9 @@ export interface DebriefAnalysis {
   rootCauseAnalysis: RootCause[];
   workOrders: WorkOrder[];
   predictiveInsights: PredictiveInsight[];
+  predictiveMaintenanceSchedule: PredictiveMaintenanceItem[];
   partsRecommendations: PartRecommendation[];
+  aiValidationSummary: AIValidationSummary;
   inspectorCoaching: InspectorCoaching;
 }
 
@@ -94,8 +128,21 @@ export function useDebriefAnalysis() {
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
 
-      setAnalysis(data);
-      return data as DebriefAnalysis;
+      // Ensure backwards compatibility — fill defaults for new fields
+      const result: DebriefAnalysis = {
+        ...data,
+        executiveSummary: {
+          ...data.executiveSummary,
+          safetyClearance: data.executiveSummary?.safetyClearance || (data.executiveSummary?.status === 'READY' ? 'GO' : data.executiveSummary?.status === 'DOWN' ? 'NO_GO' : 'CONDITIONAL'),
+          safetyClearanceReason: data.executiveSummary?.safetyClearanceReason || '',
+          immediateActions: data.executiveSummary?.immediateActions || [],
+        },
+        predictiveMaintenanceSchedule: data.predictiveMaintenanceSchedule || [],
+        aiValidationSummary: data.aiValidationSummary || { agreementScore: 100, disagreements: [], overallNote: '' },
+      };
+
+      setAnalysis(result);
+      return result;
     } catch (e) {
       console.error('Debrief analysis error:', e);
       const msg = e instanceof Error ? e.message : 'Analysis failed';
