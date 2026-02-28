@@ -18,7 +18,8 @@ const statusConfig: Record<InspectionStatus, { label: string; dotClass: string; 
 
 export const StatusBadge = forwardRef<HTMLSpanElement, StatusBadgeProps>(
   ({ status, className, showLabel = true }, ref) => {
-    const config = statusConfig[status];
+    const normalizedStatus = (status?.toLowerCase() ?? 'unconfirmed') as InspectionStatus;
+    const config = statusConfig[normalizedStatus] ?? statusConfig.unconfirmed;
     return (
       <span
         ref={ref}
