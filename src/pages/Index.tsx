@@ -12,7 +12,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="px-5 pt-6 pb-5 border-b border-border bg-card sticky top-0 z-40 safe-top">
+      <header className="px-5 pt-14 pb-5 border-b border-border bg-card sticky top-0 z-40">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl bg-primary flex items-center justify-center">

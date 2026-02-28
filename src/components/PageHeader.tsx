@@ -13,7 +13,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, subtitle, back, right, className }: PageHeaderProps) {
   const navigate = useNavigate();
   return (
-    <header className={cn('flex items-center gap-3 px-5 py-4 border-b border-border bg-card/80 backdrop-blur-xl sticky top-0 z-40 safe-top', className)}>
+    <header className={cn('flex items-center gap-3 px-5 py-4 pt-14 border-b border-border bg-card/80 backdrop-blur-xl sticky top-0 z-40', className)}>
       {back && (
         <button
           onClick={() => navigate(back)}
