@@ -106,7 +106,7 @@ export default function Debrief() {
             <div
               key={zone.label}
               className={`absolute w-5 h-5 rounded-full border-2 border-background ${dotColor[status]}`}
-              style={{ top: zone.top, left: zone.left, right: zone.right }}
+              style={{ top: zone.top, left: zone.left }}
               title={`${zone.label} — ${status.toUpperCase()}`}
             />
           );

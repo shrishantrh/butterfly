@@ -9,6 +9,7 @@ interface LiveFormChecklistProps {
   analyzedItems: Map<string, AnalysisResult>;
   isAnalyzing: boolean;
   onManualEdit?: (id: string, result: AnalysisResult) => void;
+  allEvaluated?: boolean;
 }
 
 const STATUS_OPTIONS: { status: InspectionStatus; label: string }[] = [
@@ -18,7 +19,7 @@ const STATUS_OPTIONS: { status: InspectionStatus; label: string }[] = [
   { status: 'normal', label: 'N/A' },
 ];
 
-export function LiveFormChecklist({ sections, analyzedItems, isAnalyzing, onManualEdit }: LiveFormChecklistProps) {
+export function LiveFormChecklist({ sections, analyzedItems, isAnalyzing, onManualEdit, allEvaluated = false }: LiveFormChecklistProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [editComment, setEditComment] = useState('');
@@ -106,6 +107,7 @@ export function LiveFormChecklist({ sections, analyzedItems, isAnalyzing, onManu
                     <div key={item.id}>
                       <button
                         onClick={() => {
+                          if (!allEvaluated) return;
                           if (isEditing) {
                             setEditingItem(null);
                           } else {
@@ -113,7 +115,8 @@ export function LiveFormChecklist({ sections, analyzedItems, isAnalyzing, onManu
                             setEditComment(result?.comment || '');
                           }
                         }}
-                        className={`w-full px-4 py-2.5 flex items-center justify-between gap-2 transition-colors duration-200 text-left ${
+                        disabled={!allEvaluated}
+                        className={`w-full px-4 py-2.5 flex items-center justify-between gap-2 transition-colors duration-200 text-left ${!allEvaluated ? 'cursor-not-allowed opacity-60' : ''} ${
                           result 
                             ? result.status === 'fail' ? 'bg-status-fail/5' 
                             : result.status === 'monitor' ? 'bg-status-monitor/5'

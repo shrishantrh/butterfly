@@ -465,6 +465,7 @@ export default function ActiveInspection() {
               analyzedItems={analyzedItems}
               isAnalyzing={isAnalyzing}
               onManualEdit={handleManualEdit}
+              allEvaluated={analyzedItems.size >= totalFields}
             />
           </div>
         )}
