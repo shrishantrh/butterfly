@@ -12,9 +12,9 @@ serve(async (req) => {
   }
 
   try {
-    const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
-    if (!ELEVENLABS_API_KEY) {
-      throw new Error("ELEVENLABS_API_KEY is not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
     }
 
     const formData = await req.formData();
@@ -26,30 +26,55 @@ serve(async (req) => {
 
     console.log(`Transcribing file: ${audioFile.name}, size: ${audioFile.size}, type: ${audioFile.type}`);
 
-    const apiFormData = new FormData();
-    apiFormData.append("file", audioFile);
-    apiFormData.append("model_id", "scribe_v2");
-    apiFormData.append("tag_audio_events", "false");
-    apiFormData.append("diarize", "false");
+    // Convert file to base64 for Gemini
+    const arrayBuffer = await audioFile.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
 
-    const response = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
+    // Determine MIME type
+    const mimeType = audioFile.type || "video/mp4";
+
+    const response = await fetch("https://api.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        "xi-api-key": ELEVENLABS_API_KEY,
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
       },
-      body: apiFormData,
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Transcribe all spoken words from this audio/video file. Return ONLY the transcription text, nothing else. No timestamps, no speaker labels, just the raw spoken words."
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:${mimeType};base64,${base64}`
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 8000,
+      }),
     });
 
     if (!response.ok) {
       const text = await response.text();
-      console.error("ElevenLabs STT error:", response.status, text);
+      console.error("Lovable AI transcription error:", response.status, text);
       throw new Error(`Transcription failed: ${response.status}`);
     }
 
-    const transcription = await response.json();
-    console.log(`Transcription complete: ${transcription.text?.length || 0} chars`);
+    const result = await response.json();
+    const transcriptionText = result.choices?.[0]?.message?.content || "";
 
-    return new Response(JSON.stringify(transcription), {
+    console.log(`Transcription complete: ${transcriptionText.length} chars`);
+
+    // Return in the same format the client expects
+    return new Response(JSON.stringify({ text: transcriptionText }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
