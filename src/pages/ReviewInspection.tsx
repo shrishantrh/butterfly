@@ -2,7 +2,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { mockMachines, inspectionFormSections, completedInspection, getStatusCounts, InspectionSection, InspectionStatus } from '@/lib/mock-data';
 import { PageHeader } from '@/components/PageHeader';
 import { StatusBadge, StatusSummary } from '@/components/StatusBadge';
-import { Video, Mic2, Cpu, Send, PenLine, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Video, Mic2, Cpu, Send, PenLine, AlertCircle, ChevronDown, ChevronUp, Image, X } from 'lucide-react';
 import { useMemo, useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -12,6 +12,8 @@ interface AIResult {
   comment: string;
   evidence: ('audio' | 'video' | 'sensor')[];
   faultCode?: string;
+  photoUrl?: string;
+  annotation?: string;
 }
 
 export default function ReviewInspection() {
@@ -30,7 +32,7 @@ export default function ReviewInspection() {
       ...section,
       items: section.items.map(item => {
         const result = ai[item.id];
-        if (result) return { ...item, status: result.status, comment: result.comment, evidence: result.evidence, faultCode: result.faultCode };
+        if (result) return { ...item, status: result.status, comment: result.comment, evidence: result.evidence, faultCode: result.faultCode, photoUrl: result.photoUrl, annotation: result.annotation };
         return item;
       }),
     }));
@@ -157,6 +159,9 @@ export default function ReviewInspection() {
                     {item.comment && (
                       <p className="text-xs text-muted-foreground/70 mt-1.5 pl-9 leading-relaxed">{item.comment}</p>
                     )}
+                    {(item as any).annotation && (
+                      <p className="text-[10px] text-sensor mt-1 pl-9 leading-snug italic">🔍 {(item as any).annotation}</p>
+                    )}
                     {item.evidence && item.evidence.length > 0 && (
                       <div className="flex items-center gap-2.5 mt-1.5 pl-9">
                         {item.evidence.includes('video') && <Video className="w-3.5 h-3.5 text-primary/60" />}
@@ -167,6 +172,11 @@ export default function ReviewInspection() {
                             {item.faultCode && <span className="text-[10px] font-mono text-sensor/60">{item.faultCode}</span>}
                           </span>
                         )}
+                      </div>
+                    )}
+                    {(item as any).photoUrl && (
+                      <div className="mt-2 ml-9 rounded-lg overflow-hidden border border-border/20 max-w-[200px]">
+                        <img src={(item as any).photoUrl} alt="Evidence" className="w-full h-16 object-cover" />
                       </div>
                     )}
                   </div>

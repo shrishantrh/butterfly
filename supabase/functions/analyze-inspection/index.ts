@@ -172,6 +172,7 @@ serve(async (req) => {
                           items: { type: "string", enum: ["audio", "video", "sensor"] },
                         },
                         faultCode: { type: "string", description: "Active fault code if correlated" },
+                        annotation: { type: "string", description: "Brief visual annotation describing what was seen in the frame (e.g. 'Oil seepage visible at rod seal junction', 'Debris buildup on radiator fins'). Only include if visual evidence was used." },
                       },
                       required: ["id", "status", "comment", "evidence"],
                       additionalProperties: false,
