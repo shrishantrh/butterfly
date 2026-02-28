@@ -1,13 +1,14 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { mockMachines, inspectionFormSections } from '@/lib/mock-data';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Square, Camera, Mic, MicOff, Upload, AlertCircle, Eye, List, Volume2 } from 'lucide-react';
+import { Square, Camera, Mic, MicOff, Upload, AlertCircle, Volume2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useInspectionAI } from '@/hooks/useInspectionAI';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import type { AnalysisResult } from '@/hooks/useInspectionAI';
 import { useToast } from '@/hooks/use-toast';
 import { LiveFormChecklist } from '@/components/inspection/LiveFormChecklist';
+import { CameraOverlay } from '@/components/inspection/CameraOverlay';
 import { VoiceAgent, FormState } from '@/components/inspection/VoiceAgent';
 
 export default function ActiveInspection() {
@@ -27,7 +28,6 @@ export default function ActiveInspection() {
   const [committedTexts, setCommittedTexts] = useState<string[]>([]);
   const prevItemCount = useRef(0);
   const isMounted = useRef(true);
-  const [viewMode, setViewMode] = useState<'form' | 'camera'>('form');
   const hasStarted = useRef(false);
 
   const [isUploading, setIsUploading] = useState(false);
@@ -60,7 +60,7 @@ export default function ActiveInspection() {
       const ctx = canvas.getContext('2d');
       if (!ctx) return null;
       ctx.drawImage(video, 0, 0);
-      return canvas.toDataURL('image/jpeg', 0.7);
+      return canvas.toDataURL('image/jpeg', 0.8);
     });
   }, [registerFrameCapture]);
 
@@ -99,25 +99,23 @@ export default function ActiveInspection() {
     } catch (err) { console.log('[Inspection] Camera not available:', err); }
   }, []);
 
-  useEffect(() => {
-    if (cameraStream && videoRef.current) videoRef.current.srcObject = cameraStream;
-  }, [cameraStream, viewMode]);
-
+  // Capture frames every 6s (reduced from 12s) for more robust visual analysis
   useEffect(() => {
     if (!isCameraOn || isUploadMode) return;
     const captureInterval = setInterval(() => {
       const video = videoRef.current;
       if (!video || !canvasRef.current || video.readyState < 2) return;
       const canvas = canvasRef.current;
-      const scale = Math.min(512 / video.videoWidth, 512 / video.videoHeight, 1);
+      // Use higher resolution for better analysis
+      const scale = Math.min(640 / video.videoWidth, 640 / video.videoHeight, 1);
       canvas.width = Math.round(video.videoWidth * scale);
       canvas.height = Math.round(video.videoHeight * scale);
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const frameBase64 = canvas.toDataURL('image/jpeg', 0.4);
+      const frameBase64 = canvas.toDataURL('image/jpeg', 0.6);
       addFrame(frameBase64);
-    }, 12000);
+    }, 6000);
     return () => clearInterval(captureInterval);
   }, [isCameraOn, isUploadMode, addFrame]);
 
@@ -198,6 +196,16 @@ export default function ActiveInspection() {
     <div className="min-h-screen bg-background flex flex-col">
       <canvas ref={canvasRef} className="hidden" />
 
+      {/* Floating camera overlay */}
+      {!isUploadMode && (
+        <CameraOverlay
+          videoRef={videoRef}
+          cameraStream={cameraStream}
+          isAnalyzing={isAnalyzing}
+          isCameraOn={isCameraOn}
+        />
+      )}
+
       {/* Top bar */}
       <header className="flex items-center justify-between px-4 py-2.5 pt-14 bg-background/80 backdrop-blur-2xl border-b border-border/40 shrink-0 z-40">
         <div className="flex items-center gap-2.5">
@@ -218,11 +226,6 @@ export default function ActiveInspection() {
             <div className="flex items-center gap-1.5 bg-sensor/8 border border-sensor/15 px-2 py-1 rounded-md">
               <div className="w-1.5 h-1.5 rounded-full bg-sensor animate-pulse" />
               <span className="text-[10px] font-mono text-sensor font-bold">AI</span>
-            </div>
-          )}
-          {isCameraOn && (
-            <div className="flex items-center gap-1.5 bg-primary/8 border border-primary/15 px-2 py-1 rounded-md">
-              <Eye className="w-3 h-3 text-primary" />
             </div>
           )}
           <span className="text-xs font-mono text-muted-foreground/60 ml-1">{machine.assetId}</span>
@@ -282,9 +285,9 @@ export default function ActiveInspection() {
         </div>
       )}
 
-      {/* Progress bar + view toggle */}
+      {/* Progress bar */}
       <div className="px-4 py-3 shrink-0">
-        <div className="flex items-center gap-3 mb-2">
+        <div className="flex items-center gap-3">
           <div className="flex-1 h-1.5 bg-border/30 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-700 ease-out"
@@ -298,28 +301,6 @@ export default function ActiveInspection() {
             {itemCount}<span className="text-muted-foreground/40">/{totalFields}</span>
           </span>
         </div>
-        {!isUploadMode && isCameraOn && (
-          <div className="flex gap-1 bg-surface-2/60 rounded-lg p-0.5">
-            <button
-              onClick={() => setViewMode('form')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-semibold transition-all ${
-                viewMode === 'form' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <List className="w-3.5 h-3.5" />
-              Checklist
-            </button>
-            <button
-              onClick={() => setViewMode('camera')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-semibold transition-all ${
-                viewMode === 'camera' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Camera className="w-3.5 h-3.5" />
-              Camera
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Upload area */}
@@ -347,65 +328,16 @@ export default function ActiveInspection() {
         </div>
       )}
 
-      {/* Main content area */}
+      {/* Main content — form checklist (always visible, camera is floating) */}
       <div className="flex-1 overflow-y-auto min-h-0">
-        {viewMode === 'camera' && !isUploadMode && (
-          <div className="px-4 pb-4">
-            {isCameraOn ? (
-              <div className="relative rounded-xl overflow-hidden border border-border/30 shadow-lg">
-                <video ref={videoRef} autoPlay playsInline muted className="w-full aspect-video object-cover" />
-                <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 bg-background/70 backdrop-blur-sm px-2.5 py-1 rounded-md">
-                  <div className="w-1.5 h-1.5 rounded-full bg-status-fail animate-pulse" />
-                  <span className="text-[10px] font-mono text-foreground font-bold">LIVE</span>
-                </div>
-                {isAnalyzing && (
-                  <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 bg-sensor/15 backdrop-blur-sm px-2.5 py-1 rounded-md">
-                    <div className="w-1.5 h-1.5 rounded-full bg-sensor animate-pulse" />
-                    <span className="text-[10px] font-mono text-sensor font-bold">ANALYZING</span>
-                  </div>
-                )}
-                <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 bg-background/60 backdrop-blur-sm px-2 py-0.5 rounded-md">
-                  <Eye className="w-3 h-3 text-primary" />
-                  <span className="text-[9px] font-mono text-primary font-bold">VISION AI</span>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center aspect-video rounded-xl bg-surface-2/40 border border-border/30">
-                <p className="text-muted-foreground/40 text-sm">Camera not available</p>
-              </div>
-            )}
-            {committedTexts.length > 0 && (
-              <div className="mt-3 bg-surface-2/30 rounded-lg p-3 border border-border/20">
-                <p className="label-caps mb-1">Transcript</p>
-                <p className="text-sm text-foreground/60 leading-relaxed max-h-32 overflow-y-auto">{committedTexts.join(' ')}</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {(viewMode === 'form' || isUploadMode || !isCameraOn) && (
-          <div className="px-4 pb-4">
-            {isCameraOn && viewMode === 'form' && (
-              <div className="mb-3 relative rounded-lg overflow-hidden border border-border/20 h-24">
-                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-background/50 to-transparent" />
-                <div className="absolute bottom-2 left-2 flex items-center gap-1.5">
-                  <div className="flex items-center gap-1 bg-background/60 backdrop-blur-sm px-1.5 py-0.5 rounded">
-                    <div className="w-1.5 h-1.5 rounded-full bg-status-fail animate-pulse" />
-                    <span className="text-[9px] font-mono text-foreground font-bold">LIVE</span>
-                  </div>
-                </div>
-              </div>
-            )}
-            <LiveFormChecklist
-              sections={inspectionFormSections}
-              analyzedItems={analyzedItems}
-              isAnalyzing={isAnalyzing}
-              onManualEdit={handleManualEdit}
-              allEvaluated={analyzedItems.size >= totalFields}
-            />
-          </div>
-        )}
+        <div className="px-4 pb-4">
+          <LiveFormChecklist
+            sections={inspectionFormSections}
+            analyzedItems={analyzedItems}
+            isAnalyzing={isAnalyzing}
+            onManualEdit={handleManualEdit}
+          />
+        </div>
       </div>
 
       {!isUploadMode && <VoiceAgent formState={formState} setFormState={setFormState} speechTranscript={committedTexts.join(' ')} />}

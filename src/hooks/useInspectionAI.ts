@@ -9,6 +9,7 @@ export interface AnalysisResult {
   evidence: ('audio' | 'video' | 'sensor')[];
   faultCode?: string;
   photoUrl?: string;
+  annotation?: string; // AI-generated annotation for photo evidence
 }
 
 export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string) {
@@ -19,6 +20,7 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string)
   const frameBuffer = useRef<string[]>([]); // base64 frames
   const analysisTimer = useRef<number | null>(null);
   const captureFrameFn = useRef<(() => string | null) | null>(null);
+  const analysisInFlight = useRef(false);
 
   const faultCodesStr = faultCodes.length > 0
     ? faultCodes.map(fc => `${fc.code}: ${fc.description} (${fc.severity})`).join('\n')
@@ -30,13 +32,14 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string)
 
   // Add a video frame to the buffer for the next analysis cycle
   const addFrame = useCallback((base64: string) => {
-    // Keep only last 2 frames to limit payload size
-    frameBuffer.current = [...frameBuffer.current.slice(-1), base64];
+    // Keep last 3 frames for better visual coverage
+    frameBuffer.current = [...frameBuffer.current.slice(-2), base64];
   }, []);
 
   const runAnalysis = useCallback(async (transcript: string, frames: string[]) => {
-    if (!transcript.trim() && frames.length === 0) return;
+    if ((!transcript.trim() && frames.length === 0) || analysisInFlight.current) return;
 
+    analysisInFlight.current = true;
     setIsAnalyzing(true);
     setError(null);
 
@@ -75,6 +78,7 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string)
                 photoUrl: (item.status === 'fail' || item.status === 'monitor') 
                   ? (frameUrl || existing?.photoUrl) 
                   : existing?.photoUrl,
+                annotation: item.annotation || existing?.annotation,
               });
             }
           }
@@ -90,6 +94,7 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string)
       setError(e instanceof Error ? e.message : 'Analysis failed');
     } finally {
       setIsAnalyzing(false);
+      analysisInFlight.current = false;
     }
   }, [faultCodesStr, previousItems, analyzedItems]);
 
@@ -99,14 +104,16 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string)
     if (analysisTimer.current) {
       clearTimeout(analysisTimer.current);
     }
+    // Reduced from 6s to 3s for faster response
     analysisTimer.current = window.setTimeout(() => {
       const fullTranscript = transcriptBuffer.current.trim();
       const frames = [...frameBuffer.current];
       frameBuffer.current = []; // clear after sending
-      if (fullTranscript.length > 20 || frames.length > 0) {
+      // Lower threshold — trigger faster
+      if (fullTranscript.length > 10 || frames.length > 0) {
         runAnalysis(fullTranscript, frames);
       }
-    }, 6000);
+    }, 3000);
   }, [runAnalysis]);
 
   const analyzeNow = useCallback(async () => {
