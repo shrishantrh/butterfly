@@ -15,7 +15,6 @@ interface SaveInspectionParams {
 export function useInspectionStorage() {
   const uploadPhoto = useCallback(async (base64DataUrl: string, inspectionId: string, itemId: string): Promise<string | null> => {
     try {
-      // Convert base64 data URL to blob
       const res = await fetch(base64DataUrl);
       const blob = await res.blob();
       const fileName = `${inspectionId}/${itemId}_${Date.now()}.jpg`;
@@ -49,7 +48,6 @@ export function useInspectionStorage() {
     analyzedItems,
   }: SaveInspectionParams): Promise<string | null> => {
     try {
-      // 1. Create the inspection record
       const { data: inspection, error: inspError } = await supabase
         .from('inspections')
         .insert({
@@ -77,7 +75,7 @@ export function useInspectionStorage() {
 
       const inspectionId = inspection.id;
 
-      // 2. Upload photos and save items
+      // Upload photos and save items
       const itemsToInsert = [];
       for (const section of sections) {
         for (const item of section.items) {
@@ -89,7 +87,7 @@ export function useInspectionStorage() {
           if (rawPhotoUrl && rawPhotoUrl.startsWith('data:')) {
             photoUrl = await uploadPhoto(rawPhotoUrl, inspectionId, item.id);
           } else if (rawPhotoUrl) {
-            photoUrl = rawPhotoUrl; // Already a URL
+            photoUrl = rawPhotoUrl;
           }
 
           itemsToInsert.push({
@@ -104,6 +102,8 @@ export function useInspectionStorage() {
             fault_code: item.faultCode || aiResult?.faultCode || null,
             annotation: (item as any).annotation || aiResult?.annotation || null,
             photo_url: photoUrl,
+            ai_agreement: aiResult?.aiAgreement || (item as any).aiAgreement || null,
+            ai_visual_note: aiResult?.aiVisualNote || (item as any).aiVisualNote || null,
           });
         }
       }

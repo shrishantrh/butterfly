@@ -2,7 +2,8 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { mockMachines, inspectionFormSections, completedInspection, getStatusCounts, InspectionSection, InspectionStatus } from '@/lib/mock-data';
 import { PageHeader } from '@/components/PageHeader';
 import { StatusBadge, StatusSummary } from '@/components/StatusBadge';
-import { Video, Mic2, Cpu, Send, PenLine, AlertCircle, ChevronDown, ChevronUp, Image, X } from 'lucide-react';
+import { AIValidationIndicator } from '@/components/inspection/AIValidationIndicator';
+import { Video, Mic2, Cpu, Send, PenLine, AlertCircle, ChevronDown, ChevronUp, Image, X, Eye } from 'lucide-react';
 import { useMemo, useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useInspectionStorage } from '@/hooks/useInspectionStorage';
@@ -15,6 +16,8 @@ interface AIResult {
   faultCode?: string;
   photoUrl?: string;
   annotation?: string;
+  aiAgreement?: 'agree' | 'disagree' | 'uncertain';
+  aiVisualNote?: string;
 }
 
 export default function ReviewInspection() {
@@ -35,7 +38,17 @@ export default function ReviewInspection() {
       ...section,
       items: section.items.map(item => {
         const result = ai[item.id];
-        if (result) return { ...item, status: result.status, comment: result.comment, evidence: result.evidence, faultCode: result.faultCode, photoUrl: result.photoUrl, annotation: result.annotation };
+        if (result) return {
+          ...item,
+          status: result.status,
+          comment: result.comment,
+          evidence: result.evidence,
+          faultCode: result.faultCode,
+          photoUrl: result.photoUrl,
+          annotation: result.annotation,
+          aiAgreement: result.aiAgreement,
+          aiVisualNote: result.aiVisualNote,
+        } as any;
         return item;
       }),
     }));
@@ -49,6 +62,10 @@ export default function ReviewInspection() {
   const counts = getStatusCounts(sections);
   const unconfirmedCount = sections.reduce((acc, s) => acc + s.items.filter(i => i.status === 'unconfirmed').length, 0);
   const hasUnconfirmed = unconfirmedCount > 0;
+
+  // Count AI disagreements
+  const disagreementCount = sections.reduce((acc, s) => 
+    acc + s.items.filter(i => (i as any).aiAgreement === 'disagree').length, 0);
 
   const toggleSection = (id: string) => {
     setExpandedSections(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
@@ -154,6 +171,16 @@ export default function ReviewInspection() {
           </div>
         </div>
 
+        {/* AI Disagreements Warning */}
+        {disagreementCount > 0 && (
+          <div className="flex items-center gap-2.5 bg-accent/6 border border-accent/15 rounded-lg p-3.5">
+            <Eye className="w-5 h-5 text-accent shrink-0" />
+            <p className="text-sm text-accent">
+              <span className="font-semibold">AI flagged {disagreementCount} discrepanc{disagreementCount !== 1 ? 'ies' : 'y'}.</span> Review items marked with ⚠️.
+            </p>
+          </div>
+        )}
+
         {hasUnconfirmed && (
           <div className="flex items-center gap-2.5 bg-status-monitor/6 border border-status-monitor/15 rounded-lg p-3.5">
             <AlertCircle className="w-5 h-5 text-status-monitor shrink-0" />
@@ -179,57 +206,76 @@ export default function ReviewInspection() {
             </button>
             {expandedSections.has(section.id) && (
               <div>
-                {section.items.map((item, idx) => (
-                  <div key={item.id} className={`px-4 py-3 ${idx > 0 ? 'border-t border-border/20' : ''} ${item.status === 'unconfirmed' ? 'bg-surface-2/20' : ''}`}>
-                    <div className="flex items-start justify-between gap-2.5">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-[11px] font-mono text-muted-foreground/50 shrink-0 w-7">{item.id}</span>
-                        <span className="text-sm font-medium text-foreground">{item.label}</span>
+                {section.items.map((item, idx) => {
+                  const aiItem = item as any;
+                  return (
+                    <div key={item.id} className={`px-4 py-3 ${idx > 0 ? 'border-t border-border/20' : ''} ${item.status === 'unconfirmed' ? 'bg-surface-2/20' : aiItem.aiAgreement === 'disagree' ? 'bg-accent/4' : ''}`}>
+                      <div className="flex items-start justify-between gap-2.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-[11px] font-mono text-muted-foreground/50 shrink-0 w-7">{item.id}</span>
+                          <span className="text-sm font-medium text-foreground">{item.label}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {aiItem.aiAgreement && (
+                            <AIValidationIndicator agreement={aiItem.aiAgreement} compact />
+                          )}
+                          {item.status === 'unconfirmed' ? (
+                            <button onClick={() => setEditingItem(editingItem === item.id ? null : item.id)} className="shrink-0">
+                              <StatusBadge status={item.status} />
+                            </button>
+                          ) : (
+                            <StatusBadge status={item.status} className="shrink-0" />
+                          )}
+                        </div>
                       </div>
-                      {item.status === 'unconfirmed' ? (
-                        <button onClick={() => setEditingItem(editingItem === item.id ? null : item.id)} className="shrink-0">
-                          <StatusBadge status={item.status} />
-                        </button>
-                      ) : (
-                        <StatusBadge status={item.status} className="shrink-0" />
+
+                      {editingItem === item.id && item.status === 'unconfirmed' && (
+                        <div className="flex gap-1.5 mt-2.5 pl-9 flex-wrap">
+                          {(['pass', 'monitor', 'fail', 'normal'] as InspectionStatus[]).map(s => (
+                            <button key={s} onClick={() => quickResolve(section.id, item.id, s)} className="touch-target">
+                              <StatusBadge status={s} />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {item.comment && (
+                        <p className="text-xs text-muted-foreground/70 mt-1.5 pl-9 leading-relaxed">{item.comment}</p>
+                      )}
+                      {aiItem.annotation && (
+                        <p className="text-[10px] text-sensor mt-1 pl-9 leading-snug italic">🔍 {aiItem.annotation}</p>
+                      )}
+
+                      {/* AI Validation detail */}
+                      {aiItem.aiAgreement && (
+                        <div className="mt-1.5 pl-9">
+                          <AIValidationIndicator
+                            agreement={aiItem.aiAgreement}
+                            visualNote={aiItem.aiVisualNote}
+                          />
+                        </div>
+                      )}
+
+                      {item.evidence && item.evidence.length > 0 && (
+                        <div className="flex items-center gap-2.5 mt-1.5 pl-9">
+                          {item.evidence.includes('video') && <Video className="w-3.5 h-3.5 text-primary/60" />}
+                          {item.evidence.includes('audio') && <Mic2 className="w-3.5 h-3.5 text-status-monitor/60" />}
+                          {item.evidence.includes('sensor') && (
+                            <span className="flex items-center gap-1">
+                              <Cpu className="w-3.5 h-3.5 text-sensor/60" />
+                              {item.faultCode && <span className="text-[10px] font-mono text-sensor/60">{item.faultCode}</span>}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {aiItem.photoUrl && (
+                        <div className="mt-2 ml-9 rounded-lg overflow-hidden border border-border/20 max-w-[200px] cursor-pointer" onClick={() => setViewingPhoto(aiItem.photoUrl)}>
+                          <img src={aiItem.photoUrl} alt="Evidence" className="w-full h-16 object-cover" />
+                        </div>
                       )}
                     </div>
-
-                    {editingItem === item.id && item.status === 'unconfirmed' && (
-                      <div className="flex gap-1.5 mt-2.5 pl-9 flex-wrap">
-                        {(['pass', 'monitor', 'fail', 'normal'] as InspectionStatus[]).map(s => (
-                          <button key={s} onClick={() => quickResolve(section.id, item.id, s)} className="touch-target">
-                            <StatusBadge status={s} />
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {item.comment && (
-                      <p className="text-xs text-muted-foreground/70 mt-1.5 pl-9 leading-relaxed">{item.comment}</p>
-                    )}
-                    {(item as any).annotation && (
-                      <p className="text-[10px] text-sensor mt-1 pl-9 leading-snug italic">🔍 {(item as any).annotation}</p>
-                    )}
-                    {item.evidence && item.evidence.length > 0 && (
-                      <div className="flex items-center gap-2.5 mt-1.5 pl-9">
-                        {item.evidence.includes('video') && <Video className="w-3.5 h-3.5 text-primary/60" />}
-                        {item.evidence.includes('audio') && <Mic2 className="w-3.5 h-3.5 text-status-monitor/60" />}
-                        {item.evidence.includes('sensor') && (
-                          <span className="flex items-center gap-1">
-                            <Cpu className="w-3.5 h-3.5 text-sensor/60" />
-                            {item.faultCode && <span className="text-[10px] font-mono text-sensor/60">{item.faultCode}</span>}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    {(item as any).photoUrl && (
-                      <div className="mt-2 ml-9 rounded-lg overflow-hidden border border-border/20 max-w-[200px] cursor-pointer" onClick={() => setViewingPhoto((item as any).photoUrl)}>
-                        <img src={(item as any).photoUrl} alt="Evidence" className="w-full h-16 object-cover" />
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

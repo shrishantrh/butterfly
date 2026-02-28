@@ -1,6 +1,7 @@
 import { InspectionSection, InspectionStatus } from '@/lib/mock-data';
 import { StatusBadge } from '@/components/StatusBadge';
-import { ChevronDown, ChevronUp, Camera, MessageSquare, X, Check, Image } from 'lucide-react';
+import { AIValidationIndicator } from './AIValidationIndicator';
+import { ChevronDown, ChevronUp, MessageSquare, X, Check, Image } from 'lucide-react';
 import { useState } from 'react';
 import type { AnalysisResult } from '@/hooks/useInspectionAI';
 
@@ -43,6 +44,8 @@ export function LiveFormChecklist({ sections, analyzedItems, isAnalyzing, onManu
       faultCode: existing?.faultCode,
       photoUrl: existing?.photoUrl,
       annotation: existing?.annotation,
+      aiAgreement: existing?.aiAgreement,
+      aiVisualNote: existing?.aiVisualNote,
     });
     setEditingItem(null);
     setEditComment('');
@@ -68,11 +71,12 @@ export function LiveFormChecklist({ sections, analyzedItems, isAnalyzing, onManu
         const sectionCovered = section.items.filter(i => analyzedItems.has(i.id)).length;
         const hasFails = section.items.some(i => analyzedItems.get(i.id)?.status === 'fail');
         const hasMonitors = section.items.some(i => analyzedItems.get(i.id)?.status === 'monitor');
+        const hasDisagreements = section.items.some(i => analyzedItems.get(i.id)?.aiAgreement === 'disagree');
         const sectionPct = Math.round((sectionCovered / section.items.length) * 100);
 
         return (
           <div key={section.id} className={`card-elevated overflow-hidden transition-colors ${
-            hasFails ? 'border-status-fail/20' : hasMonitors ? 'border-status-monitor/15' : ''
+            hasFails ? 'border-status-fail/20' : hasDisagreements ? 'border-accent/20' : hasMonitors ? 'border-status-monitor/15' : ''
           }`}>
             <button
               onClick={() => toggle(section.id)}
@@ -81,6 +85,8 @@ export function LiveFormChecklist({ sections, analyzedItems, isAnalyzing, onManu
               <div className="flex items-center gap-2 min-w-0">
                 {hasFails ? (
                   <span className="w-2 h-2 rounded-full bg-status-fail shrink-0" />
+                ) : hasDisagreements ? (
+                  <span className="w-2 h-2 rounded-full bg-accent shrink-0" />
                 ) : hasMonitors ? (
                   <span className="w-2 h-2 rounded-full bg-status-monitor shrink-0" />
                 ) : sectionCovered === section.items.length ? (
@@ -127,7 +133,8 @@ export function LiveFormChecklist({ sections, analyzedItems, isAnalyzing, onManu
                           }
                         }}
                         className={`w-full px-4 py-2.5 flex items-center justify-between gap-2 transition-colors duration-150 text-left hover:bg-surface-2/40 ${
-                          result 
+                          result?.aiAgreement === 'disagree' ? 'bg-accent/4'
+                          : result 
                             ? result.status === 'fail' ? 'bg-status-fail/4' 
                             : result.status === 'monitor' ? 'bg-status-monitor/4'
                             : '' 
@@ -149,6 +156,9 @@ export function LiveFormChecklist({ sections, analyzedItems, isAnalyzing, onManu
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
+                          {result?.aiAgreement && (
+                            <AIValidationIndicator agreement={result.aiAgreement} compact />
+                          )}
                           {result?.photoUrl && (
                             <button
                               onClick={(e) => { e.stopPropagation(); setViewingPhoto(result.photoUrl!); }}
@@ -163,6 +173,16 @@ export function LiveFormChecklist({ sections, analyzedItems, isAnalyzing, onManu
 
                       {isEditing && (
                         <div className="px-4 py-3 bg-surface-2/60 border-t border-border/20">
+                          {/* AI Validation detail */}
+                          {result?.aiAgreement && (
+                            <div className="mb-2.5">
+                              <AIValidationIndicator
+                                agreement={result.aiAgreement}
+                                visualNote={result.aiVisualNote}
+                              />
+                            </div>
+                          )}
+
                           <div className="flex items-center justify-between mb-2">
                             <span className="label-caps">Set Status</span>
                             <button onClick={() => setEditingItem(null)} className="p-0.5 rounded hover:bg-border/40">
@@ -200,6 +220,8 @@ export function LiveFormChecklist({ sections, analyzedItems, isAnalyzing, onManu
                                     faultCode: existing?.faultCode,
                                     photoUrl: existing?.photoUrl,
                                     annotation: existing?.annotation,
+                                    aiAgreement: existing?.aiAgreement,
+                                    aiVisualNote: existing?.aiVisualNote,
                                   });
                                   setEditingItem(null);
                                   setEditComment('');

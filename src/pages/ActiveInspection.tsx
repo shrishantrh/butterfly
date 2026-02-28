@@ -374,11 +374,10 @@ export default function ActiveInspection() {
             )}
             <button
               onClick={handleStop}
-              disabled={analyzedItems.size < totalFields}
-              className="flex-1 flex items-center justify-center gap-2.5 py-3 rounded-xl bg-status-fail text-accent-foreground font-bold text-sm active:scale-[0.98] transition-all touch-target disabled:opacity-30 disabled:cursor-not-allowed"
+              className="flex-1 flex items-center justify-center gap-2.5 py-3 rounded-xl bg-status-fail text-accent-foreground font-bold text-sm active:scale-[0.98] transition-all touch-target"
             >
               <Square className="w-4 h-4" />
-              {analyzedItems.size < totalFields ? `${itemCount}/${totalFields} evaluated` : 'End Inspection'}
+              End Inspection ({itemCount}/{totalFields})
             </button>
           </div>
         )}
