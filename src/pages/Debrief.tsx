@@ -55,15 +55,66 @@ export default function Debrief() {
         </div>
 
         {/* Machine schematic */}
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-            <h3 className="text-base font-bold">Machine Map</h3>
-            <div className="flex items-center gap-3 text-sm">
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-status-pass" />Pass</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-status-monitor" />Monitor</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-status-fail" />Fail</span>
-            </div>
-          </div>
+{(() => {
+  const statusPriority: Record<string, number> = { fail: 3, monitor: 2, pass: 1, normal: 0, unconfirmed: -1 };
+  const worstStatus = (ids: string[]) => {
+    const allItems = sections.flatMap(s => s.items);
+    const relevant = allItems.filter(i => ids.includes(i.id));
+    if (relevant.length === 0) return 'normal';
+    if (relevant.some(i => i.status === 'unconfirmed')) return 'unconfirmed';
+    return relevant.reduce((worst, i) =>
+      statusPriority[i.status] > statusPriority[worst] ? i.status : worst
+    , 'normal' as string);
+  };
+
+  const dotColor: Record<string, string> = {
+    pass: 'bg-status-pass',
+    fail: 'bg-status-fail',
+    monitor: 'bg-status-monitor',
+    normal: 'bg-gray-400',
+    unconfirmed: 'bg-gray-600',
+  };
+
+  const zones = [
+    { label: 'Bucket',      ids: ['1.7'],                              top: '52%', right: '7%'  },
+    { label: 'Arm/Stick',   ids: ['1.9', '1.10'],                     top: '38%', right: '18%' },
+    { label: 'Boom',        ids: ['1.5', '1.8'],                      top: '22%', left: '58%'  },
+    { label: 'Cab',         ids: ['4.1','4.2','4.3','4.4','4.5','4.6','4.7','4.8','4.9','3.2','3.3','3.4'], top: '42%', left: '42%' },
+    { label: 'Engine',      ids: ['2.1','2.2','2.4','2.5','2.6','2.7','2.8'], top: '48%', left: '18%' },
+    { label: 'Hydraulics',  ids: ['2.3','1.11'],                      top: '35%', left: '28%'  },
+    { label: 'Drivetrain',  ids: ['1.12','1.13','1.16'],              top: '68%', left: '38%'  },
+    { label: 'Tracks',      ids: ['1.1','1.2','1.3','1.4'],           top: '82%', left: '22%'  },
+    { label: 'Exterior',    ids: ['1.14','1.15','3.1','3.5'],         top: '60%', left: '30%'  },
+  ];
+
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+        <h3 className="text-base font-bold">Machine Map</h3>
+        <div className="flex items-center gap-3 text-sm">
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-status-pass" />Pass</span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-status-monitor" />Monitor</span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-status-fail" />Fail</span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-gray-600" />Incomplete</span>
+        </div>
+      </div>
+      <div className="relative bg-background p-3">
+        <img src={excavatorSchematic} alt="Machine Schematic" className="w-full opacity-50" />
+        {zones.map(zone => {
+          const status = worstStatus(zone.ids);
+          return (
+            <div
+              key={zone.label}
+              className={`absolute w-5 h-5 rounded-full border-2 border-background ${dotColor[status]}`}
+              style={{ top: zone.top, ...(zone.left ? { left: zone.left } : { right: zone.right }) }}
+              title={`${zone.label} — ${status.toUpperCase()}`}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+})()}
           <div className="relative bg-background p-3">
             <img src={excavatorSchematic} alt="Machine Schematic" className="w-full opacity-50" />
 <div className="absolute top-[38%] right-[18%] w-5 h-5 rounded-full bg-status-monitor border-2 border-background" title="Arm/Stick — 1.4 Lift Cylinders (PASS), 1.5 Lift arm attachment (MONITOR)" />
