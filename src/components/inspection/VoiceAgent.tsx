@@ -94,6 +94,22 @@ export function VoiceAgent({ formState, setFormState }: VoiceAgentProps) {
             }));
             return JSON.stringify({ success: true, componentId: params.componentId });
           },
+          playAcknowledgment: async () => {
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1200, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1800, ctx.currentTime + 0.08);
+            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+            osc.connect(gain).connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.25);
+            await new Promise(r => setTimeout(r, 300));
+            ctx.close();
+            return JSON.stringify({ done: true });
+          },
         },
       });
     } catch (error) {
