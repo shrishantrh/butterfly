@@ -90,10 +90,10 @@ export default {
         },
         "recording-pulse": {
           "0%, 100%": { transform: "scale(1)", opacity: "1" },
-          "50%": { transform: "scale(1.2)", opacity: "0.7" },
+          "50%": { transform: "scale(1.15)", opacity: "0.7" },
         },
         "slide-up": {
-          from: { transform: "translateY(10px)", opacity: "0" },
+          from: { transform: "translateY(8px)", opacity: "0" },
           to: { transform: "translateY(0)", opacity: "1" },
         },
         "fade-in": {
@@ -106,8 +106,8 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
         "recording-pulse": "recording-pulse 1.5s ease-in-out infinite",
-        "slide-up": "slide-up 0.4s ease-out",
-        "fade-in": "fade-in 0.3s ease-out",
+        "slide-up": "slide-up 0.35s ease-out forwards",
+        "fade-in": "fade-in 0.25s ease-out",
       },
     },
   },
