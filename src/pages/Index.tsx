@@ -1,8 +1,10 @@
 import { mockMachines } from '@/lib/mock-data';
 import { MachineCard } from '@/components/MachineCard';
-import { AlertTriangle, Cpu, HardHat } from 'lucide-react';
+import { AlertTriangle, Cpu, HardHat, History } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
+  const navigate = useNavigate();
   const totalFaults = mockMachines.reduce((acc, m) => acc + m.activeFaultCodes.length, 0);
   const totalFails = mockMachines.reduce((acc, m) => acc + (m.lastInspection?.summary.fail ?? 0), 0);
   const now = new Date();
@@ -23,8 +25,17 @@ const Index = () => {
               <p className="label-caps mt-0.5">Safety & Maintenance</p>
             </div>
           </div>
-          <div className="w-9 h-9 rounded-full bg-surface-2 border border-border/50 flex items-center justify-center">
-            <span className="text-xs font-bold text-muted-foreground">MC</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/history')}
+              className="w-9 h-9 rounded-full bg-surface-2 border border-border/50 flex items-center justify-center active:scale-95 transition-transform"
+              title="Inspection History"
+            >
+              <History className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <div className="w-9 h-9 rounded-full bg-surface-2 border border-border/50 flex items-center justify-center">
+              <span className="text-xs font-bold text-muted-foreground">MC</span>
+            </div>
           </div>
         </div>
       </header>

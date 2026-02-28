@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { mockMachines } from '@/lib/mock-data';
 import { PageHeader } from '@/components/PageHeader';
 import { StatusSummary } from '@/components/StatusBadge';
-import { AlertTriangle, Clock, Fuel, MapPin, Activity, Droplets, Play, Cpu, Upload } from 'lucide-react';
+import { AlertTriangle, Clock, Fuel, MapPin, Activity, Droplets, Play, Cpu, Upload, History } from 'lucide-react';
 
 export default function PreInspection() {
   const { machineId } = useParams();
@@ -150,13 +150,21 @@ export default function PreInspection() {
           <Play className="w-5 h-5" />
           Start Live Inspection
         </button>
-        <button
-          onClick={() => navigate(`/inspect/${machine.id}?mode=upload`)}
-          className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl bg-surface-2 text-secondary-foreground font-semibold text-sm border border-border/50 active:scale-[0.98] transition-all"
-        >
-          <Upload className="w-4 h-4" />
-          Upload Video for Analysis
-        </button>
+        <div className="flex gap-2.5">
+          <button
+            onClick={() => navigate(`/inspect/${machine.id}?mode=upload`)}
+            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-surface-2 text-secondary-foreground font-semibold text-sm border border-border/50 active:scale-[0.98] transition-all"
+          >
+            <Upload className="w-4 h-4" />
+            Upload Video
+          </button>
+          <button
+            onClick={() => navigate(`/history/${machine.id}`)}
+            className="flex items-center justify-center gap-2 py-3 px-5 rounded-xl bg-surface-2 text-secondary-foreground font-semibold text-sm border border-border/50 active:scale-[0.98] transition-all"
+          >
+            <History className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   );
