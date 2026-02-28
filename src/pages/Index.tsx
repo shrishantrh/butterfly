@@ -1,63 +1,70 @@
 import { mockMachines } from '@/lib/mock-data';
 import { MachineCard } from '@/components/MachineCard';
-import { User, ChevronRight, Activity } from 'lucide-react';
+import { AlertTriangle, ChevronRight } from 'lucide-react';
 
 const Index = () => {
   const totalFaults = mockMachines.reduce((acc, m) => acc + m.activeFaultCodes.length, 0);
   const totalFails = mockMachines.reduce((acc, m) => acc + (m.lastInspection?.summary.fail ?? 0), 0);
+  const now = new Date();
+  const hour = now.getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Top bar */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-40">
-        <div>
-          <h1 className="text-lg font-bold tracking-tight">
-            <span className="text-gradient-primary">Inspect</span>
-            <span className="text-foreground">AI</span>
-          </h1>
-          <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">Safety &amp; Maintenance Daily</p>
-        </div>
-        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-          <User className="w-4 h-4 text-primary-foreground" />
+      {/* Header */}
+      <header className="px-4 pt-4 pb-3 border-b border-border bg-card sticky top-0 z-40">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded bg-primary flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-xs font-mono">AI</span>
+            </div>
+            <div>
+              <h1 className="text-sm font-bold tracking-tight text-foreground">InspectAI</h1>
+              <p className="text-[10px] text-muted-foreground font-mono tracking-wide">SAFETY & MAINTENANCE</p>
+            </div>
+          </div>
+          <div className="w-8 h-8 rounded-full bg-surface-2 border border-border flex items-center justify-center">
+            <span className="text-xs font-semibold text-muted-foreground">MC</span>
+          </div>
         </div>
       </header>
 
-      {/* Greeting + Fleet summary */}
-      <div className="px-4 pt-5 pb-3">
-        <p className="text-muted-foreground text-sm">Good morning, Marcus</p>
-        <h2 className="text-xl font-bold mt-0.5">Today's Inspections</h2>
+      {/* Greeting */}
+      <div className="px-4 pt-5 pb-1">
+        <p className="text-sm text-muted-foreground">{greeting}, Marcus</p>
+        <h2 className="text-xl font-bold mt-0.5 text-foreground">Today's Inspections</h2>
       </div>
 
-      {/* Fleet stats bar */}
-      <div className="px-4 pb-4">
-        <div className="glass-surface rounded-lg p-3 flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Activity className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold">{mockMachines.length} machines</span>
-          </div>
-          <div className="h-4 w-px bg-border" />
-          {totalFaults > 0 && (
-            <span className="text-xs font-semibold text-status-monitor">
-              {totalFaults} active fault{totalFaults !== 1 ? 's' : ''}
-            </span>
-          )}
-          {totalFails > 0 && (
-            <>
-              <div className="h-4 w-px bg-border" />
-              <span className="text-xs font-semibold text-status-fail">
-                {totalFails} open FAIL{totalFails !== 1 ? 's' : ''}
-              </span>
-            </>
-          )}
-          <div className="ml-auto">
+      {/* Fleet alerts */}
+      {(totalFaults > 0 || totalFails > 0) && (
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-3 bg-surface-2 border border-border rounded p-3">
+            <div className="flex items-center gap-4 text-xs flex-1">
+              <span className="font-mono text-muted-foreground">{mockMachines.length} machines</span>
+              {totalFaults > 0 && (
+                <>
+                  <span className="w-px h-3 bg-border" />
+                  <span className="flex items-center gap-1 text-status-monitor font-semibold">
+                    <AlertTriangle className="w-3 h-3" />
+                    {totalFaults} fault{totalFaults !== 1 ? 's' : ''}
+                  </span>
+                </>
+              )}
+              {totalFails > 0 && (
+                <>
+                  <span className="w-px h-3 bg-border" />
+                  <span className="text-status-fail font-semibold">{totalFails} open FAIL{totalFails !== 1 ? 's' : ''}</span>
+                </>
+              )}
+            </div>
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
           </div>
         </div>
-      </div>
+      )}
 
       {/* Section label */}
-      <div className="px-4 pb-2">
-        <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">Tap a machine to begin inspection</p>
+      <div className="px-4 pt-1 pb-2">
+        <p className="text-[11px] text-muted-foreground font-mono uppercase tracking-wider">Select machine to inspect</p>
       </div>
 
       {/* Machine list */}
