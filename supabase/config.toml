@@ -5,3 +5,12 @@ verify_jwt = false
 
 [functions.analyze-inspection]
 verify_jwt = false
+
+[functions.debrief-analysis]
+verify_jwt = false
+
+[functions.parts-lookup]
+verify_jwt = false
+
+[functions.generate-report-pdf]
+verify_jwt = false
