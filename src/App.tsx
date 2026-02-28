@@ -8,6 +8,8 @@ import PreInspection from "./pages/PreInspection";
 import ActiveInspection from "./pages/ActiveInspection";
 import ReviewInspection from "./pages/ReviewInspection";
 import Debrief from "./pages/Debrief";
+import InspectionHistory from "./pages/InspectionHistory";
+import InspectionDetail from "./pages/InspectionDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +26,9 @@ const App = () => (
           <Route path="/inspect/:machineId" element={<ActiveInspection />} />
           <Route path="/review/:machineId" element={<ReviewInspection />} />
           <Route path="/debrief/:machineId" element={<Debrief />} />
+          <Route path="/history/:machineId" element={<InspectionHistory />} />
+          <Route path="/history" element={<InspectionHistory />} />
+          <Route path="/inspection-detail/:inspectionId" element={<InspectionDetail />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

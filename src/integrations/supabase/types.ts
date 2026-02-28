@@ -14,7 +14,122 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      inspection_items: {
+        Row: {
+          annotation: string | null
+          comment: string | null
+          created_at: string
+          evidence_types: string[] | null
+          fault_code: string | null
+          id: string
+          inspection_id: string
+          item_id: string
+          label: string
+          photo_url: string | null
+          section_id: string
+          section_title: string
+          status: string
+        }
+        Insert: {
+          annotation?: string | null
+          comment?: string | null
+          created_at?: string
+          evidence_types?: string[] | null
+          fault_code?: string | null
+          id?: string
+          inspection_id: string
+          item_id: string
+          label: string
+          photo_url?: string | null
+          section_id: string
+          section_title: string
+          status: string
+        }
+        Update: {
+          annotation?: string | null
+          comment?: string | null
+          created_at?: string
+          evidence_types?: string[] | null
+          fault_code?: string | null
+          id?: string
+          inspection_id?: string
+          item_id?: string
+          label?: string
+          photo_url?: string | null
+          section_id?: string
+          section_title?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspection_items_inspection_id_fkey"
+            columns: ["inspection_id"]
+            isOneToOne: false
+            referencedRelation: "inspections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inspections: {
+        Row: {
+          analysis_json: Json | null
+          asset_id: string
+          completed_at: string | null
+          created_at: string
+          duration_seconds: number | null
+          executive_summary: string | null
+          health_score: number | null
+          id: string
+          inspector_name: string
+          location: string | null
+          machine_id: string
+          machine_model: string
+          machine_serial: string
+          smu_hours: number
+          started_at: string | null
+          status: string | null
+          transcript: string | null
+        }
+        Insert: {
+          analysis_json?: Json | null
+          asset_id: string
+          completed_at?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          executive_summary?: string | null
+          health_score?: number | null
+          id?: string
+          inspector_name?: string
+          location?: string | null
+          machine_id: string
+          machine_model: string
+          machine_serial: string
+          smu_hours?: number
+          started_at?: string | null
+          status?: string | null
+          transcript?: string | null
+        }
+        Update: {
+          analysis_json?: Json | null
+          asset_id?: string
+          completed_at?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          executive_summary?: string | null
+          health_score?: number | null
+          id?: string
+          inspector_name?: string
+          location?: string | null
+          machine_id?: string
+          machine_model?: string
+          machine_serial?: string
+          smu_hours?: number
+          started_at?: string | null
+          status?: string | null
+          transcript?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

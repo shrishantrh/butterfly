@@ -4,6 +4,8 @@ import { PageHeader } from '@/components/PageHeader';
 import { StatusSummary, StatusBadge } from '@/components/StatusBadge';
 import { useToast } from '@/hooks/use-toast';
 import { useDebriefAnalysis } from '@/hooks/useDebriefAnalysis';
+import { useInspectionStorage } from '@/hooks/useInspectionStorage';
+import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
@@ -13,6 +15,7 @@ import {
   Home, FileText, ExternalLink, Wrench, ShieldAlert, Brain,
   Package, Star, ChevronRight, Loader2, Zap, Activity,
   ArrowUpRight, Shield, CircleDot, Target, GraduationCap,
+  Download, History,
 } from 'lucide-react';
 
 export default function Debrief() {
@@ -22,7 +25,12 @@ export default function Debrief() {
   const { toast } = useToast();
   const machine = mockMachines.find(m => m.id === machineId);
 
-  const routerState = location.state as { sections?: InspectionSection[]; transcript?: string; elapsed?: number } | null;
+  const routerState = location.state as {
+    sections?: InspectionSection[];
+    transcript?: string;
+    elapsed?: number;
+    inspectionId?: string;
+  } | null;
   const sections = routerState?.sections ?? completedInspection;
   const counts = getStatusCounts(sections);
   const elapsed = routerState?.elapsed;
@@ -33,12 +41,28 @@ export default function Debrief() {
   } = useDebriefAnalysis();
 
   const [activeTab, setActiveTab] = useState('summary');
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   useEffect(() => {
     if (machine && !analysis && !isAnalyzing && !error) {
       runAnalysis(sections, machine, routerState?.transcript, elapsed).then(result => {
         if (result?.partsRecommendations?.length && machine) {
           lookupParts(result.partsRecommendations, machine);
+        }
+        // Update the saved inspection with analysis
+        if (result && routerState?.inspectionId) {
+          supabase
+            .from('inspections')
+            .update({
+              health_score: result.executiveSummary?.healthScore,
+              status: result.executiveSummary?.status,
+              executive_summary: result.executiveSummary?.summary,
+              analysis_json: result as any,
+            })
+            .eq('id', routerState.inspectionId)
+            .then(({ error }) => {
+              if (error) console.error('Failed to update analysis:', error);
+            });
         }
       });
     }
@@ -56,6 +80,59 @@ export default function Debrief() {
   const handleDealerService = (itemId: string, label: string) => {
     toast({ title: 'Service request sent', description: `Dealer notified about ${itemId} — ${label}.` });
     if (navigator.vibrate) navigator.vibrate(50);
+  };
+
+  const handleDownloadPdf = async () => {
+    setIsDownloadingPdf(true);
+    try {
+      // Build items from sections for the PDF
+      const items = sections.flatMap(s =>
+        s.items.map(item => ({
+          item_id: item.id,
+          label: item.label,
+          section_id: s.id,
+          section_title: s.title,
+          status: item.status,
+          comment: item.comment,
+          fault_code: item.faultCode,
+          annotation: (item as any).annotation,
+          photo_url: (item as any).photoUrl,
+          evidence_types: item.evidence,
+        }))
+      );
+
+      const inspection = {
+        id: routerState?.inspectionId || 'draft',
+        machine_id: machine.id,
+        machine_model: machine.model,
+        machine_serial: machine.serial,
+        asset_id: machine.assetId,
+        smu_hours: machine.smuHours,
+        inspector_name: 'Marcus Chen',
+        location: machine.location,
+        duration_seconds: elapsed,
+        created_at: new Date().toISOString(),
+      };
+
+      const { data, error: fnError } = await supabase.functions.invoke('generate-report-pdf', {
+        body: { inspection, items, analysis },
+      });
+
+      if (fnError) throw fnError;
+      if (!data?.html) throw new Error('No report generated');
+
+      // Open HTML in new tab for printing/saving as PDF
+      const blob = new Blob([data.html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+
+      toast({ title: 'Report generated', description: 'Use Ctrl+P / ⌘+P to save as PDF.' });
+    } catch (e) {
+      console.error('PDF generation error:', e);
+      toast({ title: 'PDF generation failed', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
 
   const priorityColor: Record<string, string> = {
@@ -118,7 +195,9 @@ export default function Debrief() {
           <CheckCircle2 className="w-6 h-6 text-status-pass shrink-0" />
           <div>
             <p className="text-base font-bold text-status-pass">Inspection Submitted</p>
-            <p className="text-xs text-muted-foreground mt-0.5">PDF generated • Synced to VisionLink</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {routerState?.inspectionId ? 'Saved permanently with all evidence' : 'PDF generated • Synced to VisionLink'}
+            </p>
           </div>
         </div>
 
@@ -173,7 +252,6 @@ export default function Debrief() {
               </div>
             </div>
 
-            {/* Quick stats */}
             <div className="grid grid-cols-4 gap-px bg-border/30">
               <div className="bg-card p-3 text-center">
                 <p className="text-lg font-bold font-mono">{totalItems}</p>
@@ -243,7 +321,6 @@ export default function Debrief() {
 
             {/* ACTION ITEMS / WORK ORDERS */}
             <TabsContent value="summary" className="space-y-3 mt-3">
-              {/* Root cause chain */}
               {analysis.rootCauseAnalysis.length > 0 && (
                 <div className="card-elevated p-4">
                   <div className="flex items-center gap-2 mb-3">
@@ -276,7 +353,6 @@ export default function Debrief() {
                 </div>
               )}
 
-              {/* Work orders */}
               <div className="card-elevated p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Wrench className="w-4 h-4 text-primary" />
@@ -317,7 +393,6 @@ export default function Debrief() {
                 </div>
               </div>
 
-              {/* Sensor correlation */}
               {sensorItems.length > 0 && (
                 <div className="card-elevated p-4">
                   <div className="flex items-center gap-2 mb-3">
@@ -369,7 +444,6 @@ export default function Debrief() {
                               Type: <span className="text-foreground/70">{part.partType}</span>
                             </p>
 
-                            {/* Firecrawl results */}
                             {isLoadingParts && !partResult && (
                               <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
                                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -414,7 +488,6 @@ export default function Debrief() {
                     </div>
                   </div>
 
-                  {/* Total estimated labor */}
                   <div className="card-elevated p-4">
                     <h3 className="text-sm font-bold mb-2">Repair Estimate</h3>
                     <div className="grid grid-cols-2 gap-3">
@@ -488,7 +561,6 @@ export default function Debrief() {
                 </div>
               )}
 
-              {/* Pattern detection (static demo data enriched by AI) */}
               <div className="card-elevated p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <TrendingUp className="w-4 h-4 text-status-monitor" />
@@ -558,7 +630,6 @@ export default function Debrief() {
                 )}
               </div>
 
-              {/* Evidence summary */}
               <div className="card-elevated p-4">
                 <h3 className="text-sm font-bold mb-2.5">Evidence Summary</h3>
                 <div className="space-y-1.5 text-sm text-muted-foreground">
@@ -575,10 +646,17 @@ export default function Debrief() {
       {/* Bottom actions */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/95 to-transparent flex gap-2.5 safe-bottom">
         <button
-          onClick={() => toast({ title: 'PDF downloaded', description: 'Full debrief report with AI analysis saved to device.' })}
+          onClick={handleDownloadPdf}
+          disabled={isDownloadingPdf}
+          className="flex items-center justify-center gap-2 py-3.5 px-5 rounded-xl bg-surface-2 text-secondary-foreground font-semibold text-sm border border-border/40 active:scale-[0.98] transition-all disabled:opacity-50"
+        >
+          {isDownloadingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+        </button>
+        <button
+          onClick={() => navigate(`/history/${machineId}`)}
           className="flex items-center justify-center gap-2 py-3.5 px-5 rounded-xl bg-surface-2 text-secondary-foreground font-semibold text-sm border border-border/40 active:scale-[0.98] transition-all"
         >
-          <FileText className="w-4 h-4" />
+          <History className="w-4 h-4" />
         </button>
         <button
           onClick={() => navigate('/')}

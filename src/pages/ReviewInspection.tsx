@@ -5,6 +5,7 @@ import { StatusBadge, StatusSummary } from '@/components/StatusBadge';
 import { Video, Mic2, Cpu, Send, PenLine, AlertCircle, ChevronDown, ChevronUp, Image, X } from 'lucide-react';
 import { useMemo, useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useInspectionStorage } from '@/hooks/useInspectionStorage';
 
 interface AIResult {
   id: string;
@@ -22,6 +23,8 @@ export default function ReviewInspection() {
   const location = useLocation();
   const { toast } = useToast();
   const machine = mockMachines.find(m => m.id === machineId);
+  const { saveInspection } = useInspectionStorage();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const routerState = location.state as { analyzedItems?: Record<string, AIResult>; transcript?: string; elapsed?: number } | null;
 
@@ -41,6 +44,7 @@ export default function ReviewInspection() {
   const [sections, setSections] = useState(initialSections);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(initialSections.map(s => s.id)));
   const [editingItem, setEditingItem] = useState<string | null>(null);
+  const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
 
   const counts = getStatusCounts(sections);
   const unconfirmedCount = sections.reduce((acc, s) => acc + s.items.filter(i => i.status === 'unconfirmed').length, 0);
@@ -59,19 +63,64 @@ export default function ReviewInspection() {
     if (navigator.vibrate) navigator.vibrate(30);
   }, []);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (hasUnconfirmed) {
       toast({ title: 'Cannot submit', description: `${unconfirmedCount} fields still unconfirmed.`, variant: 'destructive' });
       return;
     }
-    toast({ title: 'Report submitted', description: 'PDF generated and synced to VisionLink.' });
-    navigate(`/debrief/${machineId}`, { state: { sections, transcript: routerState?.transcript, elapsed: routerState?.elapsed } });
-  }, [hasUnconfirmed, unconfirmedCount, toast, navigate, machineId, sections, routerState]);
+    if (!machine) return;
+
+    setIsSubmitting(true);
+    toast({ title: 'Saving inspection...', description: 'Uploading photos and data.' });
+
+    try {
+      const inspectionId = await saveInspection({
+        machine,
+        sections,
+        transcript: routerState?.transcript,
+        elapsed: routerState?.elapsed,
+        analyzedItems: routerState?.analyzedItems,
+      });
+
+      if (inspectionId) {
+        toast({ title: 'Inspection saved!', description: 'Report saved permanently with all evidence.' });
+      } else {
+        toast({ title: 'Save warning', description: 'Inspection submitted but some data may not have saved.', variant: 'destructive' });
+      }
+
+      navigate(`/debrief/${machineId}`, {
+        state: {
+          sections,
+          transcript: routerState?.transcript,
+          elapsed: routerState?.elapsed,
+          inspectionId,
+        },
+      });
+    } catch (err) {
+      console.error('Submit error:', err);
+      toast({ title: 'Error saving', description: 'Proceeding to debrief.', variant: 'destructive' });
+      navigate(`/debrief/${machineId}`, { state: { sections, transcript: routerState?.transcript, elapsed: routerState?.elapsed } });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [hasUnconfirmed, unconfirmedCount, toast, navigate, machineId, sections, routerState, machine, saveInspection]);
 
   if (!machine) return null;
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Photo lightbox */}
+      {viewingPhoto && (
+        <div className="fixed inset-0 z-[100] bg-background/90 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setViewingPhoto(null)}>
+          <div className="relative max-w-lg w-full">
+            <img src={viewingPhoto} alt="Evidence" className="w-full rounded-xl border border-border/30 shadow-2xl" />
+            <button onClick={() => setViewingPhoto(null)} className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 backdrop-blur-sm">
+              <X className="w-4 h-4 text-foreground" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <PageHeader
         title="Review Inspection"
         subtitle={`${machine.assetId} • S/N ${machine.serial}`}
@@ -175,7 +224,7 @@ export default function ReviewInspection() {
                       </div>
                     )}
                     {(item as any).photoUrl && (
-                      <div className="mt-2 ml-9 rounded-lg overflow-hidden border border-border/20 max-w-[200px]">
+                      <div className="mt-2 ml-9 rounded-lg overflow-hidden border border-border/20 max-w-[200px] cursor-pointer" onClick={() => setViewingPhoto((item as any).photoUrl)}>
                         <img src={(item as any).photoUrl} alt="Evidence" className="w-full h-16 object-cover" />
                       </div>
                     )}
@@ -199,11 +248,15 @@ export default function ReviewInspection() {
         </button>
         <button
           onClick={handleSubmit}
-          disabled={hasUnconfirmed}
+          disabled={hasUnconfirmed || isSubmitting}
           className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-base glow-primary active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
         >
-          <Send className="w-4 h-4" />
-          Submit Report
+          {isSubmitting ? (
+            <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Send className="w-4 h-4" />
+          )}
+          {isSubmitting ? 'Saving...' : 'Submit Report'}
         </button>
       </div>
     </div>
