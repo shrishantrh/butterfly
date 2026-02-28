@@ -9,11 +9,11 @@ interface StatusBadgeProps {
 }
 
 const statusConfig: Record<InspectionStatus, { label: string; dotClass: string; bgClass: string }> = {
-  pass: { label: 'PASS', dotClass: 'status-dot-pass', bgClass: 'bg-status-pass/15 text-status-pass' },
-  monitor: { label: 'MONITOR', dotClass: 'status-dot-monitor', bgClass: 'bg-status-monitor/15 text-status-monitor' },
-  fail: { label: 'FAIL', dotClass: 'status-dot-fail', bgClass: 'bg-status-fail/15 text-status-fail' },
-  normal: { label: 'NORMAL', dotClass: 'status-dot-normal', bgClass: 'bg-muted text-muted-foreground' },
-  unconfirmed: { label: '—', dotClass: 'bg-border', bgClass: 'bg-border/30 text-muted-foreground' },
+  pass: { label: 'PASS', dotClass: 'status-dot-pass', bgClass: 'bg-status-pass/12 text-status-pass border border-status-pass/20' },
+  monitor: { label: 'MONITOR', dotClass: 'status-dot-monitor', bgClass: 'bg-status-monitor/12 text-status-monitor border border-status-monitor/20' },
+  fail: { label: 'FAIL', dotClass: 'status-dot-fail', bgClass: 'bg-status-fail/12 text-status-fail border border-status-fail/20' },
+  normal: { label: 'N/A', dotClass: 'status-dot-normal', bgClass: 'bg-muted/50 text-muted-foreground border border-border/40' },
+  unconfirmed: { label: '—', dotClass: 'bg-border', bgClass: 'bg-border/20 text-muted-foreground/60 border border-border/30 border-dashed' },
 };
 
 export const StatusBadge = forwardRef<HTMLSpanElement, StatusBadgeProps>(
@@ -23,7 +23,7 @@ export const StatusBadge = forwardRef<HTMLSpanElement, StatusBadgeProps>(
       <span
         ref={ref}
         className={cn(
-          'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-mono font-semibold uppercase tracking-wider',
+          'inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-mono font-semibold uppercase tracking-wider',
           config.bgClass,
           className
         )}
@@ -39,11 +39,11 @@ StatusBadge.displayName = 'StatusBadge';
 export const StatusSummary = forwardRef<HTMLDivElement, { pass: number; monitor: number; fail: number; normal: number }>(
   ({ pass, monitor, fail, normal }, ref) => {
     return (
-      <div ref={ref} className="flex items-center gap-3 text-base font-mono font-semibold">
+      <div ref={ref} className="flex items-center gap-2.5 text-sm font-mono font-semibold">
         <span className="flex items-center gap-1"><span className="status-dot status-dot-pass" />{pass}</span>
         <span className="flex items-center gap-1"><span className="status-dot status-dot-monitor" />{monitor}</span>
         <span className="flex items-center gap-1"><span className="status-dot status-dot-fail" />{fail}</span>
-        <span className="flex items-center gap-1"><span className="status-dot status-dot-normal" />{normal}</span>
+        <span className="flex items-center gap-1 text-muted-foreground"><span className="status-dot status-dot-normal" />{normal}</span>
       </div>
     );
   }

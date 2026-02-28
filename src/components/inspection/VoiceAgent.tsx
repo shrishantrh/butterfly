@@ -29,12 +29,9 @@ export function VoiceAgent({ formState, setFormState }: VoiceAgentProps) {
   const conversation = useConversation({
     onConnect: () => {
       console.log('[VoiceAgent] Connected');
-      // Send initial context 1s after connect
       setTimeout(() => {
         try {
-          conversation.sendContextualUpdate(
-            JSON.stringify(formStateRef.current)
-          );
+          conversation.sendContextualUpdate(JSON.stringify(formStateRef.current));
         } catch (e) {
           console.error('[VoiceAgent] Failed to send context:', e);
         }
@@ -44,25 +41,19 @@ export function VoiceAgent({ formState, setFormState }: VoiceAgentProps) {
     onError: (error) => console.error('[VoiceAgent] Error:', error),
   });
 
-  // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      conversation.endSession().catch(() => {});
-    };
+    return () => { conversation.endSession().catch(() => {}); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startSession = useCallback(async () => {
     setIsConnecting(true);
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
-
       await conversation.startSession({
         agentId: AGENT_ID,
         connectionType: 'webrtc',
         clientTools: {
-          getFormState: () => {
-            return JSON.stringify(formStateRef.current);
-          },
+          getFormState: () => JSON.stringify(formStateRef.current),
           getMissingFields: () => {
             const missing = Object.values(formStateRef.current.components)
               .filter(c => !c.inspected || c.status === null)
@@ -72,12 +63,7 @@ export function VoiceAgent({ formState, setFormState }: VoiceAgentProps) {
           getComponentDetails: (params: { componentId: string }) => {
             const comp = formStateRef.current.components[params.componentId];
             if (!comp) return JSON.stringify({ error: 'Component not found' });
-            return JSON.stringify({
-              name: comp.name,
-              status: comp.status,
-              notes: comp.notes,
-              inspected: comp.inspected,
-            });
+            return JSON.stringify({ name: comp.name, status: comp.status, notes: comp.notes, inspected: comp.inspected });
           },
           updateFormField: (params: { componentId: string; status: string; notes: string }) => {
             setFormState(prev => ({
@@ -101,7 +87,7 @@ export function VoiceAgent({ formState, setFormState }: VoiceAgentProps) {
             osc.type = 'sine';
             osc.frequency.setValueAtTime(1200, ctx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(1800, ctx.currentTime + 0.08);
-            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain.gain.setValueAtTime(0.25, ctx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
             osc.connect(gain).connect(ctx.destination);
             osc.start();
@@ -126,34 +112,39 @@ export function VoiceAgent({ formState, setFormState }: VoiceAgentProps) {
   const isActive = conversation.status === 'connected';
   const isSpeaking = conversation.isSpeaking;
 
-  // Button color & pulse
-  let buttonClasses = 'bg-status-monitor text-status-monitor-foreground'; // yellow default
-  let pulseClasses = '';
+  let ringColor = 'ring-primary/40';
+  let bgColor = 'bg-primary';
+  let iconColor = 'text-primary-foreground';
+  let pulseClass = '';
   let label = '';
 
   if (isActive && isSpeaking) {
-    buttonClasses = 'bg-status-monitor text-background';
-    pulseClasses = 'animate-pulse';
+    bgColor = 'bg-primary';
+    ringColor = 'ring-primary/30';
+    pulseClass = 'animate-pulse';
     label = 'Butterfly is responding';
   } else if (isActive) {
-    buttonClasses = 'bg-status-pass text-background';
-    pulseClasses = 'animate-pulse';
+    bgColor = 'bg-status-pass';
+    iconColor = 'text-background';
+    ringColor = 'ring-status-pass/30';
+    pulseClass = 'animate-pulse';
     label = 'Say "Hey Butterfly" to speak';
   }
 
   return (
-    <div className="fixed bottom-28 right-4 z-50 flex flex-col items-center gap-1.5">
+    <div className="fixed bottom-28 right-4 z-50 flex flex-col items-center gap-2">
       {label && (
-        <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg px-3 py-1.5 shadow-lg max-w-[180px]">
-          <p className="text-[11px] font-medium text-foreground text-center leading-tight">{label}</p>
+        <div className="glass-surface-elevated rounded-lg px-3 py-1.5 max-w-[180px]">
+          <p className="text-[10px] font-medium text-foreground text-center leading-tight">{label}</p>
         </div>
       )}
       <button
         onClick={isActive ? stopSession : startSession}
         disabled={isConnecting}
-        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-all active:scale-95 ${buttonClasses} ${pulseClasses} disabled:opacity-50`}
+        className={`w-13 h-13 rounded-full flex items-center justify-center ring-4 ${ringColor} ${bgColor} ${pulseClass} shadow-lg transition-all duration-200 active:scale-90 disabled:opacity-50`}
+        style={{ width: 52, height: 52 }}
       >
-        <Mic className="w-6 h-6" />
+        <Mic className={`w-5 h-5 ${iconColor}`} />
       </button>
     </div>
   );

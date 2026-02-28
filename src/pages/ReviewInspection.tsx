@@ -24,17 +24,13 @@ export default function ReviewInspection() {
   const routerState = location.state as { analyzedItems?: Record<string, AIResult>; transcript?: string; elapsed?: number } | null;
 
   const initialSections: InspectionSection[] = useMemo(() => {
-    if (!routerState?.analyzedItems || Object.keys(routerState.analyzedItems).length === 0) {
-      return completedInspection;
-    }
+    if (!routerState?.analyzedItems || Object.keys(routerState.analyzedItems).length === 0) return completedInspection;
     const ai = routerState.analyzedItems;
     return inspectionFormSections.map(section => ({
       ...section,
       items: section.items.map(item => {
         const result = ai[item.id];
-        if (result) {
-          return { ...item, status: result.status, comment: result.comment, evidence: result.evidence, faultCode: result.faultCode };
-        }
+        if (result) return { ...item, status: result.status, comment: result.comment, evidence: result.evidence, faultCode: result.faultCode };
         return item;
       }),
     }));
@@ -49,23 +45,13 @@ export default function ReviewInspection() {
   const hasUnconfirmed = unconfirmedCount > 0;
 
   const toggleSection = (id: string) => {
-    setExpandedSections(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+    setExpandedSections(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   };
 
   const quickResolve = useCallback((sectionId: string, itemId: string, status: InspectionStatus) => {
     setSections(prev => prev.map(s => {
       if (s.id !== sectionId) return s;
-      return {
-        ...s,
-        items: s.items.map(i => {
-          if (i.id !== itemId) return i;
-          return { ...i, status, comment: i.comment || `Manually marked ${status} during review`, evidence: [...(i.evidence || []), 'audio' as const] };
-        }),
-      };
+      return { ...s, items: s.items.map(i => i.id !== itemId ? i : { ...i, status, comment: i.comment || `Manually marked ${status}`, evidence: [...(i.evidence || []), 'audio' as const] }) };
     }));
     setEditingItem(null);
     if (navigator.vibrate) navigator.vibrate(30);
@@ -73,13 +59,11 @@ export default function ReviewInspection() {
 
   const handleSubmit = useCallback(() => {
     if (hasUnconfirmed) {
-      toast({ title: 'Cannot submit', description: `${unconfirmedCount} fields still unconfirmed. Tap each to resolve.`, variant: 'destructive' });
+      toast({ title: 'Cannot submit', description: `${unconfirmedCount} fields still unconfirmed.`, variant: 'destructive' });
       return;
     }
     toast({ title: 'Report submitted', description: 'PDF generated and synced to VisionLink.' });
-    navigate(`/debrief/${machineId}`, {
-      state: { sections, transcript: routerState?.transcript, elapsed: routerState?.elapsed },
-    });
+    navigate(`/debrief/${machineId}`, { state: { sections, transcript: routerState?.transcript, elapsed: routerState?.elapsed } });
   }, [hasUnconfirmed, unconfirmedCount, toast, navigate, machineId, sections, routerState]);
 
   if (!machine) return null;
@@ -93,74 +77,66 @@ export default function ReviewInspection() {
         right={<StatusSummary {...counts} />}
       />
 
-      <div className="px-5 py-5 space-y-4 pb-36">
+      <div className="px-5 py-4 space-y-3 pb-32">
         {/* General info */}
-        <div className="bg-card border border-border rounded-xl p-5">
-          <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4 font-mono">General Information</h3>
-          <div className="grid grid-cols-2 gap-4">
+        <div className="card-elevated p-4">
+          <p className="label-caps mb-3">General Information</p>
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-sm text-muted-foreground">Inspector</p>
-              <p className="font-semibold text-base">Marcus Chen</p>
+              <p className="text-xs text-muted-foreground">Inspector</p>
+              <p className="font-medium text-sm">Marcus Chen</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Date</p>
-              <p className="font-mono font-semibold text-base">{new Date().toISOString().split('T')[0]}</p>
+              <p className="text-xs text-muted-foreground">Date</p>
+              <p className="font-mono font-medium text-sm">{new Date().toISOString().split('T')[0]}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">SMU Hours</p>
-              <p className="font-mono font-semibold text-base">{machine.smuHours.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">SMU Hours</p>
+              <p className="font-mono font-medium text-sm">{machine.smuHours.toLocaleString()}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Duration</p>
-              <p className="font-mono font-semibold text-base">
+              <p className="text-xs text-muted-foreground">Duration</p>
+              <p className="font-mono font-medium text-sm">
                 {routerState?.elapsed ? `${Math.floor(routerState.elapsed / 60)}m ${routerState.elapsed % 60}s` : '—'}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Unconfirmed warning */}
         {hasUnconfirmed && (
-          <div className="flex items-center gap-3 bg-status-monitor/10 border border-status-monitor/20 rounded-xl p-4">
-            <AlertCircle className="w-6 h-6 text-status-monitor shrink-0" />
-            <p className="text-base text-status-monitor">
+          <div className="flex items-center gap-2.5 bg-status-monitor/6 border border-status-monitor/15 rounded-lg p-3.5">
+            <AlertCircle className="w-5 h-5 text-status-monitor shrink-0" />
+            <p className="text-sm text-status-monitor">
               <span className="font-semibold">{unconfirmedCount} field{unconfirmedCount !== 1 ? 's' : ''} unconfirmed.</span> Tap to resolve.
             </p>
           </div>
         )}
 
-        {/* Sections */}
         {sections.map((section) => (
-          <div key={section.id} className="bg-card border border-border rounded-xl overflow-hidden">
+          <div key={section.id} className="card-elevated overflow-hidden">
             <button
               onClick={() => toggleSection(section.id)}
-              className="w-full px-5 py-4 bg-surface-2 border-b border-border flex items-center justify-between touch-target"
+              className="w-full px-4 py-3 bg-surface-2/40 border-b border-border/30 flex items-center justify-between touch-target"
             >
-              <h3 className="text-base font-bold">{section.title}</h3>
+              <h3 className="text-sm font-semibold">{section.title}</h3>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-mono text-muted-foreground">
+                <span className="text-xs font-mono text-muted-foreground">
                   {section.items.filter(i => i.status !== 'unconfirmed').length}/{section.items.length}
                 </span>
-                {expandedSections.has(section.id)
-                  ? <ChevronUp className="w-5 h-5 text-muted-foreground" />
-                  : <ChevronDown className="w-5 h-5 text-muted-foreground" />
-                }
+                {expandedSections.has(section.id) ? <ChevronUp className="w-4 h-4 text-muted-foreground/50" /> : <ChevronDown className="w-4 h-4 text-muted-foreground/50" />}
               </div>
             </button>
             {expandedSections.has(section.id) && (
-              <div className="divide-y divide-border">
-                {section.items.map((item) => (
-                  <div key={item.id} className={`px-5 py-4 ${item.status === 'unconfirmed' ? 'bg-surface-2/30' : ''}`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="text-sm font-mono text-muted-foreground shrink-0 w-8">{item.id}</span>
-                        <span className="text-base font-medium text-foreground">{item.label}</span>
+              <div>
+                {section.items.map((item, idx) => (
+                  <div key={item.id} className={`px-4 py-3 ${idx > 0 ? 'border-t border-border/20' : ''} ${item.status === 'unconfirmed' ? 'bg-surface-2/20' : ''}`}>
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[11px] font-mono text-muted-foreground/50 shrink-0 w-7">{item.id}</span>
+                        <span className="text-sm font-medium text-foreground">{item.label}</span>
                       </div>
                       {item.status === 'unconfirmed' ? (
-                        <button
-                          onClick={() => setEditingItem(editingItem === item.id ? null : item.id)}
-                          className="shrink-0"
-                        >
+                        <button onClick={() => setEditingItem(editingItem === item.id ? null : item.id)} className="shrink-0">
                           <StatusBadge status={item.status} />
                         </button>
                       ) : (
@@ -168,15 +144,10 @@ export default function ReviewInspection() {
                       )}
                     </div>
 
-                    {/* Quick resolve buttons */}
                     {editingItem === item.id && item.status === 'unconfirmed' && (
-                      <div className="flex gap-2 mt-3 pl-10 flex-wrap">
+                      <div className="flex gap-1.5 mt-2.5 pl-9 flex-wrap">
                         {(['pass', 'monitor', 'fail', 'normal'] as InspectionStatus[]).map(s => (
-                          <button
-                            key={s}
-                            onClick={() => quickResolve(section.id, item.id, s)}
-                            className="touch-target"
-                          >
+                          <button key={s} onClick={() => quickResolve(section.id, item.id, s)} className="touch-target">
                             <StatusBadge status={s} />
                           </button>
                         ))}
@@ -184,16 +155,16 @@ export default function ReviewInspection() {
                     )}
 
                     {item.comment && (
-                      <p className="text-sm text-muted-foreground mt-2 pl-10 leading-relaxed">{item.comment}</p>
+                      <p className="text-xs text-muted-foreground/70 mt-1.5 pl-9 leading-relaxed">{item.comment}</p>
                     )}
                     {item.evidence && item.evidence.length > 0 && (
-                      <div className="flex items-center gap-3 mt-2 pl-10">
-                        {item.evidence.includes('video') && <Video className="w-4 h-4 text-primary" />}
-                        {item.evidence.includes('audio') && <Mic2 className="w-4 h-4 text-status-monitor" />}
+                      <div className="flex items-center gap-2.5 mt-1.5 pl-9">
+                        {item.evidence.includes('video') && <Video className="w-3.5 h-3.5 text-primary/60" />}
+                        {item.evidence.includes('audio') && <Mic2 className="w-3.5 h-3.5 text-status-monitor/60" />}
                         {item.evidence.includes('sensor') && (
                           <span className="flex items-center gap-1">
-                            <Cpu className="w-4 h-4 text-sensor" />
-                            {item.faultCode && <span className="text-sm font-mono text-sensor">{item.faultCode}</span>}
+                            <Cpu className="w-3.5 h-3.5 text-sensor/60" />
+                            {item.faultCode && <span className="text-[10px] font-mono text-sensor/60">{item.faultCode}</span>}
                           </span>
                         )}
                       </div>
@@ -206,27 +177,22 @@ export default function ReviewInspection() {
         ))}
       </div>
 
-      {/* Submit */}
-      <div className="fixed bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-background via-background to-transparent flex gap-3 safe-bottom">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/95 to-transparent flex gap-2.5 safe-bottom">
         <button
           onClick={() => {
-            // Toggle all unconfirmed items' edit state
             const firstUnconfirmed = sections.flatMap(s => s.items).find(i => i.status === 'unconfirmed');
-            if (firstUnconfirmed) {
-              setEditingItem(firstUnconfirmed.id);
-              toast({ title: 'Edit mode', description: 'Tap unconfirmed badges to set status.' });
-            }
+            if (firstUnconfirmed) { setEditingItem(firstUnconfirmed.id); toast({ title: 'Edit mode', description: 'Tap unconfirmed badges to set status.' }); }
           }}
-          className="flex items-center justify-center gap-2 py-4 px-6 rounded-xl bg-secondary text-secondary-foreground font-semibold text-base border border-border active:scale-[0.98] transition-all"
+          className="flex items-center justify-center gap-2 py-3.5 px-5 rounded-xl bg-surface-2 text-secondary-foreground font-semibold text-sm border border-border/40 active:scale-[0.98] transition-all"
         >
-          <PenLine className="w-5 h-5" />
+          <PenLine className="w-4 h-4" />
         </button>
         <button
           onClick={handleSubmit}
           disabled={hasUnconfirmed}
-          className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl bg-primary text-primary-foreground font-bold text-lg glow-primary hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-base glow-primary active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
         >
-          <Send className="w-5 h-5" />
+          <Send className="w-4 h-4" />
           Submit Report
         </button>
       </div>
