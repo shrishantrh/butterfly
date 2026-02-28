@@ -87,57 +87,87 @@ export default function InspectionHistory() {
           </div>
         )}
 
-        {inspections.map((insp) => (
-          <button
-            key={insp.id}
-            onClick={() => navigate(`/inspection-detail/${insp.id}`)}
-            className="w-full card-elevated p-4 text-left active:scale-[0.99] transition-transform"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  {insp.status && statusIcon[insp.status]}
-                  <span className={`text-sm font-bold ${insp.status ? statusColor[insp.status] : 'text-foreground'}`}>
-                    {insp.status || 'Pending'}
+        {inspections.map((insp) => {
+          const analysis = insp.analysis_json as any;
+          const safetyClearance = analysis?.executiveSummary?.safetyClearance;
+          const immediateActions = analysis?.executiveSummary?.immediateActions || [];
+          const clearanceConfig: Record<string, { label: string; desc: string; cls: string; bgCls: string; icon: React.ReactNode }> = {
+            GO: { label: 'CLEAR TO OPERATE', desc: 'Machine passed inspection — safe for normal operation.', cls: 'text-status-pass', bgCls: 'bg-status-pass/8 border-status-pass/20', icon: <Shield className="w-5 h-5 text-status-pass" /> },
+            CONDITIONAL: { label: 'CONDITIONAL USE', desc: 'Operable with restrictions — issues need attention.', cls: 'text-status-monitor', bgCls: 'bg-status-monitor/8 border-status-monitor/20', icon: <ShieldAlert className="w-5 h-5 text-status-monitor" /> },
+            NO_GO: { label: 'DO NOT OPERATE', desc: 'Critical issues found — machine must be serviced first.', cls: 'text-status-fail', bgCls: 'bg-status-fail/8 border-status-fail/20', icon: <AlertTriangle className="w-5 h-5 text-status-fail" /> },
+          };
+          const clearance = safetyClearance ? clearanceConfig[safetyClearance] : null;
+
+          return (
+            <button
+              key={insp.id}
+              onClick={() => navigate(`/inspection-detail/${insp.id}`)}
+              className="w-full card-elevated text-left active:scale-[0.99] transition-transform overflow-hidden"
+            >
+              {/* Safety clearance banner */}
+              {clearance ? (
+                <div className={`px-4 py-3 flex items-center gap-3 border-b ${clearance.bgCls}`}>
+                  {clearance.icon}
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-xs font-bold uppercase tracking-wider ${clearance.cls}`}>{clearance.label}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{clearance.desc}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="px-4 py-3 flex items-center gap-3 border-b bg-muted/30 border-border/30">
+                  <FileText className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">PENDING REVIEW</p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">Analysis not yet available.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Details */}
+              <div className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-foreground">{insp.asset_id} • {insp.machine_model}</p>
+                    {insp.executive_summary && (
+                      <p className="text-xs text-foreground/60 mt-1.5 line-clamp-2 leading-relaxed">{insp.executive_summary}</p>
+                    )}
+                    {immediateActions.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {immediateActions.slice(0, 2).map((action: string, i: number) => (
+                          <p key={i} className="text-[11px] text-status-monitor flex items-start gap-1.5">
+                            <span className="shrink-0 mt-0.5">⚠</span>
+                            <span className="line-clamp-1">{action}</span>
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0 mt-1" />
+                </div>
+
+                <div className="flex items-center gap-3 mt-3 text-[10px] text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    {new Date(insp.created_at).toLocaleDateString()}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <User className="w-3 h-3" />
+                    {insp.inspector_name}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Gauge className="w-3 h-3" />
+                    {insp.smu_hours?.toLocaleString()} hrs
                   </span>
                   {insp.health_score != null && (
-                    <span className="text-xs font-mono text-muted-foreground bg-surface-2 px-1.5 py-0.5 rounded">
+                    <span className="flex items-center gap-1 font-mono">
                       {insp.health_score}/100
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground truncate">
-                  {insp.asset_id} • {insp.machine_model}
-                </p>
-                {insp.executive_summary && (
-                  <p className="text-xs text-foreground/60 mt-1.5 line-clamp-2 leading-relaxed">{insp.executive_summary}</p>
-                )}
               </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0 mt-1" />
-            </div>
-
-            <div className="flex items-center gap-3 mt-3 text-[10px] text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Calendar className="w-3 h-3" />
-                {new Date(insp.created_at).toLocaleDateString()}
-              </span>
-              <span className="flex items-center gap-1">
-                <User className="w-3 h-3" />
-                {insp.inspector_name}
-              </span>
-              <span className="flex items-center gap-1">
-                <Gauge className="w-3 h-3" />
-                {insp.smu_hours?.toLocaleString()} hrs
-              </span>
-              {insp.duration_seconds && (
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {Math.floor(insp.duration_seconds / 60)}m {insp.duration_seconds % 60}s
-                </span>
-              )}
-            </div>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
