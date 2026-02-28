@@ -29,6 +29,7 @@ export default function ActiveInspection() {
   const prevItemCount = useRef(0);
   const isMounted = useRef(true);
   const scribeConnected = useRef(false);
+  const hasInitialized = useRef(false);
   const [showForm, setShowForm] = useState(true);
   const [viewMode, setViewMode] = useState<'form' | 'camera'>('form');
 
@@ -135,38 +136,50 @@ export default function ActiveInspection() {
   }, []);
 
   const startLiveInspection = useCallback(async () => {
+    if (!isMounted.current) return;
     setIsConnecting(true);
     setConnectionError(null);
     try {
+      console.log('[Inspection] Fetching scribe token...');
       const { data, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
+      if (!isMounted.current) return;
       if (error || !data?.token) {
         throw new Error(data?.error || error?.message || 'Failed to get transcription token');
       }
 
+      console.log('[Inspection] Connecting scribe...');
       await scribe.connect({
         token: data.token,
         microphone: { echoCancellation: true, noiseSuppression: true },
       });
+      if (!isMounted.current) {
+        try { scribe.disconnect(); } catch {}
+        return;
+      }
       scribeConnected.current = true;
+      console.log('[Inspection] Scribe connected successfully');
       await startCamera();
     } catch (e) {
+      if (!isMounted.current) return;
       const msg = e instanceof Error ? e.message : 'Could not initialize inspection';
+      console.error('[Inspection] Connection failed:', msg);
       setConnectionError(msg);
       toast({ title: 'Connection failed', description: msg, variant: 'destructive' });
-      // Still start camera even if mic fails
       await startCamera();
     } finally {
       if (isMounted.current) setIsConnecting(false);
     }
   }, [scribe, toast, startCamera]);
 
-  // Auto-start
+  // Auto-start — guard against React strict mode double-mount
   useEffect(() => {
-    if (!isUploadMode) {
+    if (!isUploadMode && !hasInitialized.current) {
+      hasInitialized.current = true;
       startLiveInspection();
     }
     return () => {
       if (scribeConnected.current) {
+        console.log('[Inspection] Cleaning up scribe connection');
         try { scribe.disconnect(); } catch {}
         scribeConnected.current = false;
       }
