@@ -52,6 +52,7 @@ export default {
           monitor: "hsl(var(--status-monitor))",
           fail: "hsl(var(--status-fail))",
           normal: "hsl(var(--status-normal))",
+          conflicted: "hsl(var(--status-conflicted))",
         },
         sensor: "hsl(var(--sensor))",
         surface: {

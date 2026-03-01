@@ -13,7 +13,7 @@ export interface SensorEvidencePoint {
 
 export interface AnalysisResult {
   id: string;
-  status: 'pass' | 'monitor' | 'fail' | 'normal';
+  status: 'pass' | 'monitor' | 'fail' | 'normal' | 'conflicted';
   comment: string;
   evidence: ('audio' | 'video' | 'sensor')[];
   faultCode?: string;
@@ -21,7 +21,7 @@ export interface AnalysisResult {
   annotation?: string;
   aiAgreement?: 'agree' | 'disagree' | 'uncertain';
   aiVisualNote?: string;
-  sensorEvidence?: SensorEvidencePoint; // telemetry data point backing a disagreement
+  sensorEvidence?: SensorEvidencePoint;
 }
 
 export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string, sensorContext?: string) {
@@ -83,10 +83,18 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string,
           const next = new Map(prev);
           for (const item of data.items as AnalysisResult[]) {
             const existing = next.get(item.id);
-            const severityOrder = { fail: 3, monitor: 2, pass: 1, normal: 0 };
-            if (!existing || severityOrder[item.status] >= severityOrder[existing.status]) {
+            const severityOrder: Record<string, number> = { fail: 4, conflicted: 3, monitor: 2, pass: 1, normal: 0 };
+
+            // Auto-mark as 'conflicted' when AI disagrees due to sensor evidence
+            let finalStatus = item.status;
+            if (item.aiAgreement === 'disagree' && item.sensorEvidence) {
+              finalStatus = 'conflicted';
+            }
+
+            if (!existing || (severityOrder[finalStatus] ?? 0) >= (severityOrder[existing.status] ?? 0)) {
               next.set(item.id, {
                 ...item,
+                status: finalStatus,
                 photoUrl: frameUrl || existing?.photoUrl,
                 annotation: item.annotation || existing?.annotation,
                 sensorEvidence: item.sensorEvidence || existing?.sensorEvidence,

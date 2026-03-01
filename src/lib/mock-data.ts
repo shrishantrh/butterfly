@@ -1,4 +1,4 @@
-export type InspectionStatus = 'pass' | 'monitor' | 'fail' | 'normal' | 'unconfirmed';
+export type InspectionStatus = 'pass' | 'monitor' | 'fail' | 'normal' | 'unconfirmed' | 'conflicted';
 
 export interface FaultCode {
   code: string;
@@ -247,7 +247,7 @@ export const completedInspection: InspectionSection[] = [
 ];
 
 export function getStatusCounts(sections: InspectionSection[]) {
-  const counts = { pass: 0, monitor: 0, fail: 0, normal: 0 };
+  const counts = { pass: 0, monitor: 0, fail: 0, normal: 0, conflicted: 0 };
   sections.forEach(s => s.items.forEach(item => {
     if (item.status in counts) counts[item.status as keyof typeof counts]++;
   }));

@@ -8,7 +8,7 @@ import { detectSensorConflicts, buildConflictInterjection } from '@/lib/sensor-c
 export interface FormComponentState {
   id: string;
   name: string;
-  status: 'pass' | 'monitor' | 'fail' | 'normal' | null;
+  status: 'pass' | 'monitor' | 'fail' | 'normal' | 'conflicted' | null;
   notes: string;
   inspected: boolean;
 }

@@ -70,7 +70,10 @@ export default function ReviewInspection() {
 
   const counts = getStatusCounts(sections);
   const unconfirmedCount = sections.reduce((acc, s) => acc + s.items.filter(i => i.status === 'unconfirmed').length, 0);
+  const conflictedCount = sections.reduce((acc, s) => acc + s.items.filter(i => i.status === 'conflicted').length, 0);
   const hasUnconfirmed = unconfirmedCount > 0;
+  const hasConflicted = conflictedCount > 0;
+  const cannotSubmit = hasUnconfirmed || hasConflicted;
 
   // Count AI disagreements
   const disagreementCount = sections.reduce((acc, s) => 
@@ -90,8 +93,11 @@ export default function ReviewInspection() {
   }, []);
 
   const handleSubmit = useCallback(async () => {
-    if (hasUnconfirmed) {
-      toast({ title: 'Cannot submit', description: `${unconfirmedCount} fields still unconfirmed.`, variant: 'destructive' });
+    if (cannotSubmit) {
+      const msgs = [];
+      if (hasUnconfirmed) msgs.push(`${unconfirmedCount} unconfirmed`);
+      if (hasConflicted) msgs.push(`${conflictedCount} conflicted`);
+      toast({ title: 'Cannot submit', description: `${msgs.join(' and ')} field${(unconfirmedCount + conflictedCount) !== 1 ? 's' : ''} need review.`, variant: 'destructive' });
       return;
     }
     if (!machine) return;
@@ -180,8 +186,18 @@ export default function ReviewInspection() {
           </div>
         </div>
 
+        {/* Conflicted items warning */}
+        {hasConflicted && (
+          <div className="flex items-center gap-2.5 bg-status-conflicted/6 border border-status-conflicted/15 rounded-lg p-3.5">
+            <Eye className="w-5 h-5 text-status-conflicted shrink-0" />
+            <p className="text-sm text-status-conflicted">
+              <span className="font-semibold">{conflictedCount} item{conflictedCount !== 1 ? 's' : ''} conflicted.</span> Sensor data disagrees — tap to review and resolve.
+            </p>
+          </div>
+        )}
+
         {/* AI Disagreements Warning */}
-        {disagreementCount > 0 && (
+        {disagreementCount > 0 && !hasConflicted && (
           <div className="flex items-center gap-2.5 bg-accent/6 border border-accent/15 rounded-lg p-3.5">
             <Eye className="w-5 h-5 text-accent shrink-0" />
             <p className="text-sm text-accent">
@@ -208,7 +224,7 @@ export default function ReviewInspection() {
               <h3 className="text-sm font-semibold">{section.title}</h3>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono text-muted-foreground">
-                  {section.items.filter(i => i.status !== 'unconfirmed').length}/{section.items.length}
+                  {section.items.filter(i => i.status !== 'unconfirmed' && i.status !== 'conflicted').length}/{section.items.length}
                 </span>
                 {expandedSections.has(section.id) ? <ChevronUp className="w-4 h-4 text-muted-foreground/50" /> : <ChevronDown className="w-4 h-4 text-muted-foreground/50" />}
               </div>
@@ -218,7 +234,7 @@ export default function ReviewInspection() {
                 {section.items.map((item, idx) => {
                   const aiItem = item as any;
                   return (
-                    <div key={item.id} className={`px-4 py-3 ${idx > 0 ? 'border-t border-border/20' : ''} ${item.status === 'unconfirmed' ? 'bg-surface-2/20' : aiItem.aiAgreement === 'disagree' ? 'bg-accent/4' : ''}`}>
+                    <div key={item.id} className={`px-4 py-3 ${idx > 0 ? 'border-t border-border/20' : ''} ${item.status === 'unconfirmed' ? 'bg-surface-2/20' : item.status === 'conflicted' ? 'bg-status-conflicted/4' : aiItem.aiAgreement === 'disagree' ? 'bg-accent/4' : ''}`}>
                       <div className="flex items-start justify-between gap-2.5">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-[11px] font-mono text-muted-foreground/50 shrink-0 w-7">{item.id}</span>
@@ -228,7 +244,7 @@ export default function ReviewInspection() {
                           {aiItem.aiAgreement && (
                             <AIValidationIndicator agreement={aiItem.aiAgreement} compact />
                           )}
-                          {item.status === 'unconfirmed' ? (
+                          {(item.status === 'unconfirmed' || item.status === 'conflicted') ? (
                             <button onClick={() => setEditingItem(editingItem === item.id ? null : item.id)} className="shrink-0">
                               <StatusBadge status={item.status} />
                             </button>
@@ -238,7 +254,7 @@ export default function ReviewInspection() {
                         </div>
                       </div>
 
-                      {editingItem === item.id && item.status === 'unconfirmed' && (
+                      {editingItem === item.id && (item.status === 'unconfirmed' || item.status === 'conflicted') && (
                         <div className="flex gap-1.5 mt-2.5 pl-9 flex-wrap">
                           {(['pass', 'monitor', 'fail', 'normal'] as InspectionStatus[]).map(s => (
                             <button key={s} onClick={() => quickResolve(section.id, item.id, s)} className="touch-target">
@@ -295,8 +311,8 @@ export default function ReviewInspection() {
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/95 to-transparent flex gap-2.5 safe-bottom">
         <button
           onClick={() => {
-            const firstUnconfirmed = sections.flatMap(s => s.items).find(i => i.status === 'unconfirmed');
-            if (firstUnconfirmed) { setEditingItem(firstUnconfirmed.id); toast({ title: 'Edit mode', description: 'Tap unconfirmed badges to set status.' }); }
+            const firstResolvable = sections.flatMap(s => s.items).find(i => i.status === 'unconfirmed' || i.status === 'conflicted');
+            if (firstResolvable) { setEditingItem(firstResolvable.id); toast({ title: 'Edit mode', description: 'Tap conflicted or unconfirmed badges to set status.' }); }
           }}
           className="flex items-center justify-center gap-2 py-3.5 px-5 rounded-xl bg-surface-2 text-secondary-foreground font-semibold text-sm border border-border/40 active:scale-[0.98] transition-all"
         >
@@ -304,7 +320,7 @@ export default function ReviewInspection() {
         </button>
         <button
           onClick={handleSubmit}
-          disabled={hasUnconfirmed || isSubmitting}
+          disabled={cannotSubmit || isSubmitting}
           className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-base glow-primary active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
         >
           {isSubmitting ? (
