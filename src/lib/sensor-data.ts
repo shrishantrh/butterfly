@@ -189,6 +189,80 @@ export function getData(key: string, machineId?: string): DataPoint[] {
   CACHE[cacheKey] = pts; return pts;
 }
 
+/** Clear cached data so next getData() regenerates fresh points. */
+export function clearSensorCache(key?: string, machineId?: string) {
+  if (key) {
+    const cacheKey = machineId ? `${machineId}:${key}` : key;
+    delete CACHE[cacheKey];
+  } else {
+    Object.keys(CACHE).forEach(k => delete CACHE[k]);
+  }
+}
+
+/**
+ * Append a new live data point to a sensor's cached data, shifting the window.
+ * Returns the updated data array.
+ */
+export function appendLivePoint(key: string, machineId?: string): DataPoint[] {
+  if (!SENSORS[key]) return [];
+  const data = getData(key, machineId); // ensures cache exists
+  const cacheKey = machineId ? `${machineId}:${key}` : key;
+  const s = getSensorForMachine(key, machineId);
+  const origSensor = SENSORS[key];
+
+  // Generate a new value based on the last known value
+  const lastWithValue = [...data].reverse().find(d => d.value !== null);
+  const now = new Date();
+  const timeLabel = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  let val: number;
+  if (s.type === 'fuel' || s.type === 'def') {
+    const prev = lastWithValue?.value ?? 50;
+    const rate = s.type === 'fuel' ? 0.003 : 0.0005;
+    val = +(Math.max(0, prev * (1 - rate + (Math.random() - 0.5) * 0.001))).toFixed(1);
+  } else if (s.type === 'dpf') {
+    const prev = lastWithValue?.value ?? 20;
+    val = +(Math.min(100, prev + (Math.random() - 0.3) * 0.5)).toFixed(1);
+  } else if (s.type === 'idle') {
+    const prev = lastWithValue?.value ?? 15;
+    val = +(Math.min(100, prev + (Math.random() - 0.2) * 0.4)).toFixed(1);
+  } else if (s.type === 'smu') {
+    const prev = lastWithValue?.value ?? 4000;
+    val = +(prev + 10 / 60).toFixed(2);
+  } else {
+    const prev = lastWithValue?.value ?? s.base!;
+    // Small random walk around previous value
+    const jitter = (Math.random() - 0.5) * s.noise! * 2;
+    val = +(prev + jitter).toFixed(2);
+    // Occasional spikes (2% chance)
+    if (Math.random() < 0.02 && origSensor.warn !== null) {
+      val = +(origSensor.warn + (Math.random() - 0.3) * (origSensor.crit! - origSensor.warn)).toFixed(2);
+    }
+  }
+
+  let status = 'normal';
+  if (origSensor.warn !== null) {
+    if (origSensor.dir === 'above') {
+      if (val >= origSensor.crit!) status = 'critical';
+      else if (val >= origSensor.warn) status = 'warning';
+    } else {
+      if (val <= origSensor.crit!) status = 'critical';
+      else if (val <= origSensor.warn) status = 'warning';
+    }
+  }
+
+  const newPoint: DataPoint = { time: timeLabel, value: val, status };
+  data.push(newPoint);
+  if (data.length > 200) data.shift(); // keep window bounded
+  CACHE[cacheKey] = data;
+  return data;
+}
+
+/** Tick all sensors for a machine — call on interval for live updates. */
+export function tickAllSensors(machineId?: string): void {
+  Object.keys(SENSORS).forEach(key => appendLivePoint(key, machineId));
+}
+
 export function getAlert(key: string, machineId?: string): string | null {
   const d = getData(key, machineId);
   if (d.some(p => p.status === 'critical')) return 'critical';
