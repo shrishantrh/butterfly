@@ -98,6 +98,24 @@ const MACHINE_PROFILES: Record<string, MachineOverrides> = {
       swing_speed:           { base: 7.5, amp: 3.2, noise: 0.8, spikes: {} },
     },
   },
+  // Telehandler 001 — mid-life (1842 SMU), transmission warning
+  'telehandler-001': {
+    fuelStart: 63, defStart: 55, dpfStart: 15, smuStart: 1842.0,
+    sensorOverrides: {
+      engine_coolant_temp:   { base: 84,  amp: 4,   noise: 1.2, spikes: {} },
+      engine_oil_pressure:   { base: 370, amp: 25,  noise: 6,   spikes: {} },
+      engine_rpm:            { base: 1500,amp: 190, noise: 32,  spikes: {} },
+      engine_load:           { base: 55,  amp: 13,  noise: 3,   spikes: {} },
+      boost_pressure:        { base: 152, amp: 28,  noise: 5,   spikes: {} },
+      battery_voltage:       { base: 14.0,amp: 0.35,noise: 0.1, spikes: {} },
+      hydraulic_oil_temp:    { base: 62,  amp: 7,   noise: 1.8, spikes: {} },
+      pump_pressure_front:   { base: 195, amp: 48,  noise: 9,   spikes: {} },
+      pump_pressure_rear:    { base: 190, amp: 44,  noise: 8,   spikes: {} },
+      fuel_consumption_rate: { base: 10.5,amp: 3.2, noise: 0.6, spikes: {} },
+      exhaust_gas_temp:      { base: 350, amp: 60,  noise: 11,  spikes: {} },
+      swing_speed:           { base: 5.5, amp: 2.0, noise: 0.4, spikes: {} },
+    },
+  },
 };
 
 function getMachineProfile(machineId?: string): MachineOverrides {

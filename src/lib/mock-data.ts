@@ -39,6 +39,7 @@ export interface Machine {
   };
   activeFaultCodes: FaultCode[];
   imageUrl?: string;
+  sketchfabId?: string;
 }
 
 export const mockMachines: Machine[] = [
@@ -51,6 +52,7 @@ export const mockMachines: Machine[] = [
     fuelLevel: 72,
     location: 'Site Alpha — Sector 3',
     gpsCoords: { lat: 33.749, lng: -84.388 },
+    sketchfabId: '5f195244108c46e495a1e78040f02f7e',
     lastInspection: {
       date: '2026-02-27',
       inspector: 'Marcus Chen',
@@ -82,6 +84,7 @@ export const mockMachines: Machine[] = [
     fuelLevel: 45,
     location: 'Site Beta — North Pad',
     gpsCoords: { lat: 33.755, lng: -84.395 },
+    sketchfabId: '5f195244108c46e495a1e78040f02f7e',
     lastInspection: {
       date: '2026-02-27',
       inspector: 'Sarah Okonkwo',
@@ -98,6 +101,7 @@ export const mockMachines: Machine[] = [
     fuelLevel: 18,
     location: 'Site Gamma — Haul Road',
     gpsCoords: { lat: 33.741, lng: -84.401 },
+    sketchfabId: '5f195244108c46e495a1e78040f02f7e',
     lastInspection: {
       date: '2026-02-26',
       inspector: 'Marcus Chen',
@@ -110,6 +114,31 @@ export const mockMachines: Machine[] = [
         severity: 'critical',
         timestamp: '2026-02-28T02:30:00Z',
         system: 'Engine',
+      },
+    ],
+  },
+  {
+    id: 'telehandler-001',
+    model: 'CAT TH255C Telehandler',
+    serial: 'TLH00337',
+    assetId: 'TLH-255-012',
+    smuHours: 1842,
+    fuelLevel: 63,
+    location: 'Site Alpha — Laydown Yard',
+    gpsCoords: { lat: 33.752, lng: -84.391 },
+    sketchfabId: '70e7ca3efb21410b8c21db4b8db5abb1',
+    lastInspection: {
+      date: '2026-02-28',
+      inspector: 'Sarah Okonkwo',
+      summary: { pass: 28, monitor: 4, fail: 1, normal: 5 },
+    },
+    activeFaultCodes: [
+      {
+        code: '523:0168-4',
+        description: 'Transmission oil pressure — below normal',
+        severity: 'warning',
+        timestamp: '2026-02-28T07:15:00Z',
+        system: 'Transmission',
       },
     ],
   },

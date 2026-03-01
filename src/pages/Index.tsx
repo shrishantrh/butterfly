@@ -1,12 +1,10 @@
 import { mockMachines } from '@/lib/mock-data';
-import { MachineCard } from '@/components/MachineCard';
 import { FleetMap } from '@/components/FleetMap';
 import {
-  Search, History, BarChart3, MapPin, Clock, ChevronRight, Fuel, AlertTriangle,
+  Search, History, ChevronRight, AlertTriangle, ArrowRight,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useState, useRef } from 'react';
-import { getData } from '@/lib/sensor-data';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
@@ -21,6 +19,7 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'fleet' | 'map' | 'history'>('fleet');
   const [direction, setDirection] = useState(0);
+  const [selectedMachineId, setSelectedMachineId] = useState(mockMachines[0]?.id);
   const tabOrder = ['fleet', 'map', 'history'] as const;
 
   const switchTab = (tab: typeof activeTab) => {
@@ -37,13 +36,23 @@ const Index = () => {
     m.serial.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalAlerts = mockMachines.reduce((sum, m) => sum + m.activeFaultCodes.length, 0);
-  const totalFails = mockMachines.reduce((sum, m) => sum + (m.lastInspection?.summary.fail ?? 0), 0);
-  const totalMonitor = mockMachines.reduce((sum, m) => sum + (m.lastInspection?.summary.monitor ?? 0), 0);
-  const avgFuel = mockMachines.reduce((sum, m) => {
-    const fuelData = getData('fuel_level', m.id).filter(d => d.value !== null);
-    return sum + (fuelData.length > 0 ? fuelData[fuelData.length - 1].value! : m.fuelLevel);
-  }, 0) / mockMachines.length;
+  const selectedMachine = mockMachines.find(m => m.id === selectedMachineId) || mockMachines[0];
+
+  const statusColor = (m: typeof mockMachines[0]) => {
+    if (m.activeFaultCodes.some(f => f.severity === 'critical')) return 'hsl(var(--status-fail))';
+    if (m.activeFaultCodes.length > 0) return 'hsl(var(--status-monitor))';
+    return 'hsl(var(--status-pass))';
+  };
+
+  const statusLabel = (m: typeof mockMachines[0]) => {
+    if (m.activeFaultCodes.some(f => f.severity === 'critical')) return 'Critical';
+    if (m.activeFaultCodes.length > 0) return 'Warning';
+    return 'Online';
+  };
+
+  const sketchfabUrl = selectedMachine.sketchfabId
+    ? `https://sketchfab.com/models/${selectedMachine.sketchfabId}/embed?autostart=1&ui_hint=0&ui_theme=dark&dnt=1&ui_infos=0&ui_watermark_link=0&ui_watermark=0&ui_ar=0&ui_help=0&ui_settings=0&ui_inspector=0&ui_fullscreen=0&ui_annotations=0&ui_vr=0&ui_color=FFCD11&preload=1&transparent=1&camera=0&autospin=0.08`
+    : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -105,19 +114,177 @@ const Index = () => {
           >
             {activeTab === 'fleet' && (
               <>
-                {/* Machines */}
+                {/* 3D Model Hero */}
+                {sketchfabUrl && (
+                  <div className="mx-5 mt-3 ios-card overflow-hidden">
+                    <div className="relative" style={{ height: 300 }}>
+                      <AnimatePresence mode="wait">
+                        <motion.iframe
+                          key={selectedMachine.sketchfabId}
+                          title={`${selectedMachine.model} 3D Model`}
+                          src={sketchfabUrl}
+                          className="absolute inset-0 w-full h-full"
+                          style={{ border: 'none', background: 'transparent' }}
+                          allow="autoplay; fullscreen; xr-spatial-tracking"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.4 }}
+                        />
+                      </AnimatePresence>
+
+                      {/* Gradient overlays */}
+                      <div className="absolute inset-0 pointer-events-none"
+                        style={{
+                          background: 'linear-gradient(180deg, hsl(var(--background) / 0.25) 0%, transparent 15%, transparent 85%, hsl(var(--background) / 0.4) 100%)',
+                        }}
+                      />
+
+                      {/* Status dots on 3D model */}
+                      {(() => {
+                        const color = statusColor(selectedMachine);
+                        const label = statusLabel(selectedMachine);
+                        const dotPositions = [
+                          { top: '25%', left: '35%' },
+                          { top: '55%', left: '60%' },
+                          { top: '40%', right: '25%' },
+                        ];
+                        return dotPositions.map((pos, i) => (
+                          <span
+                            key={i}
+                            className="absolute z-10"
+                            style={pos as React.CSSProperties}
+                          >
+                            <span className="absolute inset-0 rounded-full animate-ping"
+                              style={{ background: color, opacity: 0.15, animationDuration: `${2.5 + i * 0.5}s` }}
+                            />
+                            <span className="relative flex items-center justify-center w-3.5 h-3.5 rounded-full"
+                              style={{
+                                background: `${color}20`,
+                                border: `1.5px solid ${color}`,
+                                boxShadow: `0 0 10px ${color}30`,
+                              }}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
+                            </span>
+                          </span>
+                        ));
+                      })()}
+
+                      {/* Title badge */}
+                      <div className="absolute top-3 left-3 z-10 px-3 py-1.5 rounded-xl"
+                        style={{
+                          background: 'hsl(var(--card) / 0.8)',
+                          backdropFilter: 'blur(20px)',
+                          border: '0.5px solid hsl(var(--border) / 0.3)',
+                        }}
+                      >
+                        <p className="text-[10px] font-semibold text-foreground tracking-wide uppercase">
+                          {selectedMachine.assetId} · 3D
+                        </p>
+                      </div>
+
+                      {/* Status badge */}
+                      <div className="absolute top-3 right-3 z-10 px-2.5 py-1.5 rounded-xl flex items-center gap-1.5"
+                        style={{
+                          background: 'hsl(var(--card) / 0.8)',
+                          backdropFilter: 'blur(20px)',
+                          border: `0.5px solid ${statusColor(selectedMachine)}30`,
+                        }}
+                      >
+                        <span className="w-2 h-2 rounded-full" style={{ background: statusColor(selectedMachine) }} />
+                        <span className="text-[10px] font-semibold" style={{ color: statusColor(selectedMachine) }}>
+                          {statusLabel(selectedMachine)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Machine info + inspect button */}
+                    <div className="px-4 py-3.5 flex items-center justify-between"
+                      style={{ borderTop: '0.33px solid hsl(var(--border) / 0.3)' }}
+                    >
+                      <div>
+                        <p className="ios-body font-semibold text-foreground">
+                          {selectedMachine.model.replace('Hydraulic Excavator', '').trim()}
+                        </p>
+                        <p className="ios-caption text-muted-foreground mt-0.5">
+                          {selectedMachine.smuHours.toLocaleString()} hrs · {selectedMachine.location}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => navigate(`/pre-inspection/${selectedMachine.id}`)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold transition-all active:scale-95"
+                        style={{
+                          background: 'hsl(var(--primary))',
+                          color: 'hsl(var(--primary-foreground))',
+                          boxShadow: '0 4px 14px hsl(var(--primary) / 0.3)',
+                        }}
+                      >
+                        Inspect
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Machine list */}
                 <div className="ios-section-header mt-3">Machines · {filteredMachines.length}</div>
                 <div className="mx-5 ios-card">
-                  {filteredMachines.map((machine, i) => (
-                    <motion.div
-                      key={machine.id}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.15 + i * 0.04, duration: 0.3 }}
-                    >
-                      <MachineCard machine={machine} showSeparator={i < filteredMachines.length - 1} />
-                    </motion.div>
-                  ))}
+                  {filteredMachines.map((machine, i) => {
+                    const isSelected = machine.id === selectedMachineId;
+                    const color = statusColor(machine);
+                    return (
+                      <motion.button
+                        key={machine.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.15 + i * 0.04, duration: 0.3 }}
+                        onClick={() => setSelectedMachineId(machine.id)}
+                        className="w-full text-left flex items-center gap-3.5 px-4 py-3.5 transition-colors active:bg-foreground/[0.03]"
+                        style={{
+                          ...(i < filteredMachines.length - 1 ? { borderBottom: '0.33px solid hsl(var(--border) / 0.3)' } : {}),
+                          ...(isSelected ? { background: 'hsl(var(--primary) / 0.06)' } : {}),
+                        }}
+                      >
+                        {/* Status indicator */}
+                        <div className="w-[42px] h-[42px] rounded-[12px] flex items-center justify-center shrink-0 relative"
+                          style={{
+                            background: `${color}12`,
+                            border: isSelected ? `1.5px solid ${color}40` : `0.5px solid ${color}15`,
+                          }}
+                        >
+                          <span className="w-3 h-3 rounded-full" style={{ background: color }} />
+                          {isSelected && (
+                            <motion.span
+                              layoutId="machine-ring"
+                              className="absolute inset-0 rounded-[12px]"
+                              style={{ border: `2px solid ${color}50` }}
+                            />
+                          )}
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="ios-body font-semibold text-foreground truncate">
+                            {machine.model.replace('Hydraulic Excavator', '').trim()}
+                          </p>
+                          <p className="ios-subhead text-muted-foreground truncate mt-0.5">
+                            {machine.assetId} · {machine.smuHours.toLocaleString()} hrs
+                          </p>
+                          {machine.activeFaultCodes.length > 0 && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <AlertTriangle className="w-3 h-3 text-status-fail" />
+                              <span className="ios-caption font-medium text-status-fail">
+                                {machine.activeFaultCodes.length} Fault{machine.activeFaultCodes.length !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/20 shrink-0" />
+                      </motion.button>
+                    );
+                  })}
                   {filteredMachines.length === 0 && searchQuery && (
                     <div className="p-10 text-center">
                       <Search className="w-6 h-6 text-muted-foreground/15 mx-auto mb-2" />
