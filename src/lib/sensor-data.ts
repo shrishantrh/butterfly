@@ -39,52 +39,63 @@ type MachineOverrides = {
 };
 
 const MACHINE_PROFILES: Record<string, MachineOverrides> = {
-  // Machine 001 — mid-life, hydraulic issues, coolant runs hot
+  // Machine 001 — mid-life (4287 SMU), hydraulic issues + coolant runs hot
+  // Expected alerts: coolant temp (warning/critical spikes), oil pressure (warning spikes),
+  //   hydraulic oil temp (warning/critical spikes), boost pressure (warning spikes)
   'cat-320-001': {
     fuelStart: 85, defStart: 78, dpfStart: 12, smuStart: 4821.4,
     sensorOverrides: {
       engine_coolant_temp:   { base: 88,  amp: 6,   noise: 1.8, spikes: {95:106.2, 96:108.5, 97:110.1, 98:107.4, 99:104.2} },
       engine_oil_pressure:   { base: 360, amp: 35,  noise: 8,   spikes: {72:255, 73:248, 74:261} },
+      engine_rpm:            { base: 1650,amp: 200, noise: 35,  spikes: {} },
+      engine_load:           { base: 62,  amp: 15,  noise: 3,   spikes: {} },
+      boost_pressure:        { base: 165, amp: 30,  noise: 6,   spikes: {55:222, 56:225} },
+      battery_voltage:       { base: 13.8,amp: 0.4, noise: 0.12,spikes: {} },
       hydraulic_oil_temp:    { base: 68,  amp: 10,  noise: 2.5, spikes: {88:92.1, 89:95.4, 90:97.8} },
-      engine_load:           { base: 62,  amp: 18,  noise: 4,   spikes: {60:91.2, 61:93.5} },
-      boost_pressure:        { base: 165, amp: 38,  noise: 7,   spikes: {55:228, 56:232, 78:235} },
+      pump_pressure_front:   { base: 210, amp: 55,  noise: 10,  spikes: {} },
+      pump_pressure_rear:    { base: 205, amp: 50,  noise: 9,   spikes: {} },
+      fuel_consumption_rate: { base: 13.5,amp: 4.0, noise: 0.7, spikes: {} },
+      exhaust_gas_temp:      { base: 380, amp: 70,  noise: 12,  spikes: {} },
+      swing_speed:           { base: 7.2, amp: 3.0, noise: 0.7, spikes: {} },
     },
   },
-  // Machine 002 — newer unit (2104 SMU), mostly healthy, runs slightly lean
+  // Machine 002 — newer unit (2104 SMU), mostly healthy, clean readings
+  // Expected alerts: none (all sensors well within normal range)
   'cat-320-002': {
     fuelStart: 45, defStart: 62, dpfStart: 8, smuStart: 2104.2,
     sensorOverrides: {
-      engine_coolant_temp:   { base: 82,  amp: 4,   noise: 1.2, spikes: {} },
-      engine_oil_pressure:   { base: 385, amp: 25,  noise: 6,   spikes: {} },
-      engine_rpm:            { base: 1580,amp: 220, noise: 35,  spikes: {} },
-      engine_load:           { base: 55,  amp: 14,  noise: 3,   spikes: {} },
-      boost_pressure:        { base: 155, amp: 30,  noise: 5,   spikes: {} },
-      battery_voltage:       { base: 14.1,amp: 0.3, noise: 0.1, spikes: {} },
-      hydraulic_oil_temp:    { base: 62,  amp: 7,   noise: 1.8, spikes: {} },
-      pump_pressure_front:   { base: 195, amp: 50,  noise: 9,   spikes: {} },
-      pump_pressure_rear:    { base: 190, amp: 48,  noise: 8,   spikes: {} },
-      fuel_consumption_rate: { base: 11.8,amp: 3.2, noise: 0.6, spikes: {} },
-      exhaust_gas_temp:      { base: 350, amp: 60,  noise: 12,  spikes: {} },
-      swing_speed:           { base: 6.8, amp: 2.8, noise: 0.6, spikes: {} },
+      engine_coolant_temp:   { base: 82,  amp: 4,   noise: 1.0, spikes: {} },
+      engine_oil_pressure:   { base: 385, amp: 20,  noise: 5,   spikes: {} },
+      engine_rpm:            { base: 1550,amp: 180, noise: 30,  spikes: {} },
+      engine_load:           { base: 52,  amp: 12,  noise: 2.5, spikes: {} },
+      boost_pressure:        { base: 148, amp: 25,  noise: 4,   spikes: {} },
+      battery_voltage:       { base: 14.1,amp: 0.3, noise: 0.08,spikes: {} },
+      hydraulic_oil_temp:    { base: 60,  amp: 6,   noise: 1.5, spikes: {} },
+      pump_pressure_front:   { base: 190, amp: 45,  noise: 8,   spikes: {} },
+      pump_pressure_rear:    { base: 185, amp: 42,  noise: 7,   spikes: {} },
+      fuel_consumption_rate: { base: 11.5,amp: 3.0, noise: 0.5, spikes: {} },
+      exhaust_gas_temp:      { base: 340, amp: 55,  noise: 10,  spikes: {} },
+      swing_speed:           { base: 6.5, amp: 2.5, noise: 0.5, spikes: {} },
     },
   },
-  // Machine 003 — high-hour unit (6891 SMU), engine issues, runs hot & hard
+  // Machine 003 — high-hour unit (6891 SMU), engine stress + exhaust issues
+  // Expected alerts: exhaust gas temp (critical spikes), engine RPM (warning spikes),
+  //   fuel level (low → warning/critical via declining type), DPF soot (high start → warning)
   'cat-320-003': {
     fuelStart: 18, defStart: 35, dpfStart: 45, smuStart: 6891.0,
     sensorOverrides: {
-      engine_coolant_temp:   { base: 94,  amp: 8,   noise: 2.5, spikes: {80:108.3, 81:111.7, 82:109.2} },
-      engine_oil_pressure:   { base: 320, amp: 45,  noise: 12,  spikes: {65:258, 66:242, 67:265, 110:252} },
-      engine_rpm:            { base: 1750,amp: 320, noise: 55,  spikes: {40:2150, 41:2320, 42:2180} },
-      engine_load:           { base: 72,  amp: 20,  noise: 5,   spikes: {50:93.8, 51:96.1, 52:98.2} },
-      boost_pressure:        { base: 178, amp: 42,  noise: 9,   spikes: {45:231, 46:237, 100:229} },
-      battery_voltage:       { base: 13.2,amp: 0.8, noise: 0.25,spikes: {120:11.6, 121:11.2, 122:11.5} },
-      hydraulic_oil_temp:    { base: 75,  amp: 12,  noise: 3.0, spikes: {70:93.8, 71:96.2, 72:94.5} },
-      pump_pressure_front:   { base: 230, amp: 75,  noise: 15,  spikes: {35:348, 36:362, 37:355} },
-      pump_pressure_rear:    { base: 225, amp: 70,  noise: 14,  spikes: {35:345, 36:358} },
-      fuel_consumption_rate: { base: 16.2,amp: 5.8, noise: 1.2, spikes: {50:24.1, 51:25.8} },
-      exhaust_gas_temp:      { base: 420, amp: 100, noise: 20,  spikes: {60:558, 61:595, 62:622, 63:580} },
-      dpf_soot_load:         { spikes: {} },
-      swing_speed:           { base: 7.8, amp: 4.0, noise: 1.0, spikes: {30:13.5, 31:14.8} },
+      engine_coolant_temp:   { base: 92,  amp: 5,   noise: 1.5, spikes: {} },
+      engine_oil_pressure:   { base: 340, amp: 30,  noise: 9,   spikes: {} },
+      engine_rpm:            { base: 1700,amp: 250, noise: 40,  spikes: {40:2150, 41:2120} },
+      engine_load:           { base: 68,  amp: 14,  noise: 3.5, spikes: {} },
+      boost_pressure:        { base: 170, amp: 32,  noise: 6,   spikes: {} },
+      battery_voltage:       { base: 13.4,amp: 0.5, noise: 0.15,spikes: {} },
+      hydraulic_oil_temp:    { base: 72,  amp: 8,   noise: 2.0, spikes: {} },
+      pump_pressure_front:   { base: 220, amp: 60,  noise: 11,  spikes: {} },
+      pump_pressure_rear:    { base: 215, amp: 55,  noise: 10,  spikes: {} },
+      fuel_consumption_rate: { base: 15.5,amp: 4.5, noise: 0.9, spikes: {} },
+      exhaust_gas_temp:      { base: 410, amp: 85,  noise: 16,  spikes: {60:565, 61:598, 62:625, 63:590} },
+      swing_speed:           { base: 7.5, amp: 3.2, noise: 0.8, spikes: {} },
     },
   },
 };
