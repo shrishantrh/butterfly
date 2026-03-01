@@ -7,15 +7,13 @@ import {
 } from 'recharts';
 import { mockMachines } from '@/lib/mock-data';
 import excavatorHero from '@/assets/cat-320-hero.jpg';
-import { PageHeader } from '@/components/PageHeader';
-import { StatusSummary } from '@/components/StatusBadge';
 import {
   AlertTriangle, Clock, Fuel, MapPin, Activity,
   Droplets, Play, Cpu, Upload, History,
-  ChevronDown, ChevronRight,
+  ChevronDown, ChevronRight, ArrowLeft, Share2,
 } from 'lucide-react';
 
-// ─── PALETTE (uses CSS variables from design system) ──────────────────────────
+// ─── PALETTE ──────────────────────────────────────────────────────────────────
 const C = {
   yellow:      'hsl(var(--primary))',
   yellowFaint: 'hsl(var(--primary) / 0.08)',
@@ -59,225 +57,23 @@ const REPORTS: Report[] = [
     sections: [
       { title: 'General Info & Comments', items: [{ label: 'General Info / Comments', status: 'MONITOR', comment: 'Scales screen freezes during operation' }] },
       { title: 'From the Ground', items: [
-        { label: '1.1 Tires and Rims',                                               status: 'NORMAL',  comment: '' },
-        { label: '1.2 Bucket Cutting Edge, Tips, or Moldboard',                      status: 'MONITOR', comment: 'Inspect tips for wear.' },
-        { label: '1.3 Bucket Tilt Cylinders and Hoses',                              status: 'NORMAL',  comment: '' },
-        { label: '1.4 Bucket, Lift Cylinders and Hoses',                             status: 'PASS',    comment: 'Functioning correctly.' },
-        { label: '1.5 Lift Arm Attachment to Frame',                                 status: 'MONITOR', comment: 'Attachment points showing minor wear.' },
-        { label: '1.6 Underneath of Machine',                                        status: 'NORMAL',  comment: '' },
-        { label: '1.7 Transmission and Transfer Gears',                              status: 'FAIL',    comment: 'Abnormal noise detected during operation.' },
-        { label: '1.8 Differential and Final Drive Oil',                             status: 'MONITOR', comment: 'Oil level slightly below recommended level.' },
-        { label: '1.9 Steps and Handrails',                                          status: 'PASS',    comment: 'Secure and undamaged.' },
-        { label: '1.10 Brake Air Tank',                                              status: 'NORMAL',  comment: '' },
-        { label: '1.11 Fuel Tank',                                                   status: 'PASS',    comment: 'No leaks or visible damage.' },
-        { label: '1.12 Axles, Final Drives, Differentials, Brakes, Duo-cone Seals', status: 'MONITOR', comment: 'Duo-cone seals have minor seepage.' },
-        { label: '1.13 Hydraulic Fluid Tank',                                        status: 'NORMAL',  comment: '' },
-        { label: '1.14 Transmission Oil',                                            status: 'PASS',    comment: 'Correct level and condition.' },
-        { label: '1.15 Work Lights',                                                 status: 'PASS',    comment: 'All lights operational.' },
-        { label: '1.16 Battery & Cables',                                            status: 'NORMAL',  comment: '' },
+        { label: '1.1 Tires and Rims', status: 'NORMAL', comment: '' },
+        { label: '1.2 Bucket Cutting Edge', status: 'MONITOR', comment: 'Inspect tips for wear.' },
+        { label: '1.7 Transmission and Transfer Gears', status: 'FAIL', comment: 'Abnormal noise detected.' },
       ]},
       { title: 'Engine Compartment', items: [
-        { label: '2.1 Engine Oil Level',                     status: 'PASS',    comment: 'Confirmed within recommended range.' },
-        { label: '2.2 Engine Coolant Level',                 status: 'MONITOR', comment: 'Slight decrease noted; periodic checks recommended.' },
-        { label: '2.3 Radiator Cores for Debris',            status: 'FAIL',    comment: 'Debris accumulation detected; cleaning required.' },
-        { label: '2.4 Hoses for Cracks or Leaks',            status: 'NORMAL',  comment: 'No visible cracks or leaks detected.' },
-        { label: '2.5 Primary / Secondary Fuel Filters',     status: 'NORMAL',  comment: 'Functional; no replacement needed currently.' },
-        { label: '2.6 All Belts',                            status: 'PASS',    comment: 'All belts in good condition.' },
-        { label: '2.7 Air Cleaner and Air Filter Indicator', status: 'MONITOR', comment: 'Slight wear noted; continue monitoring.' },
-        { label: '2.8 Overall Engine Compartment',           status: 'MONITOR', comment: 'Satisfactory; minor improvements suggested.' },
-      ]},
-      { title: 'On the Machine, Outside the Cab', items: [
-        { label: '3.1 Steps & Handrails', status: 'PASS', comment: '' },
-        { label: '3.2 ROPS / FOPS',       status: 'PASS', comment: '' },
-        { label: '3.3 Fire Extinguisher',  status: 'PASS', comment: '' },
-        { label: '3.4 Windshield Wipers',  status: 'PASS', comment: '' },
-        { label: '3.5 Side Doors',         status: 'PASS', comment: '' },
-      ]},
-      { title: 'Inside the Cab', items: [
-        { label: '4.1 Seat',                 status: 'PASS', comment: '' },
-        { label: '4.2 Seat Belt & Mounting', status: 'PASS', comment: '' },
-        { label: '4.3 Horn',                 status: 'PASS', comment: '' },
-        { label: '4.4 Backup Alarm',         status: 'PASS', comment: '' },
-        { label: '4.5 Windows & Mirrors',    status: 'PASS', comment: '' },
-        { label: '4.6 Cab Air Filter',       status: 'PASS', comment: '' },
-        { label: '4.7 Indicators & Gauges',  status: 'PASS', comment: '' },
-        { label: '4.8 Switch Functionality', status: 'PASS', comment: '' },
-        { label: '4.9 Overall Cab Interior', status: 'PASS', comment: '' },
-      ]},
-    ],
-  },
-  {
-    id: '22841055', date: '2025-06-21', time: '08:32 AM',
-    inspector: 'Maria Santos', smu: 1014, workOrder: 'FW11988',
-    location: '601 Richland St, East Peoria, IL 61611',
-    counts: { FAIL: 0, MONITOR: 3, PASS: 35, NORMAL: 2 },
-    sections: [
-      { title: 'General Info & Comments', items: [{ label: 'General Info / Comments', status: 'PASS', comment: '' }] },
-      { title: 'From the Ground', items: [
-        { label: '1.1 Tires and Rims',                                               status: 'PASS',    comment: '' },
-        { label: '1.2 Bucket Cutting Edge, Tips, or Moldboard',                      status: 'MONITOR', comment: 'Tips showing early wear, schedule inspection at 1050 SMH.' },
-        { label: '1.3 Bucket Tilt Cylinders and Hoses',                              status: 'PASS',    comment: '' },
-        { label: '1.4 Bucket, Lift Cylinders and Hoses',                             status: 'PASS',    comment: '' },
-        { label: '1.5 Lift Arm Attachment to Frame',                                 status: 'PASS',    comment: '' },
-        { label: '1.6 Underneath of Machine',                                        status: 'NORMAL',  comment: '' },
-        { label: '1.7 Transmission and Transfer Gears',                              status: 'PASS',    comment: 'No abnormal noise this shift.' },
-        { label: '1.8 Differential and Final Drive Oil',                             status: 'PASS',    comment: 'Level within spec.' },
-        { label: '1.9 Steps and Handrails',                                          status: 'PASS',    comment: '' },
-        { label: '1.10 Brake Air Tank',                                              status: 'NORMAL',  comment: '' },
-        { label: '1.11 Fuel Tank',                                                   status: 'PASS',    comment: '' },
-        { label: '1.12 Axles, Final Drives, Differentials, Brakes, Duo-cone Seals', status: 'MONITOR', comment: 'Monitoring left side duo-cone seal for seepage progression.' },
-        { label: '1.13 Hydraulic Fluid Tank',                                        status: 'PASS',    comment: '' },
-        { label: '1.14 Transmission Oil',                                            status: 'PASS',    comment: '' },
-        { label: '1.15 Work Lights',                                                 status: 'PASS',    comment: '' },
-        { label: '1.16 Battery & Cables',                                            status: 'PASS',    comment: '' },
-      ]},
-      { title: 'Engine Compartment', items: [
-        { label: '2.1 Engine Oil Level',                     status: 'PASS',    comment: '' },
-        { label: '2.2 Engine Coolant Level',                 status: 'PASS',    comment: '' },
-        { label: '2.3 Radiator Cores for Debris',            status: 'MONITOR', comment: 'Light debris accumulation, monitor for next inspection.' },
-        { label: '2.4 Hoses for Cracks or Leaks',            status: 'PASS',    comment: '' },
-        { label: '2.5 Primary / Secondary Fuel Filters',     status: 'PASS',    comment: '' },
-        { label: '2.6 All Belts',                            status: 'PASS',    comment: '' },
-        { label: '2.7 Air Cleaner and Air Filter Indicator', status: 'PASS',    comment: '' },
-        { label: '2.8 Overall Engine Compartment',           status: 'PASS',    comment: '' },
-      ]},
-      { title: 'On the Machine, Outside the Cab', items: [
-        { label: '3.1 Steps & Handrails', status: 'PASS', comment: '' },
-        { label: '3.2 ROPS / FOPS',       status: 'PASS', comment: '' },
-        { label: '3.3 Fire Extinguisher',  status: 'PASS', comment: '' },
-        { label: '3.4 Windshield Wipers',  status: 'PASS', comment: '' },
-        { label: '3.5 Side Doors',         status: 'PASS', comment: '' },
-      ]},
-      { title: 'Inside the Cab', items: [
-        { label: '4.1 Seat',                 status: 'PASS', comment: '' },
-        { label: '4.2 Seat Belt & Mounting', status: 'PASS', comment: '' },
-        { label: '4.3 Horn',                 status: 'PASS', comment: '' },
-        { label: '4.4 Backup Alarm',         status: 'PASS', comment: '' },
-        { label: '4.5 Windows & Mirrors',    status: 'PASS', comment: '' },
-        { label: '4.6 Cab Air Filter',       status: 'PASS', comment: '' },
-        { label: '4.7 Indicators & Gauges',  status: 'PASS', comment: '' },
-        { label: '4.8 Switch Functionality', status: 'PASS', comment: '' },
-        { label: '4.9 Overall Cab Interior', status: 'PASS', comment: '' },
-      ]},
-    ],
-  },
-  {
-    id: '22789301', date: '2025-06-14', time: '07:55 AM',
-    inspector: 'John Doe', smu: 1001, workOrder: 'FW11801',
-    location: '601 Richland St, East Peoria, IL 61611',
-    counts: { FAIL: 1, MONITOR: 4, PASS: 33, NORMAL: 2 },
-    sections: [
-      { title: 'General Info & Comments', items: [{ label: 'General Info / Comments', status: 'NORMAL', comment: '' }] },
-      { title: 'From the Ground', items: [
-        { label: '1.1 Tires and Rims',                                               status: 'MONITOR', comment: 'Left rear tire pressure slightly low — 88 PSI, spec 95 PSI.' },
-        { label: '1.2 Bucket Cutting Edge, Tips, or Moldboard',                      status: 'PASS',    comment: '' },
-        { label: '1.3 Bucket Tilt Cylinders and Hoses',                              status: 'NORMAL',  comment: '' },
-        { label: '1.4 Bucket, Lift Cylinders and Hoses',                             status: 'PASS',    comment: '' },
-        { label: '1.5 Lift Arm Attachment to Frame',                                 status: 'MONITOR', comment: 'Same wear pattern on attachment points. Flagged for shop review.' },
-        { label: '1.6 Underneath of Machine',                                        status: 'NORMAL',  comment: '' },
-        { label: '1.7 Transmission and Transfer Gears',                              status: 'FAIL',    comment: 'Grinding noise on downshift. Recommend immediate dealer evaluation.' },
-        { label: '1.8 Differential and Final Drive Oil',                             status: 'PASS',    comment: '' },
-        { label: '1.9 Steps and Handrails',                                          status: 'PASS',    comment: '' },
-        { label: '1.10 Brake Air Tank',                                              status: 'PASS',    comment: '' },
-        { label: '1.11 Fuel Tank',                                                   status: 'PASS',    comment: '' },
-        { label: '1.12 Axles, Final Drives, Differentials, Brakes, Duo-cone Seals', status: 'PASS',    comment: '' },
-        { label: '1.13 Hydraulic Fluid Tank',                                        status: 'PASS',    comment: '' },
-        { label: '1.14 Transmission Oil',                                            status: 'MONITOR', comment: 'Slight discoloration, possible contamination. Sample sent to S·O·S.' },
-        { label: '1.15 Work Lights',                                                 status: 'PASS',    comment: '' },
-        { label: '1.16 Battery & Cables',                                            status: 'PASS',    comment: '' },
-      ]},
-      { title: 'Engine Compartment', items: [
-        { label: '2.1 Engine Oil Level',                     status: 'PASS',    comment: '' },
-        { label: '2.2 Engine Coolant Level',                 status: 'MONITOR', comment: 'Marginal decrease noted. Same pattern as previous two inspections.' },
-        { label: '2.3 Radiator Cores for Debris',            status: 'PASS',    comment: '' },
-        { label: '2.4 Hoses for Cracks or Leaks',            status: 'PASS',    comment: '' },
-        { label: '2.5 Primary / Secondary Fuel Filters',     status: 'PASS',    comment: '' },
-        { label: '2.6 All Belts',                            status: 'PASS',    comment: '' },
-        { label: '2.7 Air Cleaner and Air Filter Indicator', status: 'PASS',    comment: '' },
-        { label: '2.8 Overall Engine Compartment',           status: 'PASS',    comment: '' },
-      ]},
-      { title: 'On the Machine, Outside the Cab', items: [
-        { label: '3.1 Steps & Handrails', status: 'PASS', comment: '' },
-        { label: '3.2 ROPS / FOPS',       status: 'PASS', comment: '' },
-        { label: '3.3 Fire Extinguisher',  status: 'PASS', comment: '' },
-        { label: '3.4 Windshield Wipers',  status: 'PASS', comment: '' },
-        { label: '3.5 Side Doors',         status: 'PASS', comment: '' },
-      ]},
-      { title: 'Inside the Cab', items: [
-        { label: '4.1 Seat',                 status: 'PASS', comment: '' },
-        { label: '4.2 Seat Belt & Mounting', status: 'PASS', comment: '' },
-        { label: '4.3 Horn',                 status: 'PASS', comment: '' },
-        { label: '4.4 Backup Alarm',         status: 'PASS', comment: '' },
-        { label: '4.5 Windows & Mirrors',    status: 'PASS', comment: '' },
-        { label: '4.6 Cab Air Filter',       status: 'PASS', comment: '' },
-        { label: '4.7 Indicators & Gauges',  status: 'PASS', comment: '' },
-        { label: '4.8 Switch Functionality', status: 'PASS', comment: '' },
-        { label: '4.9 Overall Cab Interior', status: 'PASS', comment: '' },
-      ]},
-    ],
-  },
-  {
-    id: '22731450', date: '2025-06-07', time: '09:14 AM',
-    inspector: 'Maria Santos', smu: 988, workOrder: 'FW11622',
-    location: '601 Richland St, East Peoria, IL 61611',
-    counts: { FAIL: 0, MONITOR: 2, PASS: 36, NORMAL: 2 },
-    sections: [
-      { title: 'General Info & Comments', items: [{ label: 'General Info / Comments', status: 'NORMAL', comment: '' }] },
-      { title: 'From the Ground', items: [
-        { label: '1.1 Tires and Rims',                                               status: 'PASS',    comment: '' },
-        { label: '1.2 Bucket Cutting Edge, Tips, or Moldboard',                      status: 'PASS',    comment: '' },
-        { label: '1.3 Bucket Tilt Cylinders and Hoses',                              status: 'NORMAL',  comment: '' },
-        { label: '1.4 Bucket, Lift Cylinders and Hoses',                             status: 'PASS',    comment: '' },
-        { label: '1.5 Lift Arm Attachment to Frame',                                 status: 'MONITOR', comment: 'Attachment points beginning to show wear. Flag for next PM.' },
-        { label: '1.6 Underneath of Machine',                                        status: 'NORMAL',  comment: '' },
-        { label: '1.7 Transmission and Transfer Gears',                              status: 'PASS',    comment: '' },
-        { label: '1.8 Differential and Final Drive Oil',                             status: 'PASS',    comment: '' },
-        { label: '1.9 Steps and Handrails',                                          status: 'PASS',    comment: '' },
-        { label: '1.10 Brake Air Tank',                                              status: 'PASS',    comment: '' },
-        { label: '1.11 Fuel Tank',                                                   status: 'PASS',    comment: '' },
-        { label: '1.12 Axles, Final Drives, Differentials, Brakes, Duo-cone Seals', status: 'PASS',    comment: '' },
-        { label: '1.13 Hydraulic Fluid Tank',                                        status: 'PASS',    comment: '' },
-        { label: '1.14 Transmission Oil',                                            status: 'PASS',    comment: '' },
-        { label: '1.15 Work Lights',                                                 status: 'PASS',    comment: '' },
-        { label: '1.16 Battery & Cables',                                            status: 'PASS',    comment: '' },
-      ]},
-      { title: 'Engine Compartment', items: [
-        { label: '2.1 Engine Oil Level',                     status: 'PASS',    comment: '' },
-        { label: '2.2 Engine Coolant Level',                 status: 'MONITOR', comment: 'Slightly below full mark. Added 0.5L, recheck next inspection.' },
-        { label: '2.3 Radiator Cores for Debris',            status: 'PASS',    comment: '' },
-        { label: '2.4 Hoses for Cracks or Leaks',            status: 'PASS',    comment: '' },
-        { label: '2.5 Primary / Secondary Fuel Filters',     status: 'PASS',    comment: '' },
-        { label: '2.6 All Belts',                            status: 'PASS',    comment: '' },
-        { label: '2.7 Air Cleaner and Air Filter Indicator', status: 'PASS',    comment: '' },
-        { label: '2.8 Overall Engine Compartment',           status: 'PASS',    comment: '' },
-      ]},
-      { title: 'On the Machine, Outside the Cab', items: [
-        { label: '3.1 Steps & Handrails', status: 'PASS', comment: '' },
-        { label: '3.2 ROPS / FOPS',       status: 'PASS', comment: '' },
-        { label: '3.3 Fire Extinguisher',  status: 'PASS', comment: '' },
-        { label: '3.4 Windshield Wipers',  status: 'PASS', comment: '' },
-        { label: '3.5 Side Doors',         status: 'PASS', comment: '' },
-      ]},
-      { title: 'Inside the Cab', items: [
-        { label: '4.1 Seat',                 status: 'PASS', comment: '' },
-        { label: '4.2 Seat Belt & Mounting', status: 'PASS', comment: '' },
-        { label: '4.3 Horn',                 status: 'PASS', comment: '' },
-        { label: '4.4 Backup Alarm',         status: 'PASS', comment: '' },
-        { label: '4.5 Windows & Mirrors',    status: 'PASS', comment: '' },
-        { label: '4.6 Cab Air Filter',       status: 'PASS', comment: '' },
-        { label: '4.7 Indicators & Gauges',  status: 'PASS', comment: '' },
-        { label: '4.8 Switch Functionality', status: 'PASS', comment: '' },
-        { label: '4.9 Overall Cab Interior', status: 'PASS', comment: '' },
+        { label: '2.1 Engine Oil Level', status: 'PASS', comment: '' },
+        { label: '2.3 Radiator Cores for Debris', status: 'FAIL', comment: 'Debris accumulation detected.' },
       ]},
     ],
   },
 ];
 
-// ─── SENSOR DATA (imported from shared module) ───────────────────────────────
+// ─── SENSOR DATA ──────────────────────────────────────────────────────────────
 import { SENSORS, getData, getAlert } from '@/lib/sensor-data';
 import type { DataPoint } from '@/lib/sensor-data';
 
-// ─── SMALL COMPONENTS ────────────────────────────────────────────────────────
+// ─── SPARKLINE ────────────────────────────────────────────────────────────────
 function Sparkline({ k, machineId }: { k: string; machineId?: string }) {
   const data = getData(k, machineId).filter(d => d.value !== null);
   if (!data.length) return null;
@@ -297,10 +93,7 @@ function Sparkline({ k, machineId }: { k: string; machineId?: string }) {
           <stop offset="100%" stopColor={strokeCol} stopOpacity="0.01"/>
         </linearGradient>
       </defs>
-      <polygon
-        points={`0,${H} ${pts} ${W},${H}`}
-        fill={`url(#sg-${k})`}
-      />
+      <polygon points={`0,${H} ${pts} ${W},${H}`} fill={`url(#sg-${k})`} />
       <polyline points={pts} fill="none" stroke={strokeCol} strokeWidth={1.5} strokeLinejoin="round" />
     </svg>
   );
@@ -310,10 +103,10 @@ function DotSummary({ counts, size = 'md' }: { counts: Record<string,number>; si
   const dotCls = size === 'sm' ? 'w-[7px] h-[7px]' : 'w-[9px] h-[9px]';
   const textCls = size === 'sm' ? 'text-[10px]' : 'text-[13px]';
   const entries: [string, string, string][] = [
-    ['FAIL',    'text-status-fail',    'status-dot-fail'],
-    ['MONITOR', 'text-status-monitor', 'status-dot-monitor'],
-    ['PASS',    'text-status-pass',    'status-dot-pass'],
-    ['NORMAL',  'text-muted-foreground','status-dot-normal'],
+    ['FAIL','text-status-fail','status-dot-fail'],
+    ['MONITOR','text-status-monitor','status-dot-monitor'],
+    ['PASS','text-status-pass','status-dot-pass'],
+    ['NORMAL','text-muted-foreground','status-dot-normal'],
   ];
   return (
     <div className={`flex items-center ${size === 'sm' ? 'gap-2' : 'gap-2.5'}`}>
@@ -346,8 +139,8 @@ function ChartTooltip({ active, payload, sensor }: any) {
 // ─── SENSOR CHART DETAIL ──────────────────────────────────────────────────────
 function SensorChart({ sensorKey, onBack, machineId }: { sensorKey: string; onBack: () => void; machineId?: string }) {
   const sensor = SENSORS[sensorKey];
-  const data   = getData(sensorKey, machineId);
-  const vals   = data.filter(d => d.value !== null).map(d => d.value as number);
+  const data = getData(sensorKey, machineId);
+  const vals = data.filter(d => d.value !== null).map(d => d.value as number);
   const curVal = vals[vals.length - 1];
   const maxVal = Math.max(...vals), minVal = Math.min(...vals);
   const avgVal = vals.reduce((a, b) => a + b, 0) / vals.length;
@@ -369,10 +162,8 @@ function SensorChart({ sensorKey, onBack, machineId }: { sensorKey: string; onBa
         <div style={{ display:'flex', gap:8, alignItems:'center', marginTop:4 }}>
           <div style={{ width:7, height:7, borderRadius:'50%', background:statusCol }}/>
           <span style={{ fontSize:10, fontWeight:700, color:statusCol }}>{curStatus.toUpperCase()}</span>
-          <span style={{ fontSize:10, color:C.textDim }}>· 24-hr shift</span>
         </div>
       </div>
-      {/* Stats row */}
       <div style={{ display:'flex', gap:8, marginBottom:12 }}>
         {([['NOW', curVal?.toFixed(1), curStatus!=='normal'],
            ['MAX', maxVal.toFixed(1), maxVal>=(sensor.warn??Infinity)],
@@ -386,7 +177,6 @@ function SensorChart({ sensorKey, onBack, machineId }: { sensorKey: string; onBa
           </div>
         ))}
       </div>
-      {/* Threshold badges */}
       {(sensor.warn !== null || sensor.crit !== null) && (
         <div style={{ display:'flex', gap:8, marginBottom:12 }}>
           {sensor.warn !== null && (
@@ -407,29 +197,22 @@ function SensorChart({ sensorKey, onBack, machineId }: { sensorKey: string; onBa
           )}
         </div>
       )}
-      {/* Chart */}
       <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:'14px 4px 10px 0', marginBottom:12 }}>
-        <div style={{ display:'flex', gap:14, paddingLeft:16, marginBottom:10, fontSize:9, color:C.textDim }}>
-          <span><span style={{ color:C.safe }}>●</span> NORMAL</span>
-          <span><span style={{ color:C.warning }}>●</span> WARNING</span>
-          <span><span style={{ color:C.critical }}>●</span> CRITICAL</span>
-        </div>
         <ResponsiveContainer width="100%" height={400}>
           <LineChart data={data} margin={{ top:8, right:14, left:0, bottom:0 }}>
             <CartesianGrid strokeDasharray="2 6" stroke="#1C1C1C" vertical={false}/>
-            <XAxis dataKey="time" ticks={xTicks} tick={{ fill:C.textDim, fontSize:9 }}
-              axisLine={{ stroke:C.border }} tickLine={false}/>
+            <XAxis dataKey="time" ticks={xTicks} tick={{ fill:C.textDim, fontSize:9 }} axisLine={{ stroke:C.border }} tickLine={false}/>
             <YAxis domain={[yMin, yMax]} tick={{ fill:C.textDim, fontSize:9 }} axisLine={false} tickLine={false} width={46}/>
             <Tooltip content={<ChartTooltip sensor={sensor}/>}/>
             {sensor.warn!==null && sensor.crit!==null && (
               sensor.dir === 'above' ? <>
-                <ReferenceArea y1={yMin}       y2={sensor.warn} fill={C.safe}     fillOpacity={0.04}/>
+                <ReferenceArea y1={yMin} y2={sensor.warn} fill={C.safe} fillOpacity={0.04}/>
                 <ReferenceArea y1={sensor.warn} y2={sensor.crit} fill={C.warning} fillOpacity={0.08}/>
-                <ReferenceArea y1={sensor.crit} y2={yMax}        fill={C.critical} fillOpacity={0.10}/>
+                <ReferenceArea y1={sensor.crit} y2={yMax} fill={C.critical} fillOpacity={0.10}/>
               </> : <>
-                <ReferenceArea y1={sensor.warn} y2={yMax}        fill={C.safe}     fillOpacity={0.04}/>
+                <ReferenceArea y1={sensor.warn} y2={yMax} fill={C.safe} fillOpacity={0.04}/>
                 <ReferenceArea y1={sensor.crit} y2={sensor.warn} fill={C.warning} fillOpacity={0.08}/>
-                <ReferenceArea y1={yMin}        y2={sensor.crit} fill={C.critical} fillOpacity={0.10}/>
+                <ReferenceArea y1={yMin} y2={sensor.crit} fill={C.critical} fillOpacity={0.10}/>
               </>
             )}
             {sensor.warn!==null && <ReferenceLine y={sensor.warn} stroke={C.warning} strokeDasharray="5 3" strokeWidth={1.2}
@@ -441,7 +224,7 @@ function SensorChart({ sensorKey, onBack, machineId }: { sensorKey: string; onBa
                 const { cx, cy, payload, index } = props;
                 if (!payload?.value) return <g key={`d${index}`}/>;
                 if (payload.status === 'critical') return <circle key={`d${index}`} cx={cx} cy={cy} r={4.5} fill={C.critical} stroke={C.black} strokeWidth={1.5}/>;
-                if (payload.status === 'warning')  return <circle key={`d${index}`} cx={cx} cy={cy} r={3.5} fill={C.warning}  stroke={C.black} strokeWidth={1.5}/>;
+                if (payload.status === 'warning') return <circle key={`d${index}`} cx={cx} cy={cy} r={3.5} fill={C.warning} stroke={C.black} strokeWidth={1.5}/>;
                 return <g key={`d${index}`}/>;
               }}
               activeDot={{ r:6, fill:C.yellow, stroke:C.black, strokeWidth:2 }}
@@ -450,11 +233,10 @@ function SensorChart({ sensorKey, onBack, machineId }: { sensorKey: string; onBa
           </LineChart>
         </ResponsiveContainer>
       </div>
-      {/* Events */}
       <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:'13px' }}>
         <div style={{ fontSize:9, color:C.textDim, letterSpacing:2, marginBottom:9 }}>THRESHOLD EVENTS · {events.length}</div>
         {events.length === 0 ? (
-          <div style={{ color:C.yellow, fontSize:11, textAlign:'center', padding:'6px 0', opacity:0.7 }}>── No threshold events this session ──</div>
+          <div style={{ color:C.yellow, fontSize:11, textAlign:'center', padding:'6px 0', opacity:0.7 }}>── No threshold events ──</div>
         ) : (
           <div style={{ display:'flex', flexDirection:'column', gap:6, maxHeight:190, overflowY:'auto' }}>
             {events.map((d, i) => {
@@ -462,8 +244,8 @@ function SensorChart({ sensorKey, onBack, machineId }: { sensorKey: string; onBa
               return (
                 <div key={i} style={{ display:'flex', alignItems:'center', gap:10, fontSize:11, padding:'6px 10px',
                   background:`${col}0C`, borderRadius:7, borderLeft:`2px solid ${col}` }}>
-                  <span style={{ color:C.textDim, width:40, flexShrink:0 }}>{d.time}</span>
-                  <span style={{ color:col, fontWeight:700, width:62, flexShrink:0 }}>{d.status.toUpperCase()}</span>
+                  <span style={{ color:C.textDim, width:40 }}>{d.time}</span>
+                  <span style={{ color:col, fontWeight:700, width:62 }}>{d.status.toUpperCase()}</span>
                   <span style={{ color:C.textPrimary }}>{d.value} {sensor.unit}</span>
                 </div>
               );
@@ -475,7 +257,7 @@ function SensorChart({ sensorKey, onBack, machineId }: { sensorKey: string; onBa
   );
 }
 
-// ─── SENSOR LIST (no category tabs) ──────────────────────────────────────────
+// ─── TELEMETRY SECTION ────────────────────────────────────────────────────────
 function TelemetrySection({ machineId }: { machineId?: string }) {
   const [activeKey, setActiveKey] = useState<string | null>(null);
 
@@ -508,7 +290,6 @@ function TelemetrySection({ machineId }: { machineId?: string }) {
             display:'flex', flexDirection:'row', alignItems:'center', gap:8,
             textAlign:'left', width:'100%', transition:'all 0.12s', height:80,
           }}>
-            {/* Left: text info */}
             <div style={{ display:'flex', flexDirection:'column', justifyContent:'space-between', flexShrink:0, width:58, height:'100%' }}>
               <div style={{ fontSize:9, fontWeight:600, color:C.white, lineHeight:1.3, wordBreak:'break-word' }}>{s.label}</div>
               <div>
@@ -517,7 +298,6 @@ function TelemetrySection({ machineId }: { machineId?: string }) {
                 {cnt > 0 && <div style={{ fontSize:8, color:ac, fontWeight:700, marginTop:1 }}>{cnt} evt</div>}
               </div>
             </div>
-            {/* Right: sparkline — fixed height, natural aspect ratio */}
             <div style={{ flex:1, height:60, minWidth:0 }}>
               <Sparkline k={k} machineId={machineId}/>
             </div>
@@ -528,212 +308,9 @@ function TelemetrySection({ machineId }: { machineId?: string }) {
   );
 }
 
-// ─── REPORT DETAIL ────────────────────────────────────────────────────────────
-function ReportDetail({ report, onBack }: { report: Report; onBack: () => void }) {
-  const [openSections, setOpenSections] = useState<Record<string,boolean>>(
-    Object.fromEntries(report.sections.map(s => [s.title, true]))
-  );
-  const toggle = (title: string) => setOpenSections(p => ({ ...p, [title]: !p[title] }));
-  const issues = report.sections.flatMap(s => s.items).filter(i => i.status === 'FAIL' || i.status === 'MONITOR');
-
-  return (
-    <div style={{ display:'flex', flexDirection:'column', gap:14, fontFamily:"'Courier New',monospace" }}>
-      <button onClick={onBack} style={{ background:'none', border:'none', color:C.yellow, fontSize:13,
-        cursor:'pointer', padding:'0 0 2px', fontFamily:'inherit', display:'flex', alignItems:'center', gap:4 }}>
-        ‹ Reports
-      </button>
-      {/* Report header */}
-      <div style={{ background:C.card, border:`1px solid ${C.border}`, borderTop:`2px solid ${C.yellow}`, borderRadius:12, padding:16 }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
-          <div>
-            <div style={{ fontSize:9, color:C.textDim, letterSpacing:1, marginBottom:3 }}>INSPECTION REPORT</div>
-            <div style={{ fontSize:18, fontWeight:700, color:C.white }}>#{report.id}</div>
-          </div>
-          <DotSummary counts={report.counts}/>
-        </div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px 16px', fontSize:11 }}>
-          {([
-            ['Date',      `${report.date} · ${report.time}`],
-            ['Inspector', report.inspector],
-            ['SMU',       `${report.smu} hrs`],
-            ['Work Order',report.workOrder],
-          ] as [string,string][]).map(([l,v])=>(
-            <div key={l}>
-              <div style={{ fontSize:9, color:C.textDim, letterSpacing:1, marginBottom:1 }}>{l}</div>
-              <div style={{ color:C.textPrimary, fontWeight:600 }}>{v}</div>
-            </div>
-          ))}
-        </div>
-        <div style={{ marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}`, fontSize:10, color:C.textDim }}>
-          {report.location}
-        </div>
-      </div>
-      {/* Open items */}
-      {issues.length > 0 && (
-        <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:14 }}>
-          <div style={{ fontSize:9, color:C.textDim, letterSpacing:2, marginBottom:10 }}>OPEN ITEMS · {issues.length}</div>
-          <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
-            {issues.map((item, i) => (
-              <div key={i} style={{ display:'flex', gap:10, alignItems:'flex-start', padding:'8px 10px',
-                background:`${STATUS_DOT[item.status]}0C`, borderRadius:8, borderLeft:`2px solid ${STATUS_DOT[item.status]}` }}>
-                <div style={{ width:8, height:8, borderRadius:'50%', background:STATUS_DOT[item.status], flexShrink:0, marginTop:2 }}/>
-                <div>
-                  <div style={{ fontSize:12, fontWeight:600, color:C.textPrimary }}>{item.label}</div>
-                  {item.comment && <div style={{ fontSize:11, color:C.textMid, marginTop:2 }}>{item.comment}</div>}
-                </div>
-                <div style={{ marginLeft:'auto', flexShrink:0, fontSize:10, fontWeight:700, color:STATUS_DOT[item.status] }}>{item.status}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {/* Sections */}
-      {report.sections.map(sec => (
-        <div key={sec.title} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, overflow:'hidden' }}>
-          <button onClick={() => toggle(sec.title)} style={{
-            width:'100%', background:'transparent', border:'none',
-            borderBottom: openSections[sec.title] ? `1px solid ${C.border}` : 'none',
-            padding:'12px 14px', display:'flex', alignItems:'center', justifyContent:'space-between',
-            cursor:'pointer', fontFamily:'inherit',
-          }}>
-            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <span style={{ fontSize:11, fontWeight:700, color:C.yellow, letterSpacing:0.5 }}>{sec.title.toUpperCase()}</span>
-              <span style={{ fontSize:10, color:C.textDim }}>{sec.items.length} items</span>
-            </div>
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <DotSummary counts={{
-                FAIL:    sec.items.filter(i => i.status==='FAIL').length,
-                MONITOR: sec.items.filter(i => i.status==='MONITOR').length,
-                PASS:    sec.items.filter(i => i.status==='PASS').length,
-                NORMAL:  sec.items.filter(i => i.status==='NORMAL').length,
-              }} size="sm"/>
-              <span style={{ color:C.textDim, fontSize:14 }}>{openSections[sec.title] ? '▾' : '▸'}</span>
-            </div>
-          </button>
-          {openSections[sec.title] && (
-            <div>
-              {sec.items.map((item, i) => (
-                <div key={i} style={{
-                  display:'flex', alignItems:'flex-start', gap:10, padding:'10px 14px',
-                  borderBottom: i < sec.items.length-1 ? `1px solid ${C.border}` : 'none',
-                  background: item.status==='FAIL'?`${C.critical}07`:item.status==='MONITOR'?`${C.warning}06`:'transparent',
-                }}>
-                  <div style={{ width:9, height:9, borderRadius:'50%', background:STATUS_DOT[item.status], flexShrink:0, marginTop:3 }}/>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:12, color:C.textPrimary, lineHeight:1.4 }}>{item.label}</div>
-                    {item.comment && <div style={{ fontSize:11, color:C.textMid, marginTop:3, lineHeight:1.4 }}>{item.comment}</div>}
-                  </div>
-                  <div style={{ fontSize:10, fontWeight:700, color:STATUS_DOT[item.status], flexShrink:0 }}>{item.status}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // ─── REPORTS SECTION ──────────────────────────────────────────────────────────
-function DbReportDetail({ inspectionId, onBack }: { inspectionId: string; onBack: () => void }) {
-  const { getInspectionDetail } = useInspectionStorage();
-  const [detail, setDetail] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const d = await getInspectionDetail(inspectionId);
-      setDetail(d);
-      setLoading(false);
-    })();
-  }, [inspectionId, getInspectionDetail]);
-
-  if (loading) return (
-    <div style={{ padding: 24, textAlign: 'center', fontFamily: "'Courier New',monospace" }}>
-      <div style={{ color: C.textDim, fontSize: 12 }}>Loading report...</div>
-    </div>
-  );
-  if (!detail) return null;
-
-  const { inspection: insp, items } = detail;
-  const sections: Record<string, any[]> = {};
-  items.forEach((item: any) => {
-    if (!sections[item.section_title]) sections[item.section_title] = [];
-    sections[item.section_title].push(item);
-  });
-
-  const counts = {
-    FAIL: items.filter((i: any) => i.status?.toUpperCase() === 'FAIL').length,
-    MONITOR: items.filter((i: any) => i.status?.toUpperCase() === 'MONITOR').length,
-    PASS: items.filter((i: any) => i.status?.toUpperCase() === 'PASS').length,
-    NORMAL: items.filter((i: any) => i.status?.toUpperCase() === 'NORMAL').length,
-  };
-  const issues = items.filter((i: any) => ['FAIL', 'MONITOR'].includes(i.status?.toUpperCase()));
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, fontFamily: "'Courier New',monospace" }}>
-      <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.yellow, fontSize: 13, cursor: 'pointer', padding: '0 0 2px', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>‹ Reports</button>
-      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderTop: `2px solid ${C.yellow}`, borderRadius: 12, padding: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-          <div>
-            <div style={{ fontSize: 9, color: C.textDim, letterSpacing: 1, marginBottom: 3 }}>INSPECTION REPORT</div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: C.white }}>{insp.asset_id}</div>
-          </div>
-          <DotSummary counts={counts} />
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', fontSize: 11 }}>
-          {([['Date', new Date(insp.created_at).toLocaleDateString()], ['Inspector', insp.inspector_name], ['SMU', `${insp.smu_hours} hrs`], ['Location', insp.location || '—']] as [string, string][]).map(([l, v]) => (
-            <div key={l}><div style={{ fontSize: 9, color: C.textDim, letterSpacing: 1, marginBottom: 1 }}>{l}</div><div style={{ color: C.textPrimary, fontWeight: 600 }}>{v}</div></div>
-          ))}
-        </div>
-        {insp.executive_summary && <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.border}`, fontSize: 11, color: C.textMid }}>{insp.executive_summary}</div>}
-      </div>
-      {issues.length > 0 && (
-        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
-          <div style={{ fontSize: 9, color: C.textDim, letterSpacing: 2, marginBottom: 10 }}>OPEN ITEMS · {issues.length}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-            {issues.map((item: any) => {
-              const col = STATUS_DOT[item.status?.toUpperCase()] || C.textDim;
-              return (
-                <div key={item.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '8px 10px', background: `${col}0C`, borderRadius: 8, borderLeft: `2px solid ${col}` }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0, marginTop: 2 }} />
-                  <div><div style={{ fontSize: 12, fontWeight: 600, color: C.textPrimary }}>{item.label}</div>{item.comment && <div style={{ fontSize: 11, color: C.textMid, marginTop: 2 }}>{item.comment}</div>}</div>
-                  <div style={{ marginLeft: 'auto', flexShrink: 0, fontSize: 10, fontWeight: 700, color: col }}>{item.status?.toUpperCase()}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      {Object.entries(sections).map(([title, sectionItems]) => (
-        <div key={title} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: C.yellow, letterSpacing: 0.5 }}>{title.toUpperCase()}</span>
-            <span style={{ fontSize: 10, color: C.textDim }}>{sectionItems.length} items</span>
-          </div>
-          <div>
-            {sectionItems.map((item: any, i: number) => {
-              const col = STATUS_DOT[item.status?.toUpperCase()] || C.textDim;
-              return (
-                <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', borderBottom: i < sectionItems.length - 1 ? `1px solid ${C.border}` : 'none', background: item.status?.toUpperCase() === 'FAIL' ? `${C.critical}07` : item.status?.toUpperCase() === 'MONITOR' ? `${C.warning}06` : 'transparent' }}>
-                  <div style={{ width: 9, height: 9, borderRadius: '50%', background: col, flexShrink: 0, marginTop: 3 }} />
-                  <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 12, color: C.textPrimary, lineHeight: 1.4 }}>{item.label}</div>{item.comment && <div style={{ fontSize: 11, color: C.textMid, marginTop: 3, lineHeight: 1.4 }}>{item.comment}</div>}</div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: col, flexShrink: 0 }}>{item.status?.toUpperCase()}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function ReportsSection({ machineId }: { machineId?: string }) {
-  const [selected, setSelected] = useState<Report | null>(null);
-  const [selectedDbId, setSelectedDbId] = useState<string | null>(null);
-  const { getInspectionHistory } = useInspectionStorage();
+  const { getInspectionHistory, getInspectionDetail } = useInspectionStorage();
   const [dbInspections, setDbInspections] = useState<any[]>([]);
   const [loadingDb, setLoadingDb] = useState(true);
 
@@ -746,78 +323,42 @@ function ReportsSection({ machineId }: { machineId?: string }) {
     })();
   }, [machineId, getInspectionHistory]);
 
-  if (selected) return <ReportDetail report={selected} onBack={() => setSelected(null)} />;
-  if (selectedDbId) return <DbReportDetail inspectionId={selectedDbId} onBack={() => setSelectedDbId(null)} />;
-
   const totalCount = REPORTS.length + dbInspections.length;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontFamily: "'Courier New',monospace" }}>
-      <div style={{ fontSize: 9, color: C.textDim, letterSpacing: 2, marginBottom: 4 }}>
+    <div className="space-y-2.5 pt-3" style={{ fontFamily: "'Courier New',monospace" }}>
+      <div className="text-[9px] text-muted-foreground tracking-widest uppercase mb-1">
         INSPECTION HISTORY · {totalCount} REPORTS
       </div>
-
-      {/* DB inspections first (most recent) */}
-      {dbInspections.map(insp => {
-        const analysis = insp.analysis_json as any;
-        const safetyClearance = analysis?.executiveSummary?.safetyClearance;
-        const clearanceColors: Record<string, string> = { GO: C.safe, CONDITIONAL: C.warning, NO_GO: C.critical };
-        const borderCol = safetyClearance ? (clearanceColors[safetyClearance] || C.yellow) : C.yellow;
-        return (
-          <button key={insp.id} onClick={() => setSelectedDbId(insp.id)} style={{
-            background: C.card, border: `1px solid ${borderCol}30`, borderLeft: `3px solid ${borderCol}`,
-            borderRadius: 10, padding: '14px 14px', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'all 0.12s',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-              <div>
-                <div style={{ fontSize: 9, color: C.textDim, letterSpacing: 1, marginBottom: 2 }}>
-                  {safetyClearance ? (safetyClearance === 'GO' ? '✓ CLEAR' : safetyClearance === 'CONDITIONAL' ? '⚠ CONDITIONAL' : '✕ NO-GO') : 'AI INSPECTION'}
-                </div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: C.white }}>{new Date(insp.created_at).toLocaleDateString()}</div>
-                <div style={{ fontSize: 10, color: C.textDim, marginTop: 1 }}>{new Date(insp.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {insp.inspector_name}</div>
-              </div>
-              {insp.health_score != null && (
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: insp.health_score >= 80 ? C.safe : insp.health_score >= 50 ? C.warning : C.critical }}>{insp.health_score}</div>
-                  <div style={{ fontSize: 8, color: C.textDim }}>/100</div>
-                </div>
-              )}
+      {dbInspections.map(insp => (
+        <div key={insp.id} className="card-elevated p-3.5">
+          <div className="flex justify-between items-start mb-1">
+            <div>
+              <p className="text-xs text-muted-foreground/60">{new Date(insp.created_at).toLocaleDateString()}</p>
+              <p className="text-sm font-bold">{insp.asset_id}</p>
             </div>
-            {insp.executive_summary && <div style={{ fontSize: 11, color: C.textMid, marginBottom: 8, lineHeight: 1.4 }} className="line-clamp-2">{insp.executive_summary}</div>}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: 10, color: C.textDim }}>SMH {insp.smu_hours?.toLocaleString()}</div>
-              <span style={{ color: C.textDim, fontSize: 16 }}>›</span>
+            {insp.health_score != null && (
+              <span className={`text-lg font-bold font-mono ${insp.health_score >= 80 ? 'text-status-pass' : insp.health_score >= 50 ? 'text-status-monitor' : 'text-status-fail'}`}>
+                {insp.health_score}
+              </span>
+            )}
+          </div>
+          {insp.executive_summary && <p className="text-xs text-muted-foreground line-clamp-2">{insp.executive_summary}</p>}
+        </div>
+      ))}
+      {loadingDb && <div className="text-xs text-muted-foreground text-center p-4">Loading...</div>}
+      {REPORTS.map(r => (
+        <div key={r.id} className="card-elevated p-3.5">
+          <div className="flex justify-between items-start mb-1">
+            <div>
+              <p className="text-xs text-muted-foreground/60">#{r.id} · {r.date}</p>
+              <p className="text-sm font-bold">{r.inspector}</p>
             </div>
-          </button>
-        );
-      })}
-
-      {loadingDb && <div style={{ fontSize: 11, color: C.textDim, textAlign: 'center', padding: 8 }}>Loading saved inspections...</div>}
-
-      {/* Mock historical reports */}
-      {REPORTS.map(r => {
-        const hasFailures = r.counts.FAIL > 0;
-        const borderCol = hasFailures ? C.critical : r.counts.MONITOR > 0 ? C.warning : C.border;
-        return (
-          <button key={r.id} onClick={() => setSelected(r)} style={{
-            background: C.card, border: `1px solid ${borderCol}30`, borderLeft: `3px solid ${hasFailures ? C.critical : r.counts.MONITOR > 0 ? C.warning : C.yellow}`,
-            borderRadius: 10, padding: '14px 14px', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'all 0.12s',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-              <div>
-                <div style={{ fontSize: 9, color: C.textDim, letterSpacing: 1, marginBottom: 2 }}>#{r.id}</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: C.white }}>{r.date}</div>
-                <div style={{ fontSize: 10, color: C.textDim, marginTop: 1 }}>{r.time} · {r.inspector}</div>
-              </div>
-              <DotSummary counts={r.counts} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: 10, color: C.textDim }}>SMH {r.smu} · {r.workOrder}</div>
-              <span style={{ color: C.textDim, fontSize: 16 }}>›</span>
-            </div>
-          </button>
-        );
-      })}
+            <DotSummary counts={r.counts} size="sm" />
+          </div>
+          <p className="text-xs text-muted-foreground">SMH {r.smu} · {r.workOrder}</p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -825,290 +366,275 @@ function ReportsSection({ machineId }: { machineId?: string }) {
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function PreInspection() {
   const { machineId } = useParams();
-  const navigate      = useNavigate();
-  const machine       = mockMachines.find(m => m.id === machineId);
+  const navigate = useNavigate();
+  const machine = mockMachines.find(m => m.id === machineId);
   const [activeSection, setActiveSection] = useState<'telemetry' | 'reports' | null>(null);
 
   if (!machine) return <div className="p-8 text-center text-muted-foreground">Machine not found</div>;
 
+  // Live sensor data
+  const fuelData = getData('fuel_level', machineId);
+  const fuelVals = fuelData.filter(d => d.value !== null);
+  const liveFuel = fuelVals.length > 0 ? fuelVals[fuelVals.length - 1].value! : machine.fuelLevel;
+
+  const smuData = getData('service_meter_hours', machineId);
+  const smuVals = smuData.filter(d => d.value !== null);
+  const liveSmu = smuVals.length > 0 ? Math.round(smuVals[smuVals.length - 1].value!) : machine.smuHours;
+
+  const criticalSensors = Object.entries(SENSORS).filter(([k]) => {
+    const alert = getAlert(k, machineId);
+    return alert === 'critical' || alert === 'warning';
+  }).map(([k, s]) => {
+    const d = getData(k, machineId);
+    const v = d.filter(p => p.value !== null).map(p => p.value as number);
+    const cur = v[v.length - 1];
+    const alert = getAlert(k, machineId);
+    return { key: k, label: s.label, unit: s.unit, value: cur, alert };
+  });
+
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader title="Pre-Inspection Brief" subtitle={machine.assetId} back="/" />
+      {/* Header */}
+      <header className="flex items-center justify-between px-5 pt-14 pb-3 sticky top-0 z-40 bg-background/90 backdrop-blur-2xl border-b border-border/20">
+        <button onClick={() => navigate('/')} className="w-9 h-9 rounded-xl bg-surface-2 border border-border/30 flex items-center justify-center">
+          <ArrowLeft className="w-4 h-4 text-foreground" />
+        </button>
+        <div className="text-center flex-1">
+          <h1 className="text-base font-bold">{machine.model.replace('Hydraulic Excavator', '').trim()}</h1>
+          <p className="text-xs text-muted-foreground">{machine.assetId}</p>
+        </div>
+        <button className="w-9 h-9 rounded-xl bg-surface-2 border border-border/30 flex items-center justify-center">
+          <Share2 className="w-4 h-4 text-muted-foreground" />
+        </button>
+      </header>
 
-      <div className="px-5 py-5 space-y-4 pb-36">
-        {/* ── Machine Hero ───────────────────────────────────────────── */}
-        <div className="card-elevated overflow-hidden animate-slide-up">
-          <div className="relative h-48 bg-gradient-to-br from-surface-2 to-surface-3 overflow-hidden">
-            <img
-              src={excavatorHero}
-              alt={machine.model}
-              className="absolute inset-0 w-full h-full object-cover opacity-70"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
-            <div className="absolute bottom-4 left-4 right-4">
-              <h2 className="text-xl font-bold text-foreground">{machine.model}</h2>
-              <p className="text-sm text-muted-foreground font-mono mt-0.5">{machine.assetId} · S/N {machine.serial}</p>
-            </div>
-            {machine.lastInspection && (
-              <div className="absolute top-3 right-3">
-                <StatusSummary {...machine.lastInspection.summary}/>
-              </div>
-            )}
-          </div>
-
-          {/* Specification Grid — uses live sensor data for consistency */}
-          {(() => {
-            const fuelData = getData('fuel_level', machineId);
-            const fuelVals = fuelData.filter(d => d.value !== null);
-            const liveFuel = fuelVals.length > 0 ? fuelVals[fuelVals.length - 1].value! : machine.fuelLevel;
-            const smuData = getData('service_meter_hours', machineId);
-            const smuVals = smuData.filter(d => d.value !== null);
-            const liveSmu = smuVals.length > 0 ? Math.round(smuVals[smuVals.length - 1].value!) : machine.smuHours;
-            return (
-          <div className="p-4">
-            <p className="label-caps mb-3">Specification</p>
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              <div className="inset-surface p-3 rounded-2xl text-center">
-                <div className="flex items-center justify-center gap-1.5 mb-1">
-                  <Clock className="w-3.5 h-3.5 text-primary"/>
-                  <span className="text-[10px] text-muted-foreground">SMU</span>
-                </div>
-                <p className="font-mono font-bold text-base text-foreground">{liveSmu.toLocaleString()}</p>
-                <p className="text-[9px] text-muted-foreground mt-0.5">hours</p>
-              </div>
-              <div className="inset-surface p-3 rounded-2xl text-center">
-                <div className="flex items-center justify-center gap-1.5 mb-1">
-                  <Fuel className="w-3.5 h-3.5 text-primary"/>
-                  <span className="text-[10px] text-muted-foreground">Fuel</span>
-                </div>
-                <p className={`font-mono font-bold text-base ${liveFuel < 25 ? 'text-status-fail' : liveFuel < 40 ? 'text-status-monitor' : 'text-foreground'}`}>{liveFuel.toFixed(0)}%</p>
-                <p className="text-[9px] text-muted-foreground mt-0.5">level</p>
-              </div>
-              <div className="inset-surface p-3 rounded-2xl text-center">
-                <div className="flex items-center justify-center gap-1.5 mb-1">
-                  <Activity className="w-3.5 h-3.5 text-status-pass"/>
-                  <span className="text-[10px] text-muted-foreground">Status</span>
-                </div>
-                <p className="font-mono font-bold text-sm text-status-pass">ON</p>
-                <p className="text-[9px] text-muted-foreground mt-0.5">online</p>
-              </div>
-            </div>
-            <div className="inset-surface p-3 rounded-2xl flex items-center gap-3">
-              <MapPin className="w-4 h-4 text-primary shrink-0"/>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm text-foreground truncate">{machine.location}</p>
-                <p className="text-xs text-muted-foreground font-mono">
-                  {machine.gpsCoords.lat.toFixed(3)}°N, {machine.gpsCoords.lng.toFixed(3)}°W
-                </p>
-              </div>
+      <div className="px-5 py-5 space-y-4 pb-40">
+        {/* Machine hero image */}
+        <div className="card-elevated overflow-hidden">
+          <div className="relative h-52 bg-surface-2 overflow-hidden flex items-center justify-center">
+            <img src={excavatorHero} alt={machine.model} className="w-full h-full object-cover" />
+            {/* Health indicator */}
+            <div className="absolute top-3 right-3 bg-primary/90 text-primary-foreground text-sm font-bold px-3 py-1.5 rounded-lg">
+              {liveFuel.toFixed(0)}%
             </div>
           </div>
-            );
-          })()}
         </div>
 
-        {/* ── Active Fault Codes ───────────────────────────────────────── */}
-        {machine.activeFaultCodes.length > 0 && (
-          <div className="card-elevated p-4 border-status-fail/20 animate-slide-up" style={{ animationDelay:'0.05s' }}>
-            <div className="flex items-center gap-2.5 mb-3">
-              <div className="w-8 h-8 rounded-xl bg-status-fail/12 flex items-center justify-center">
-                <AlertTriangle className="w-4 h-4 text-status-fail"/>
+        {/* Specification — reference style pill grid */}
+        <div className="space-y-3">
+          <h2 className="text-base font-bold px-1">Specification</h2>
+
+          {/* Top row: Engine / Remaining / Oil Level */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="card-elevated p-3 flex items-center gap-2.5">
+              <div className="flex flex-col flex-1 min-w-0">
+                <span className="text-[10px] text-muted-foreground">Engine</span>
+                <span className="text-sm font-bold text-foreground mt-0.5">ON</span>
               </div>
-              <h3 className="text-sm font-bold text-status-fail">Active Fault Codes</h3>
-              <span className="ml-auto metric-pill-status bg-status-fail/12 text-status-fail border border-status-fail/20 text-[10px]">
+              <span className="px-2 py-1 rounded-md bg-status-pass/15 text-status-pass text-[10px] font-bold">ON</span>
+            </div>
+            <div className="card-elevated p-3">
+              <span className="text-[10px] text-muted-foreground">Remaining</span>
+              <p className="text-sm font-bold text-foreground mt-0.5 font-mono">{liveSmu.toLocaleString()}h</p>
+            </div>
+            <div className="card-elevated p-3 flex items-center gap-2">
+              <div className="flex flex-col flex-1 min-w-0">
+                <span className="text-[10px] text-muted-foreground">Fuel</span>
+                <span className={`text-sm font-bold font-mono mt-0.5 ${liveFuel < 25 ? 'text-status-fail' : liveFuel < 40 ? 'text-status-monitor' : 'text-foreground'}`}>
+                  {liveFuel.toFixed(0)}%
+                </span>
+              </div>
+              {liveFuel < 25 && <AlertTriangle className="w-4 h-4 text-status-fail" />}
+            </div>
+          </div>
+
+          {/* Bottom row: Speed / RPM / SMU */}
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { icon: <Activity className="w-3.5 h-3.5 text-primary" />, label: 'Hydraulic', value: `${getData('hydraulic_pressure', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'} psi` },
+              { icon: <Cpu className="w-3.5 h-3.5 text-primary" />, label: 'Engine RPM', value: `${getData('engine_rpm', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'}` },
+              { icon: <Clock className="w-3.5 h-3.5 text-primary" />, label: 'SMU Hours', value: liveSmu.toLocaleString() },
+            ].map((item, i) => (
+              <div key={i} className="card-elevated p-3 flex items-start gap-2">
+                {item.icon}
+                <div>
+                  <span className="text-[10px] text-muted-foreground block">{item.label}</span>
+                  <span className="text-sm font-bold font-mono mt-0.5 block">{item.value}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Other metrics — list style */}
+        <div className="space-y-1">
+          <h2 className="text-base font-bold px-1 mb-2">Other metrics</h2>
+          {[
+            { label: 'Engine Coolant', value: `${getData('coolant_temp', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'}°`, alert: getAlert('coolant_temp', machineId) },
+            { label: 'Hydraulic Temp', value: `${getData('hydraulic_temp', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'}°C`, alert: getAlert('hydraulic_temp', machineId) },
+            { label: 'DEF Level', value: `${getData('def_level', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'}%`, alert: getAlert('def_level', machineId) },
+            { label: 'Exhaust Temp', value: `${getData('exhaust_temp', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'}°C`, alert: getAlert('exhaust_temp', machineId) },
+          ].map((m, i) => (
+            <div key={i} className="flex items-center justify-between py-3 px-3 rounded-xl hover:bg-surface-2/50 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className={`w-2 h-2 rounded-full ${m.alert === 'critical' ? 'bg-status-fail' : m.alert === 'warning' ? 'bg-status-monitor' : 'bg-status-pass'}`} />
+                <span className="text-sm text-foreground">{m.label}</span>
+              </div>
+              <span className={`text-sm font-bold font-mono ${m.alert === 'critical' ? 'text-status-fail' : m.alert === 'warning' ? 'text-status-monitor' : 'text-foreground'}`}>
+                {m.value}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Location */}
+        <div className="card-elevated p-4 flex items-center gap-3">
+          <MapPin className="w-5 h-5 text-primary shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground truncate">{machine.location}</p>
+            <p className="text-xs text-muted-foreground font-mono">
+              {machine.gpsCoords.lat.toFixed(3)}°N, {machine.gpsCoords.lng.toFixed(3)}°W
+            </p>
+          </div>
+        </div>
+
+        {/* Active Fault Codes */}
+        {machine.activeFaultCodes.length > 0 && (
+          <div className="card-elevated p-4 border-status-fail/20">
+            <div className="flex items-center gap-2.5 mb-3">
+              <AlertTriangle className="w-4 h-4 text-status-fail" />
+              <h3 className="text-sm font-bold text-status-fail flex-1">Active Fault Codes</h3>
+              <span className="text-[10px] font-bold text-status-fail bg-status-fail/12 border border-status-fail/20 px-2 py-0.5 rounded-md">
                 {machine.activeFaultCodes.length}
               </span>
             </div>
             <div className="space-y-2">
               {machine.activeFaultCodes.map((fc) => (
-                <div key={fc.code} className="inset-surface rounded-2xl p-3.5">
+                <div key={fc.code} className="inset-surface rounded-xl p-3">
                   <div className="flex items-center gap-2 mb-1">
-                    <Cpu className="w-3.5 h-3.5 text-sensor"/>
                     <span className="font-mono text-sm text-sensor font-bold">{fc.code}</span>
-                    <span className={`ml-auto text-[10px] font-semibold uppercase px-2.5 py-1 rounded-full border ${fc.severity === 'critical' ? 'bg-status-fail/10 text-status-fail border-status-fail/15' : 'bg-status-monitor/10 text-status-monitor border-status-monitor/15'}`}>
+                    <span className={`ml-auto text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md border ${
+                      fc.severity === 'critical' ? 'bg-status-fail/10 text-status-fail border-status-fail/15' : 'bg-status-monitor/10 text-status-monitor border-status-monitor/15'
+                    }`}>
                       {fc.severity}
                     </span>
                   </div>
-                  <p className="text-sm text-foreground">{fc.description}</p>
-                  <p className="text-xs text-muted-foreground mt-1 font-mono">System: {fc.system}</p>
+                  <p className="text-sm text-foreground/80">{fc.description}</p>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* ── VisionLink Telemetry — expandable sensor list + charts ─── */}
-        {(() => {
-          const criticalSensors = Object.entries(SENSORS).filter(([k]) => {
-            const alert = getAlert(k, machineId);
-            return alert === 'critical' || alert === 'warning';
-          }).map(([k, s]) => {
-            const d = getData(k, machineId);
-            const v = d.filter(p => p.value !== null).map(p => p.value as number);
-            const cur = v[v.length - 1];
-            const alert = getAlert(k, machineId);
-            return { key: k, label: s.label, unit: s.unit, value: cur, alert };
-          });
-          return (
-            <div className="card-elevated animate-slide-up" style={{ animationDelay:'0.1s' }}>
-              <button
-                onClick={() => setActiveSection(activeSection === 'telemetry' ? null : 'telemetry')}
-                className="w-full flex items-center gap-3 p-4 text-left"
-              >
-                <div className="w-8 h-8 rounded-xl bg-primary/12 flex items-center justify-center">
-                  <Activity className="w-4 h-4 text-primary"/>
-                </div>
-                <h3 className="text-sm font-bold flex-1">VisionLink Telemetry</h3>
-                <div className="flex items-center gap-1.5 mr-2">
-                  {criticalSensors.length > 0 ? (
-                    <>
-                      <AlertTriangle className="w-3.5 h-3.5 text-status-fail"/>
-                      <span className="text-[10px] text-status-fail font-mono font-semibold">{criticalSensors.length} ALERT{criticalSensors.length !== 1 ? 'S' : ''}</span>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-1.5 h-1.5 rounded-full bg-status-pass" style={{ boxShadow:'0 0 5px hsl(var(--status-pass))' }}/>
-                      <span className="text-[10px] text-status-pass font-mono font-semibold tracking-widest">LIVE</span>
-                    </>
-                  )}
-                </div>
-                {activeSection === 'telemetry'
-                  ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0"/>
-                  : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0"/>}
-              </button>
-              {/* Critical warnings shown even when collapsed */}
-              {activeSection !== 'telemetry' && criticalSensors.length > 0 && (
-                <div className="px-4 pb-3 space-y-1.5">
-                  {criticalSensors.map(s => {
-                    const isCrit = s.alert === 'critical';
-                    return (
-                      <div key={s.key} className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 ${isCrit ? 'bg-status-fail/8 border border-status-fail/20' : 'bg-status-monitor/8 border border-status-monitor/20'}`}>
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${isCrit ? 'bg-status-fail' : 'bg-status-monitor'}`} style={{ boxShadow: `0 0 6px ${isCrit ? 'hsl(var(--status-fail))' : 'hsl(var(--status-monitor))'}` }}/>
-                        <span className="text-xs font-semibold text-foreground flex-1">{s.label}</span>
-                        <span className={`font-mono text-sm font-bold ${isCrit ? 'text-status-fail' : 'text-status-monitor'}`}>{s.value?.toFixed(1)}</span>
-                        <span className="text-[10px] text-muted-foreground">{s.unit}</span>
-                        <span className={`text-[9px] font-bold uppercase ${isCrit ? 'text-status-fail' : 'text-status-monitor'}`}>{s.alert}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              {activeSection === 'telemetry' && (
-                <div className="px-4 pb-4 border-t border-border/30">
-                  <TelemetrySection machineId={machineId}/>
-                </div>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* ── S·O·S Fluid Analysis ─────────────────────────────────────── */}
-        <div className="card-elevated p-4 animate-slide-up" style={{ animationDelay:'0.15s' }}>
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-8 h-8 rounded-xl bg-sensor/12 flex items-center justify-center">
-              <Droplets className="w-4 h-4 text-sensor"/>
-            </div>
-            <h3 className="text-sm font-bold">S·O·S Fluid Analysis</h3>
-            <span className="ml-auto text-xs text-muted-foreground font-mono">02/15/2026</span>
-          </div>
-          <div className="space-y-0">
-            {([
-              ['Engine Oil',       'Normal',                'text-status-pass'],
-              ['Hydraulic Fluid',  'Elevated Iron — 45 ppm','text-status-monitor'],
-              ['Coolant',          'Normal',                'text-status-pass'],
-              ['Final Drive Oil',  'Normal',                'text-status-pass'],
-            ] as [string,string,string][]).map(([label, value, cls], i) => (
-              <div key={label} className={`flex justify-between items-center py-3 ${i < 3 ? 'divider' : ''}`}>
-                <span className="text-sm text-muted-foreground">{label}</span>
-                <span className={`metric-pill-status text-[11px] ${cls === 'text-status-pass' ? 'bg-status-pass/10 border border-status-pass/20' : 'bg-status-monitor/10 border border-status-monitor/20'} ${cls}`}>{value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Inspection Reports — expandable ──────────────────────────── */}
-        <div className="card-elevated animate-slide-up" style={{ animationDelay:'0.2s' }}>
+        {/* VisionLink Telemetry — expandable */}
+        <div className="card-elevated">
           <button
-            onClick={() => setActiveSection(activeSection === 'reports' ? null : 'reports')}
+            onClick={() => setActiveSection(activeSection === 'telemetry' ? null : 'telemetry')}
             className="w-full flex items-center gap-3 p-4 text-left"
           >
-            <div className="w-8 h-8 rounded-xl bg-primary/12 flex items-center justify-center">
-              <History className="w-4 h-4 text-primary"/>
+            <Activity className="w-5 h-5 text-primary" />
+            <h3 className="text-sm font-bold flex-1">VisionLink Telemetry</h3>
+            <div className="flex items-center gap-1.5 mr-2">
+              {criticalSensors.length > 0 ? (
+                <>
+                  <AlertTriangle className="w-3.5 h-3.5 text-status-fail" />
+                  <span className="text-[10px] text-status-fail font-mono font-semibold">{criticalSensors.length} ALERT{criticalSensors.length !== 1 ? 'S' : ''}</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-1.5 h-1.5 rounded-full bg-status-pass" style={{ boxShadow:'0 0 5px hsl(var(--status-pass))' }}/>
+                  <span className="text-[10px] text-status-pass font-mono font-semibold tracking-widest">LIVE</span>
+                </>
+              )}
             </div>
-            <h3 className="text-sm font-bold flex-1">Inspection Reports</h3>
-            <span className="text-xs text-muted-foreground font-mono mr-2">Reports</span>
-            {activeSection === 'reports'
-              ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0"/>
-              : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0"/>}
+            {activeSection === 'telemetry' ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
           </button>
-          {activeSection === 'reports' && (
-            <div className="px-4 pb-4 border-t border-border/30">
-              <div className="pt-4">
-                <ReportsSection machineId={machineId}/>
-              </div>
+          {activeSection !== 'telemetry' && criticalSensors.length > 0 && (
+            <div className="px-4 pb-3 space-y-1.5">
+              {criticalSensors.map(s => {
+                const isCrit = s.alert === 'critical';
+                return (
+                  <div key={s.key} className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 ${isCrit ? 'bg-status-fail/8 border border-status-fail/20' : 'bg-status-monitor/8 border border-status-monitor/20'}`}>
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${isCrit ? 'bg-status-fail' : 'bg-status-monitor'}`} />
+                    <span className="text-xs font-semibold text-foreground flex-1">{s.label}</span>
+                    <span className={`font-mono text-sm font-bold ${isCrit ? 'text-status-fail' : 'text-status-monitor'}`}>{s.value?.toFixed(1)}</span>
+                    <span className="text-[10px] text-muted-foreground">{s.unit}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {activeSection === 'telemetry' && (
+            <div className="px-4 pb-4 border-t border-border/20">
+              <TelemetrySection machineId={machineId} />
             </div>
           )}
         </div>
 
-        {/* ── Open Items from Last Inspection ──────────────────────────── */}
-        {machine.lastInspection && (machine.lastInspection.summary.fail > 0 || machine.lastInspection.summary.monitor > 0) && (
-          <div className="card-elevated p-4 animate-slide-up" style={{ animationDelay:'0.25s' }}>
-            <div className="flex items-center gap-2.5 mb-3">
-              <div className="w-8 h-8 rounded-xl bg-status-monitor/12 flex items-center justify-center">
-                <AlertTriangle className="w-4 h-4 text-status-monitor"/>
-              </div>
-              <div>
-                <h3 className="text-sm font-bold">Open Items</h3>
-                <p className="text-[10px] text-muted-foreground">
-                  {machine.lastInspection.date} — {machine.lastInspection.inspector}
-                </p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center gap-3 bg-status-fail/6 border border-status-fail/12 rounded-2xl p-3.5">
-                <span className="status-dot status-dot-fail"/>
-                <span className="text-sm">Right rear work light not functioning</span>
-              </div>
-              <div className="flex items-center gap-3 bg-status-monitor/6 border border-status-monitor/12 rounded-2xl p-3.5">
-                <span className="status-dot status-dot-monitor"/>
-                <span className="text-sm">Bucket teeth wearing — monitor for replacement</span>
-              </div>
-            </div>
+        {/* S·O·S Fluid Analysis */}
+        <div className="card-elevated p-4">
+          <div className="flex items-center gap-2.5 mb-3">
+            <Droplets className="w-5 h-5 text-sensor" />
+            <h3 className="text-sm font-bold flex-1">S·O·S Fluid Analysis</h3>
+            <span className="text-xs text-muted-foreground font-mono">02/15/2026</span>
           </div>
-        )}
+          {([
+            ['Engine Oil', 'Normal', 'text-status-pass'],
+            ['Hydraulic Fluid', 'Elevated Iron — 45 ppm', 'text-status-monitor'],
+            ['Coolant', 'Normal', 'text-status-pass'],
+            ['Final Drive Oil', 'Normal', 'text-status-pass'],
+          ] as [string,string,string][]).map(([label, value, cls], i) => (
+            <div key={label} className={`flex justify-between items-center py-3 ${i < 3 ? 'border-b border-border/20' : ''}`}>
+              <span className="text-sm text-muted-foreground">{label}</span>
+              <span className={`text-xs font-bold ${cls}`}>{value}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Inspection Reports — expandable */}
+        <div className="card-elevated">
+          <button
+            onClick={() => setActiveSection(activeSection === 'reports' ? null : 'reports')}
+            className="w-full flex items-center gap-3 p-4 text-left"
+          >
+            <History className="w-5 h-5 text-primary" />
+            <h3 className="text-sm font-bold flex-1">Inspection Reports</h3>
+            {activeSection === 'reports' ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+          </button>
+          {activeSection === 'reports' && (
+            <div className="px-4 pb-4 border-t border-border/20">
+              <ReportsSection machineId={machineId} />
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* ── Sticky CTA ───────────────────────────────────────────────────── */}
+      {/* Sticky CTA */}
       <div className="fixed bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-background via-background/95 to-transparent safe-bottom space-y-2.5">
         <button
           onClick={() => navigate(`/inspect/${machine.id}`)}
           className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-base glow-primary active:scale-[0.98] transition-all"
         >
-          <Play className="w-5 h-5"/>
+          <Play className="w-5 h-5" />
           Start Inspection
           <ChevronRight className="w-5 h-5 opacity-60" />
         </button>
         <div className="flex gap-2.5">
           <button
             onClick={() => navigate(`/inspect/${machine.id}?mode=upload`)}
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-surface-2 text-secondary-foreground font-semibold text-sm border border-border/40 active:scale-[0.98] transition-all"
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-surface-2 text-secondary-foreground font-semibold text-sm border border-border/30 active:scale-[0.98] transition-all"
           >
-            <Upload className="w-4 h-4"/>
+            <Upload className="w-4 h-4" />
             Upload Video
           </button>
           <button
             onClick={() => navigate(`/history/${machine.id}`)}
-            className="flex items-center justify-center gap-2 py-3.5 px-5 rounded-2xl bg-surface-2 text-secondary-foreground font-semibold text-sm border border-border/40 active:scale-[0.98] transition-all"
+            className="flex items-center justify-center gap-2 py-3.5 px-5 rounded-2xl bg-surface-2 text-secondary-foreground font-semibold text-sm border border-border/30 active:scale-[0.98] transition-all"
           >
-            <History className="w-4 h-4"/>
+            <History className="w-4 h-4" />
           </button>
         </div>
       </div>
-
-      <style>{`
-        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
-        ::-webkit-scrollbar { display: none }
-      `}</style>
     </div>
   );
 }

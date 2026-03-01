@@ -6,63 +6,63 @@
 
 @layer base {
   :root {
-    --background: 220 16% 4%;
-    --foreground: 40 6% 92%;
+    --background: 0 0% 5%;
+    --foreground: 0 0% 93%;
 
-    --card: 220 14% 8%;
-    --card-foreground: 40 6% 92%;
+    --card: 0 0% 9%;
+    --card-foreground: 0 0% 93%;
 
-    --popover: 220 14% 8%;
-    --popover-foreground: 40 6% 92%;
+    --popover: 0 0% 9%;
+    --popover-foreground: 0 0% 93%;
 
-    --primary: 44 92% 56%;
-    --primary-foreground: 220 16% 4%;
+    --primary: 152 69% 46%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 12% 12%;
-    --secondary-foreground: 40 6% 72%;
+    --secondary: 0 0% 13%;
+    --secondary-foreground: 0 0% 63%;
 
-    --muted: 220 12% 10%;
-    --muted-foreground: 220 8% 44%;
+    --muted: 0 0% 11%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 24 85% 54%;
+    --accent: 152 60% 40%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 12% 13%;
-    --input: 220 12% 13%;
-    --ring: 44 92% 56%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 152 69% 46%;
 
     --radius: 1rem;
 
     /* Status */
-    --status-pass: 158 64% 42%;
+    --status-pass: 152 69% 46%;
     --status-monitor: 38 92% 50%;
     --status-fail: 0 72% 50%;
-    --status-normal: 220 8% 44%;
+    --status-normal: 0 0% 40%;
     --status-conflicted: 280 70% 55%;
 
     /* Sensor */
     --sensor: 190 80% 50%;
 
     /* Surfaces — layered depth */
-    --surface-1: 220 14% 8%;
-    --surface-2: 220 12% 11%;
-    --surface-3: 220 10% 14%;
+    --surface-1: 0 0% 9%;
+    --surface-2: 0 0% 12%;
+    --surface-3: 0 0% 15%;
 
     /* Glow */
-    --glow-primary: 44 92% 56%;
+    --glow-primary: 152 69% 46%;
     --glow-fail: 0 72% 50%;
 
-    --sidebar-background: 220 16% 4%;
-    --sidebar-foreground: 40 6% 92%;
-    --sidebar-primary: 44 92% 56%;
-    --sidebar-primary-foreground: 220 16% 4%;
-    --sidebar-accent: 220 12% 11%;
-    --sidebar-accent-foreground: 40 6% 72%;
-    --sidebar-border: 220 12% 13%;
-    --sidebar-ring: 44 92% 56%;
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 0 0% 93%;
+    --sidebar-primary: 152 69% 46%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 63%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 152 69% 46%;
   }
 }
 
@@ -161,7 +161,6 @@
     box-shadow: 0 1px 2px 0 hsl(0 0% 0% / 0.15) inset;
   }
 
-  /* Safe area support for mobile */
   .safe-bottom {
     padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
   }
@@ -175,25 +174,21 @@
     min-width: 44px;
   }
 
-  /* Refined card */
   .card-elevated {
     @apply bg-card border border-border/40 rounded-2xl;
     box-shadow: 0 1px 0 0 hsl(0 0% 100% / 0.03) inset,
                 0 4px 12px -4px hsl(0 0% 0% / 0.3);
   }
 
-  /* Subtle divider */
   .divider {
     @apply border-t border-border/30;
   }
 
-  /* Label style */
   .label-caps {
     @apply text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground;
     font-family: 'Inter', system-ui, sans-serif;
   }
 
-  /* Metric pill */
   .metric-pill {
     @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold font-mono;
     background: hsl(var(--surface-2));
