@@ -1003,29 +1003,69 @@ export default function PreInspection() {
         )}
 
         {/* ── VisionLink Telemetry — expandable sensor list + charts ─── */}
-        <div className="card-elevated animate-slide-up" style={{ animationDelay:'0.1s' }}>
-          <button
-            onClick={() => setActiveSection(activeSection === 'telemetry' ? null : 'telemetry')}
-            className="w-full flex items-center gap-3 p-4 text-left"
-          >
-            <div className="w-8 h-8 rounded-xl bg-primary/12 flex items-center justify-center">
-              <Activity className="w-4 h-4 text-primary"/>
+        {(() => {
+          const criticalSensors = Object.entries(SENSORS).filter(([k]) => {
+            const alert = getAlert(k);
+            return alert === 'critical' || alert === 'warning';
+          }).map(([k, s]) => {
+            const d = getData(k);
+            const v = d.filter(p => p.value !== null).map(p => p.value as number);
+            const cur = v[v.length - 1];
+            const alert = getAlert(k);
+            return { key: k, label: s.label, unit: s.unit, value: cur, alert };
+          });
+          return (
+            <div className="card-elevated animate-slide-up" style={{ animationDelay:'0.1s' }}>
+              <button
+                onClick={() => setActiveSection(activeSection === 'telemetry' ? null : 'telemetry')}
+                className="w-full flex items-center gap-3 p-4 text-left"
+              >
+                <div className="w-8 h-8 rounded-xl bg-primary/12 flex items-center justify-center">
+                  <Activity className="w-4 h-4 text-primary"/>
+                </div>
+                <h3 className="text-sm font-bold flex-1">VisionLink Telemetry</h3>
+                <div className="flex items-center gap-1.5 mr-2">
+                  {criticalSensors.length > 0 ? (
+                    <>
+                      <AlertTriangle className="w-3.5 h-3.5 text-status-fail"/>
+                      <span className="text-[10px] text-status-fail font-mono font-semibold">{criticalSensors.length} ALERT{criticalSensors.length !== 1 ? 'S' : ''}</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-1.5 h-1.5 rounded-full bg-status-pass" style={{ boxShadow:'0 0 5px hsl(var(--status-pass))' }}/>
+                      <span className="text-[10px] text-status-pass font-mono font-semibold tracking-widest">LIVE</span>
+                    </>
+                  )}
+                </div>
+                {activeSection === 'telemetry'
+                  ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0"/>
+                  : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0"/>}
+              </button>
+              {/* Critical warnings shown even when collapsed */}
+              {activeSection !== 'telemetry' && criticalSensors.length > 0 && (
+                <div className="px-4 pb-3 space-y-1.5">
+                  {criticalSensors.map(s => {
+                    const isCrit = s.alert === 'critical';
+                    return (
+                      <div key={s.key} className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 ${isCrit ? 'bg-status-fail/8 border border-status-fail/20' : 'bg-status-monitor/8 border border-status-monitor/20'}`}>
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${isCrit ? 'bg-status-fail' : 'bg-status-monitor'}`} style={{ boxShadow: `0 0 6px ${isCrit ? 'hsl(var(--status-fail))' : 'hsl(var(--status-monitor))'}` }}/>
+                        <span className="text-xs font-semibold text-foreground flex-1">{s.label}</span>
+                        <span className={`font-mono text-sm font-bold ${isCrit ? 'text-status-fail' : 'text-status-monitor'}`}>{s.value?.toFixed(1)}</span>
+                        <span className="text-[10px] text-muted-foreground">{s.unit}</span>
+                        <span className={`text-[9px] font-bold uppercase ${isCrit ? 'text-status-fail' : 'text-status-monitor'}`}>{s.alert}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {activeSection === 'telemetry' && (
+                <div className="px-4 pb-4 border-t border-border/30">
+                  <TelemetrySection/>
+                </div>
+              )}
             </div>
-            <h3 className="text-sm font-bold flex-1">VisionLink Telemetry</h3>
-            <div className="flex items-center gap-1.5 mr-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-status-pass" style={{ boxShadow:'0 0 5px hsl(var(--status-pass))' }}/>
-              <span className="text-[10px] text-status-pass font-mono font-semibold tracking-widest">LIVE</span>
-            </div>
-            {activeSection === 'telemetry'
-              ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0"/>
-              : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0"/>}
-          </button>
-          {activeSection === 'telemetry' && (
-            <div className="px-4 pb-4 border-t border-border/30">
-              <TelemetrySection/>
-            </div>
-          )}
-        </div>
+          );
+        })()}
 
         {/* ── S·O·S Fluid Analysis ─────────────────────────────────────── */}
         <div className="card-elevated p-4 animate-slide-up" style={{ animationDelay:'0.15s' }}>
