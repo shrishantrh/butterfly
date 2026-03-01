@@ -30,39 +30,33 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* iOS-style large title header */}
+      {/* Header */}
       <header className="sticky top-0 z-40 glass-surface">
         <div className="px-5 pt-14 pb-2.5 flex items-center justify-between">
           <h1 className="ios-large-title text-foreground">Fleet</h1>
           <button
             onClick={() => navigate('/history')}
-            className="w-[36px] h-[36px] rounded-full bg-white/[0.06] backdrop-blur-xl flex items-center justify-center ring-1 ring-white/[0.06]"
+            className="glass-icon-btn w-[38px] h-[38px]"
           >
             <History className="w-[18px] h-[18px] text-muted-foreground" />
           </button>
         </div>
 
-        {/* Search bar */}
+        {/* Search */}
         <div className="px-5 pb-3">
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[15px] h-[15px] text-muted-foreground/50" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[15px] h-[15px] text-muted-foreground/40" />
             <input
               type="text"
               placeholder="Search fleet"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl pl-10 pr-4 py-2.5 ios-body text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-              style={{
-                background: 'hsla(220, 10%, 12%, 0.6)',
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-                border: '0.5px solid hsla(220, 10%, 24%, 0.2)',
-              }}
+              className="w-full rounded-2xl pl-10 pr-4 py-2.5 ios-body text-foreground placeholder:text-muted-foreground/35 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all glass-input"
             />
           </div>
         </div>
 
-        {/* iOS Segmented Control */}
+        {/* Segmented Control */}
         <div className="px-5 pb-3.5">
           <div className="ios-segmented">
             {(['fleet', 'map', 'history'] as const).map(tab => (
@@ -78,7 +72,6 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Content */}
       <div className="pb-24">
         {activeTab === 'fleet' && (
           <>
@@ -86,7 +79,7 @@ const Index = () => {
             <div className="ios-section-header mt-3">Overview</div>
             <div className="mx-5 ios-card">
               <div className="grid grid-cols-2">
-                <div className="ios-cell py-4 flex-col items-start !gap-0" style={{ borderRight: '0.33px solid hsla(220, 10%, 24%, 0.3)' }}>
+                <div className="ios-cell py-4 flex-col items-start !gap-0" style={{ borderRight: '0.33px solid hsla(210, 20%, 40%, 0.1)' }}>
                   <span className="ios-caption text-muted-foreground">Failures</span>
                   <span className="text-[28px] font-bold font-mono text-status-fail leading-tight mt-0.5">{totalFails}</span>
                 </div>
@@ -95,8 +88,8 @@ const Index = () => {
                   <span className="text-[28px] font-bold font-mono text-status-monitor leading-tight mt-0.5">{totalMonitor}</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2" style={{ borderTop: '0.33px solid hsla(220, 10%, 24%, 0.3)' }}>
-                <div className="ios-cell py-4 flex-col items-start !gap-0" style={{ borderRight: '0.33px solid hsla(220, 10%, 24%, 0.3)' }}>
+              <div className="grid grid-cols-2" style={{ borderTop: '0.33px solid hsla(210, 20%, 40%, 0.1)' }}>
+                <div className="ios-cell py-4 flex-col items-start !gap-0" style={{ borderRight: '0.33px solid hsla(210, 20%, 40%, 0.1)' }}>
                   <span className="ios-caption text-muted-foreground">Avg Fuel</span>
                   <span className="text-[28px] font-bold font-mono text-foreground leading-tight mt-0.5">{avgFuel.toFixed(0)}%</span>
                 </div>
@@ -110,53 +103,35 @@ const Index = () => {
             {/* Quick Actions */}
             <div className="ios-section-header mt-6">Quick Actions</div>
             <div className="mx-5 ios-card">
-              <button
-                onClick={() => navigate('/history')}
-                className="ios-cell py-4 w-full active:bg-white/[0.03] transition-colors"
-              >
-                <div className="w-[32px] h-[32px] rounded-[10px] bg-primary/12 flex items-center justify-center shrink-0">
-                  <BarChart3 className="w-[16px] h-[16px] text-primary" />
-                </div>
-                <span className="ios-body text-foreground flex-1">Inspection Analytics</span>
-                <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/25" />
-              </button>
-              <button
-                onClick={() => setActiveTab('map')}
-                className="ios-cell py-4 w-full active:bg-white/[0.03] transition-colors"
-              >
-                <div className="w-[32px] h-[32px] rounded-[10px] bg-status-pass/12 flex items-center justify-center shrink-0">
-                  <MapPin className="w-[16px] h-[16px] text-status-pass" />
-                </div>
-                <span className="ios-body text-foreground flex-1">Fleet Map</span>
-                <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/25" />
-              </button>
-              <button
-                onClick={() => setActiveTab('history')}
-                className="ios-cell py-4 w-full active:bg-white/[0.03] transition-colors"
-              >
-                <div className="w-[32px] h-[32px] rounded-[10px] bg-status-monitor/12 flex items-center justify-center shrink-0">
-                  <Clock className="w-[16px] h-[16px] text-status-monitor" />
-                </div>
-                <span className="ios-body text-foreground flex-1">Recent Reports</span>
-                <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/25" />
-              </button>
+              {[
+                { icon: <BarChart3 className="w-[16px] h-[16px] text-primary" />, label: 'Inspection Analytics', bg: 'bg-primary/10', onClick: () => navigate('/history') },
+                { icon: <MapPin className="w-[16px] h-[16px] text-status-pass" />, label: 'Fleet Map', bg: 'bg-status-pass/10', onClick: () => setActiveTab('map') },
+                { icon: <Clock className="w-[16px] h-[16px] text-status-monitor" />, label: 'Recent Reports', bg: 'bg-status-monitor/10', onClick: () => setActiveTab('history') },
+              ].map((action, i, arr) => (
+                <button
+                  key={action.label}
+                  onClick={action.onClick}
+                  className="ios-cell py-4 w-full active:bg-white/[0.03] transition-colors"
+                  style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsla(210, 20%, 40%, 0.1)' } : {}}
+                >
+                  <div className={`w-[32px] h-[32px] rounded-[10px] ${action.bg} flex items-center justify-center shrink-0`}>
+                    {action.icon}
+                  </div>
+                  <span className="ios-body text-foreground flex-1">{action.label}</span>
+                  <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/20" />
+                </button>
+              ))}
             </div>
 
             {/* Machines */}
-            <div className="ios-section-header mt-6">
-              All Machines · {filteredMachines.length}
-            </div>
+            <div className="ios-section-header mt-6">All Machines · {filteredMachines.length}</div>
             <div className="mx-5 ios-card">
               {filteredMachines.map((machine, i) => (
-                <MachineCard
-                  key={machine.id}
-                  machine={machine}
-                  showSeparator={i < filteredMachines.length - 1}
-                />
+                <MachineCard key={machine.id} machine={machine} showSeparator={i < filteredMachines.length - 1} />
               ))}
               {filteredMachines.length === 0 && searchQuery && (
                 <div className="p-10 text-center">
-                  <Search className="w-6 h-6 text-muted-foreground/20 mx-auto mb-2" />
+                  <Search className="w-6 h-6 text-muted-foreground/15 mx-auto mb-2" />
                   <p className="ios-subhead text-muted-foreground">No machines found</p>
                 </div>
               )}
@@ -168,10 +143,9 @@ const Index = () => {
           <>
             <div className="ios-section-header mt-3">Fleet Locations</div>
             <div className="mx-5 ios-card">
-              {/* Placeholder map */}
-              <div className="h-[200px] flex items-center justify-center relative" style={{ borderBottom: '0.33px solid hsla(220, 10%, 24%, 0.3)' }}>
-                <div className="absolute inset-0 opacity-15" style={{
-                  backgroundImage: 'radial-gradient(circle at 30% 40%, hsl(var(--primary) / 0.3) 0%, transparent 50%), radial-gradient(circle at 70% 60%, hsl(var(--status-fail) / 0.2) 0%, transparent 40%)',
+              <div className="h-[200px] flex items-center justify-center relative" style={{ borderBottom: '0.33px solid hsla(210, 20%, 40%, 0.1)' }}>
+                <div className="absolute inset-0 opacity-10" style={{
+                  backgroundImage: 'radial-gradient(circle at 30% 40%, hsl(var(--primary) / 0.4) 0%, transparent 50%), radial-gradient(circle at 70% 60%, hsl(var(--status-fail) / 0.2) 0%, transparent 40%)',
                 }} />
                 <div className="text-center z-10">
                   <MapPin className="w-8 h-8 text-primary mx-auto mb-2" />
@@ -184,9 +158,9 @@ const Index = () => {
                   key={m.id}
                   onClick={() => navigate(`/pre-inspection/${m.id}`)}
                   className="ios-cell py-3.5 w-full text-left active:bg-white/[0.03] transition-colors"
-                  style={i < mockMachines.length - 1 ? { borderBottom: '0.33px solid hsla(220, 10%, 24%, 0.3)' } : {}}
+                  style={i < mockMachines.length - 1 ? { borderBottom: '0.33px solid hsla(210, 20%, 40%, 0.1)' } : {}}
                 >
-                  <div className="w-[32px] h-[32px] rounded-[10px] bg-primary/12 flex items-center justify-center shrink-0">
+                  <div className="w-[32px] h-[32px] rounded-[10px] bg-primary/10 flex items-center justify-center shrink-0">
                     <MapPin className="w-[16px] h-[16px] text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -197,7 +171,7 @@ const Index = () => {
                     <p className="ios-caption font-mono text-muted-foreground">{m.gpsCoords.lat.toFixed(3)}°N</p>
                     <p className="ios-caption font-mono text-muted-foreground">{m.gpsCoords.lng.toFixed(3)}°W</p>
                   </div>
-                  <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/25 shrink-0" />
+                  <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/20 shrink-0" />
                 </button>
               ))}
             </div>
@@ -222,7 +196,7 @@ const Index = () => {
                     key={m.id}
                     onClick={() => navigate(`/pre-inspection/${m.id}`)}
                     className="w-full text-left px-4 py-4 active:bg-white/[0.03] transition-colors"
-                    style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsla(220, 10%, 24%, 0.3)' } : {}}
+                    style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsla(210, 20%, 40%, 0.1)' } : {}}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div>

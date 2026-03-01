@@ -5,23 +5,23 @@
 @layer base {
   :root {
     /* Premium dark theme with CAT yellow */
-    --background: 220 16% 4%;
-    --foreground: 0 0% 96%;
+    --background: 225 18% 3%;
+    --foreground: 210 20% 96%;
 
-    --card: 220 12% 9%;
-    --card-foreground: 0 0% 96%;
+    --card: 224 14% 8%;
+    --card-foreground: 210 20% 96%;
 
-    --popover: 220 12% 9%;
-    --popover-foreground: 0 0% 96%;
+    --popover: 224 14% 8%;
+    --popover-foreground: 210 20% 96%;
 
     --primary: 46 100% 50%;
     --primary-foreground: 0 0% 4%;
 
-    --secondary: 220 10% 14%;
-    --secondary-foreground: 0 0% 60%;
+    --secondary: 222 12% 13%;
+    --secondary-foreground: 210 10% 58%;
 
-    --muted: 220 10% 12%;
-    --muted-foreground: 220 8% 52%;
+    --muted: 222 12% 10%;
+    --muted-foreground: 218 10% 48%;
 
     --accent: 46 90% 45%;
     --accent-foreground: 0 0% 4%;
@@ -29,8 +29,8 @@
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 10% 16%;
-    --input: 220 10% 14%;
+    --border: 222 12% 15%;
+    --input: 222 12% 13%;
     --ring: 46 100% 50%;
 
     --radius: 1rem;
@@ -39,38 +39,38 @@
     --status-pass: 152 60% 46%;
     --status-monitor: 38 92% 50%;
     --status-fail: 0 76% 58%;
-    --status-normal: 220 8% 46%;
+    --status-normal: 218 10% 44%;
     --status-conflicted: 280 60% 58%;
 
     /* Sensor */
     --sensor: 199 82% 52%;
 
-    /* Refined layered surfaces */
-    --surface-1: 220 12% 9%;
-    --surface-2: 220 10% 14%;
-    --surface-3: 220 8% 20%;
+    /* Layered glass surfaces */
+    --surface-1: 224 14% 8%;
+    --surface-2: 222 12% 13%;
+    --surface-3: 220 10% 19%;
 
     /* Glow */
     --glow-primary: 46 100% 50%;
     --glow-fail: 0 72% 50%;
 
     /* Sidebar */
-    --sidebar-background: 220 16% 4%;
-    --sidebar-foreground: 0 0% 96%;
+    --sidebar-background: 225 18% 3%;
+    --sidebar-foreground: 210 20% 96%;
     --sidebar-primary: 46 100% 50%;
     --sidebar-primary-foreground: 0 0% 4%;
-    --sidebar-accent: 220 10% 14%;
-    --sidebar-accent-foreground: 0 0% 60%;
-    --sidebar-border: 220 10% 16%;
+    --sidebar-accent: 222 12% 13%;
+    --sidebar-accent-foreground: 210 10% 58%;
+    --sidebar-border: 222 12% 15%;
     --sidebar-ring: 46 100% 50%;
 
-    /* iOS grouped background — refined */
-    --ios-grouped-bg: 220 16% 4%;
-    --ios-card-bg: 220 12% 9%;
-    --ios-separator: 220 10% 16%;
-    --ios-label: 220 8% 52%;
-    --ios-secondary-label: 220 8% 36%;
-    --ios-fill: 220 10% 12%;
+    /* iOS grouped — deep glass */
+    --ios-grouped-bg: 225 18% 3%;
+    --ios-card-bg: 224 14% 8%;
+    --ios-separator: 222 12% 15%;
+    --ios-label: 218 10% 48%;
+    --ios-secondary-label: 218 10% 34%;
+    --ios-fill: 222 12% 10%;
   }
 }
 
@@ -109,70 +109,31 @@
     letter-spacing: -0.02em;
   }
 
-  /* iOS Large Title — 34pt bold */
-  .ios-large-title {
-    font-size: 34px;
-    font-weight: 700;
-    letter-spacing: 0.011em;
-    line-height: 1.18;
-  }
+  .ios-large-title { font-size: 34px; font-weight: 700; letter-spacing: 0.011em; line-height: 1.18; }
+  .ios-title { font-size: 17px; font-weight: 600; letter-spacing: -0.022em; }
+  .ios-headline { font-size: 17px; font-weight: 600; letter-spacing: -0.022em; }
+  .ios-body { font-size: 17px; font-weight: 400; letter-spacing: -0.022em; }
+  .ios-subhead { font-size: 15px; font-weight: 400; letter-spacing: -0.016em; }
+  .ios-footnote { font-size: 13px; font-weight: 400; letter-spacing: -0.008em; }
+  .ios-caption { font-size: 12px; font-weight: 400; letter-spacing: 0; }
+  .ios-caption2 { font-size: 11px; font-weight: 400; letter-spacing: 0.006em; }
 
-  /* iOS Title — 17pt semibold */
-  .ios-title {
-    font-size: 17px;
-    font-weight: 600;
-    letter-spacing: -0.022em;
-  }
-
-  /* iOS Headline — 17pt semibold */
-  .ios-headline {
-    font-size: 17px;
-    font-weight: 600;
-    letter-spacing: -0.022em;
-  }
-
-  /* iOS Body — 17pt regular */
-  .ios-body {
-    font-size: 17px;
-    font-weight: 400;
-    letter-spacing: -0.022em;
-  }
-
-  /* iOS Subheadline — 15pt regular */
-  .ios-subhead {
-    font-size: 15px;
-    font-weight: 400;
-    letter-spacing: -0.016em;
-  }
-
-  /* iOS Footnote — 13pt regular */
-  .ios-footnote {
-    font-size: 13px;
-    font-weight: 400;
-    letter-spacing: -0.008em;
-  }
-
-  /* iOS Caption — 12pt regular */
-  .ios-caption {
-    font-size: 12px;
-    font-weight: 400;
-    letter-spacing: 0;
-  }
-
-  /* iOS Caption 2 — 11pt regular */
-  .ios-caption2 {
-    font-size: 11px;
-    font-weight: 400;
-    letter-spacing: 0.006em;
-  }
-
-  /* ─── FROSTED GLASS CARDS ─── */
+  /* ─── 3D FROSTED GLASS CARD ─── */
   .ios-card {
-    @apply rounded-2xl overflow-hidden;
-    background: hsla(220, 12%, 9%, 0.65);
-    backdrop-filter: blur(40px) saturate(180%);
-    -webkit-backdrop-filter: blur(40px) saturate(180%);
-    border: 0.5px solid hsla(220, 10%, 24%, 0.35);
+    @apply rounded-2xl overflow-hidden relative;
+    background: linear-gradient(
+      145deg,
+      hsla(224, 16%, 12%, 0.55),
+      hsla(224, 14%, 7%, 0.65)
+    );
+    backdrop-filter: blur(60px) saturate(200%);
+    -webkit-backdrop-filter: blur(60px) saturate(200%);
+    border: 0.5px solid hsla(210, 20%, 40%, 0.12);
+    box-shadow:
+      0 0 0 0.5px hsla(210, 20%, 100%, 0.04) inset,
+      0 1px 0 0 hsla(210, 20%, 100%, 0.04) inset,
+      0 8px 32px -4px hsla(225, 30%, 3%, 0.6),
+      0 2px 8px -2px hsla(225, 30%, 3%, 0.4);
   }
 
   /* iOS cell row */
@@ -181,17 +142,17 @@
   }
 
   .ios-cell + .ios-cell {
-    border-top: 0.33px solid hsla(220, 10%, 24%, 0.3);
+    border-top: 0.33px solid hsla(210, 20%, 40%, 0.1);
   }
 
-  /* iOS Section header text */
+  /* iOS Section header */
   .ios-section-header {
     font-size: 13px;
     font-weight: 500;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     color: hsl(var(--ios-label));
-    padding: 8px 20px 6px;
+    padding: 10px 20px 6px;
   }
 
   .ios-section-footer {
@@ -203,130 +164,167 @@
     line-height: 1.38;
   }
 
-  /* iOS Segmented Control — frosted */
+  /* ─── FROSTED SEGMENTED CONTROL ─── */
   .ios-segmented {
-    @apply flex p-[3px] rounded-xl;
-    background: hsla(220, 10%, 12%, 0.7);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 0.5px solid hsla(220, 10%, 24%, 0.25);
+    @apply flex p-[3px] rounded-2xl relative;
+    background: linear-gradient(
+      145deg,
+      hsla(222, 14%, 12%, 0.6),
+      hsla(222, 14%, 8%, 0.7)
+    );
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border: 0.5px solid hsla(210, 20%, 40%, 0.1);
+    box-shadow:
+      0 0 0 0.5px hsla(210, 20%, 100%, 0.03) inset,
+      0 2px 8px -2px hsla(225, 30%, 3%, 0.5);
   }
 
   .ios-segmented-btn {
-    @apply flex-1 py-[8px] text-center rounded-[10px] transition-all;
+    @apply flex-1 py-[8px] text-center rounded-xl transition-all;
     font-size: 13px;
     font-weight: 600;
     color: hsl(var(--muted-foreground));
   }
 
   .ios-segmented-btn-active {
-    background: hsla(220, 10%, 18%, 0.9);
+    background: linear-gradient(
+      160deg,
+      hsla(222, 12%, 22%, 0.9),
+      hsla(222, 12%, 16%, 0.85)
+    );
     color: hsl(var(--foreground));
-    box-shadow: 0 1px 4px rgba(0,0,0,0.3), 0 0.5px 1px rgba(0,0,0,0.2);
+    box-shadow:
+      0 0 0 0.5px hsla(210, 20%, 100%, 0.06) inset,
+      0 1px 0 0 hsla(210, 20%, 100%, 0.05) inset,
+      0 2px 6px -1px hsla(225, 30%, 3%, 0.5);
   }
 
   /* Status dots */
-  .status-dot {
-    @apply w-2.5 h-2.5 rounded-full inline-block;
-  }
-
-  .status-dot-pass {
-    background-color: hsl(var(--status-pass));
-    box-shadow: 0 0 8px hsl(var(--status-pass) / 0.35);
-  }
-
-  .status-dot-monitor {
-    background-color: hsl(var(--status-monitor));
-    box-shadow: 0 0 8px hsl(var(--status-monitor) / 0.35);
-  }
-
-  .status-dot-fail {
-    background-color: hsl(var(--status-fail));
-    box-shadow: 0 0 8px hsl(var(--status-fail) / 0.35);
-  }
-
-  .status-dot-normal {
-    background-color: hsl(var(--status-normal));
-  }
-
-  .status-dot-conflicted {
-    background-color: hsl(var(--status-conflicted));
-    box-shadow: 0 0 8px hsl(var(--status-conflicted) / 0.35);
-  }
+  .status-dot { @apply w-2.5 h-2.5 rounded-full inline-block; }
+  .status-dot-pass { background-color: hsl(var(--status-pass)); box-shadow: 0 0 10px hsl(var(--status-pass) / 0.3); }
+  .status-dot-monitor { background-color: hsl(var(--status-monitor)); box-shadow: 0 0 10px hsl(var(--status-monitor) / 0.3); }
+  .status-dot-fail { background-color: hsl(var(--status-fail)); box-shadow: 0 0 10px hsl(var(--status-fail) / 0.3); }
+  .status-dot-normal { background-color: hsl(var(--status-normal)); }
+  .status-dot-conflicted { background-color: hsl(var(--status-conflicted)); box-shadow: 0 0 10px hsl(var(--status-conflicted) / 0.3); }
 
   .glow-primary {
-    box-shadow: 0 0 24px hsl(var(--primary) / 0.25), 0 0 80px hsl(var(--primary) / 0.06);
+    box-shadow:
+      0 0 28px hsl(var(--primary) / 0.3),
+      0 0 100px hsl(var(--primary) / 0.06),
+      0 0 0 0.5px hsl(var(--primary) / 0.15) inset;
   }
 
   .glow-sensor {
-    box-shadow: 0 0 12px hsl(var(--sensor) / 0.25);
+    box-shadow: 0 0 14px hsl(var(--sensor) / 0.25);
   }
 
-  .safe-bottom {
-    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
-  }
-
-  .safe-top {
-    padding-top: max(0px, env(safe-area-inset-top));
-  }
-
-  .touch-target {
-    min-height: 44px;
-    min-width: 44px;
-  }
+  .safe-bottom { padding-bottom: max(1.5rem, env(safe-area-inset-bottom)); }
+  .safe-top { padding-top: max(0px, env(safe-area-inset-top)); }
+  .touch-target { min-height: 44px; min-width: 44px; }
 
   /* Frosted card elevated */
   .card-elevated {
-    @apply rounded-2xl overflow-hidden;
-    background: hsla(220, 12%, 9%, 0.65);
-    backdrop-filter: blur(40px) saturate(180%);
-    -webkit-backdrop-filter: blur(40px) saturate(180%);
-    border: 0.5px solid hsla(220, 10%, 24%, 0.35);
+    @apply rounded-2xl overflow-hidden relative;
+    background: linear-gradient(145deg, hsla(224, 16%, 12%, 0.55), hsla(224, 14%, 7%, 0.65));
+    backdrop-filter: blur(60px) saturate(200%);
+    -webkit-backdrop-filter: blur(60px) saturate(200%);
+    border: 0.5px solid hsla(210, 20%, 40%, 0.12);
+    box-shadow:
+      0 0 0 0.5px hsla(210, 20%, 100%, 0.04) inset,
+      0 1px 0 0 hsla(210, 20%, 100%, 0.04) inset,
+      0 8px 32px -4px hsla(225, 30%, 3%, 0.6);
   }
 
-  /* ─── PREMIUM GLASS SURFACES ─── */
+  /* ─── PREMIUM FROSTED NAV BAR ─── */
   .glass-surface {
-    @apply backdrop-blur-3xl;
-    background: hsla(220, 16%, 4%, 0.78);
-    border-bottom: 0.5px solid hsla(220, 10%, 24%, 0.25);
+    backdrop-filter: blur(80px) saturate(220%);
+    -webkit-backdrop-filter: blur(80px) saturate(220%);
+    background: linear-gradient(
+      180deg,
+      hsla(225, 18%, 5%, 0.72),
+      hsla(225, 18%, 4%, 0.82)
+    );
+    border-bottom: 0.5px solid hsla(210, 20%, 40%, 0.08);
+    box-shadow: 0 4px 24px -4px hsla(225, 30%, 3%, 0.4);
   }
 
   .glass-surface-elevated {
-    @apply backdrop-blur-3xl;
-    background: hsla(220, 14%, 6%, 0.88);
-    border-bottom: 0.5px solid hsla(220, 10%, 24%, 0.3);
+    backdrop-filter: blur(80px) saturate(220%);
+    -webkit-backdrop-filter: blur(80px) saturate(220%);
+    background: linear-gradient(
+      0deg,
+      hsla(225, 18%, 5%, 0.88),
+      hsla(225, 16%, 7%, 0.85)
+    );
+    border-top: 0.5px solid hsla(210, 20%, 40%, 0.08);
+    box-shadow: 0 -4px 24px -4px hsla(225, 30%, 3%, 0.4);
   }
 
   .divider {
-    border-top: 0.33px solid hsla(220, 10%, 24%, 0.3);
+    border-top: 0.33px solid hsla(210, 20%, 40%, 0.1);
   }
 
   .inset-surface {
     @apply rounded-xl;
-    background: hsla(220, 10%, 14%, 0.5);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: linear-gradient(145deg, hsla(222, 12%, 14%, 0.45), hsla(222, 12%, 10%, 0.55));
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 0.5px solid hsla(210, 20%, 40%, 0.08);
   }
 
   .label-caps {
     font-size: 13px;
     font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.04em;
     color: hsl(var(--ios-label));
   }
 
   .metric-pill {
     @apply inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full font-semibold font-mono;
     font-size: 15px;
-    background: hsla(220, 10%, 14%, 0.5);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 0.5px solid hsla(220, 10%, 24%, 0.25);
+    background: linear-gradient(145deg, hsla(222, 12%, 14%, 0.5), hsla(222, 12%, 10%, 0.6));
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 0.5px solid hsla(210, 20%, 40%, 0.1);
+    box-shadow: 0 0 0 0.5px hsla(210, 20%, 100%, 0.03) inset;
   }
 
   .text-gradient-primary {
     @apply bg-clip-text text-transparent;
     background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  }
+
+  /* ─── GLASS BUTTON (for icon circles) ─── */
+  .glass-icon-btn {
+    @apply flex items-center justify-center rounded-full;
+    background: linear-gradient(145deg, hsla(222, 12%, 18%, 0.5), hsla(222, 12%, 12%, 0.5));
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 0.5px solid hsla(210, 20%, 40%, 0.12);
+    box-shadow:
+      0 0 0 0.5px hsla(210, 20%, 100%, 0.04) inset,
+      0 2px 8px -2px hsla(225, 30%, 3%, 0.4);
+  }
+
+  /* ─── GLASS INPUT ─── */
+  .glass-input {
+    background: linear-gradient(145deg, hsla(222, 12%, 12%, 0.5), hsla(222, 12%, 8%, 0.6));
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 0.5px solid hsla(210, 20%, 40%, 0.1);
+    box-shadow: 0 0 0 0.5px hsla(210, 20%, 100%, 0.03) inset;
+  }
+
+  /* ─── GLASS CTA SECONDARY ─── */
+  .glass-btn-secondary {
+    background: linear-gradient(145deg, hsla(222, 12%, 16%, 0.5), hsla(222, 12%, 10%, 0.55));
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 0.5px solid hsla(210, 20%, 40%, 0.12);
+    box-shadow:
+      0 0 0 0.5px hsla(210, 20%, 100%, 0.04) inset,
+      0 2px 8px -2px hsla(225, 30%, 3%, 0.3);
   }
 }
