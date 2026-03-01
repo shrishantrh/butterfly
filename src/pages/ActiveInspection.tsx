@@ -34,15 +34,15 @@ export default function ActiveInspection() {
   // Upload mode state
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadVideoUrl, setUploadVideoUrl] = useState<string | null>(null);
-  const [isTranscribing, setIsTranscribing] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
-  const [uploadPhase, setUploadPhase] = useState<'select' | 'transcribing' | 'playing' | 'done'>('select');
+  const [uploadPhase, setUploadPhase] = useState<'select' | 'playing' | 'done'>('select');
   const uploadVideoRef = useRef<HTMLVideoElement>(null);
   const uploadCanvasRef = useRef<HTMLCanvasElement>(null);
   const frameIntervalRef = useRef<number | null>(null);
-  const analysisQueueRef = useRef<number>(0);
+  const audioRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunkIntervalRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -144,113 +144,7 @@ export default function ActiveInspection() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Upload mode handlers
-  // Extract audio from video file client-side to reduce upload size
-  const extractAudioFromVideo = useCallback(async (file: File): Promise<Blob> => {
-    return new Promise((resolve, reject) => {
-      const video = document.createElement('video');
-      video.muted = true;
-      video.src = URL.createObjectURL(file);
-
-      video.onloadedmetadata = () => {
-        const audioContext = new AudioContext();
-        const source = audioContext.createMediaElementSource(video);
-        const destination = audioContext.createMediaStreamDestination();
-        source.connect(destination);
-        // Also connect to speakers so the video actually plays (required for MediaRecorder)
-        source.connect(audioContext.destination);
-
-        const mediaRecorder = new MediaRecorder(destination.stream, {
-          mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-            ? 'audio/webm;codecs=opus'
-            : 'audio/webm',
-        });
-        const chunks: Blob[] = [];
-
-        mediaRecorder.ondataavailable = (e) => {
-          if (e.data.size > 0) chunks.push(e.data);
-        };
-
-        mediaRecorder.onstop = () => {
-          const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-          video.pause();
-          URL.revokeObjectURL(video.src);
-          audioContext.close();
-          console.log(`[Upload] Extracted audio: ${(audioBlob.size / 1024 / 1024).toFixed(1)}MB from ${(file.size / 1024 / 1024).toFixed(1)}MB video`);
-          resolve(audioBlob);
-        };
-
-        mediaRecorder.onerror = () => reject(new Error('Audio extraction failed'));
-
-        mediaRecorder.start();
-        // Play video at max speed to extract audio quickly
-        video.playbackRate = 16;
-        video.muted = false;
-        // Actually we need to keep it muted to avoid audio playing out loud
-        // MediaRecorder captures from the destination stream, not speakers
-        video.volume = 0;
-        video.play().catch(reject);
-
-        video.onended = () => {
-          mediaRecorder.stop();
-        };
-
-        // Safety timeout: if video is longer than expected
-        const maxWaitMs = (video.duration / 16 + 10) * 1000;
-        setTimeout(() => {
-          if (mediaRecorder.state === 'recording') {
-            mediaRecorder.stop();
-            video.pause();
-          }
-        }, maxWaitMs);
-      };
-
-      video.onerror = () => reject(new Error('Failed to load video for audio extraction'));
-    });
-  }, []);
-
-  const transcribeVideoAudio = useCallback(async (file: File): Promise<string> => {
-    setIsTranscribing(true);
-    setUploadPhase('transcribing');
-    try {
-      let audioToSend: Blob | File = file;
-
-      // For large video files, extract just the audio track client-side
-      if (file.size > 15 * 1024 * 1024 && file.type.startsWith('video/')) {
-        toast({ title: 'Extracting audio...', description: 'Preparing video for transcription.' });
-        try {
-          audioToSend = await extractAudioFromVideo(file);
-        } catch (e) {
-          console.error('[Upload] Audio extraction failed, trying raw file:', e);
-          // If extraction fails and file is too large, skip transcription
-          if (file.size > 20 * 1024 * 1024) {
-            toast({ title: 'Video too large', description: 'Proceeding with visual analysis only.', variant: 'destructive' });
-            return '';
-          }
-        }
-      }
-
-      const formData = new FormData();
-      formData.append('audio', audioToSend, 'audio.webm');
-      const { data, error } = await supabase.functions.invoke('transcribe-audio', { body: formData });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      const text = data?.text || '';
-      if (text) {
-        toast({ title: 'Transcription complete', description: `${text.split(/\s+/).length} words transcribed.` });
-      }
-      return text;
-    } catch (e) {
-      console.error('[Upload] Transcription failed:', e);
-      toast({ title: 'Transcription issue', description: 'Proceeding with visual analysis only.', variant: 'destructive' });
-      return '';
-    } finally {
-      setIsTranscribing(false);
-    }
-  }, [toast, extractAudioFromVideo]);
-
-  // Store transcript chunks and refs for stable interval callbacks
-  const transcriptChunksRef = useRef<string[]>([]);
-  const chunkIndexRef = useRef(0);
+  // Refs for stable interval callbacks (avoid stale closures)
   const addTranscriptRef = useRef(addTranscript);
   const addFrameRef = useRef(addFrame);
   const analyzeNowRef = useRef(analyzeNow);
@@ -258,36 +152,85 @@ export default function ActiveInspection() {
   useEffect(() => { addFrameRef.current = addFrame; }, [addFrame]);
   useEffect(() => { analyzeNowRef.current = analyzeNow; }, [analyzeNow]);
 
-  const startVideoAnalysis = useCallback((transcript: string) => {
-    const video = uploadVideoRef.current;
-    if (!video) return;
-    setUploadPhase('playing');
-
-    // Split transcript into chunks to feed progressively during playback
-    // Each chunk corresponds to ~6 seconds of video
-    if (transcript.trim()) {
-      const words = transcript.trim().split(/\s+/);
-      const duration = video.duration || 60;
-      const numChunks = Math.max(1, Math.ceil(duration / 6));
-      const wordsPerChunk = Math.ceil(words.length / numChunks);
-      const chunks: string[] = [];
-      for (let i = 0; i < words.length; i += wordsPerChunk) {
-        chunks.push(words.slice(i, i + wordsPerChunk).join(' '));
+  // Transcribe a short audio chunk via the server
+  const transcribeChunk = useCallback(async (audioBlob: Blob) => {
+    try {
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'chunk.webm');
+      const { data, error } = await supabase.functions.invoke('transcribe-audio', { body: formData });
+      if (error) throw error;
+      const text = data?.text?.trim() || '';
+      if (text && text.length > 3) {
+        console.log('[Upload] Transcribed chunk:', text.slice(0, 80));
+        addTranscriptRef.current(text);
+        setCommittedTexts(prev => [...prev, text]);
       }
-      transcriptChunksRef.current = chunks;
-      chunkIndexRef.current = 0;
-      setCommittedTexts([transcript]);
-    } else {
-      transcriptChunksRef.current = [];
-      chunkIndexRef.current = 0;
+    } catch (e) {
+      console.error('[Upload] Chunk transcription failed:', e);
     }
+  }, []);
 
+  // Start recording audio from the video element and capturing frames
+  const startVideoStream = useCallback((video: HTMLVideoElement) => {
+    setUploadPhase('playing');
     video.currentTime = 0;
-    video.playbackRate = 1.0;
     video.play().catch(console.error);
     setIsVideoPlaying(true);
 
-    // Feed frames + transcript chunks every 6 seconds
+    // === AUDIO: Capture from video using captureStream ===
+    try {
+      const stream = (video as any).captureStream?.() || (video as any).mozCaptureStream?.();
+      if (stream) {
+        const audioTracks = stream.getAudioTracks();
+        if (audioTracks.length > 0) {
+          const audioStream = new MediaStream(audioTracks);
+          const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+            ? 'audio/webm;codecs=opus' : 'audio/webm';
+          const recorder = new MediaRecorder(audioStream, { mimeType });
+          let chunks: Blob[] = [];
+
+          recorder.ondataavailable = (e) => {
+            if (e.data.size > 0) chunks.push(e.data);
+          };
+
+          recorder.onstop = () => {
+            if (chunks.length > 0) {
+              const audioBlob = new Blob(chunks, { type: mimeType });
+              console.log(`[Upload] Audio chunk: ${(audioBlob.size / 1024).toFixed(0)}KB`);
+              transcribeChunk(audioBlob);
+              chunks = [];
+            }
+          };
+
+          recorder.start();
+          audioRecorderRef.current = recorder;
+
+          // Every 10 seconds: stop recorder to flush chunk, then restart
+          audioChunkIntervalRef.current = window.setInterval(() => {
+            if (video.paused || video.ended) return;
+            if (recorder.state === 'recording') {
+              recorder.stop();
+              // Restart after a tiny delay so onstop fires first
+              setTimeout(() => {
+                if (!video.paused && !video.ended) {
+                  try { recorder.start(); } catch { /* video may have ended */ }
+                }
+              }, 50);
+            }
+          }, 10000);
+
+          console.log('[Upload] Audio capture started via captureStream');
+        } else {
+          console.warn('[Upload] No audio tracks in video');
+        }
+      } else {
+        console.warn('[Upload] captureStream not supported');
+      }
+    } catch (e) {
+      console.error('[Upload] Audio capture setup failed:', e);
+    }
+
+    // === FRAMES: Capture every 6 seconds ===
     frameIntervalRef.current = window.setInterval(() => {
       if (!video || video.paused || video.ended) return;
       const canvas = uploadCanvasRef.current;
@@ -299,18 +242,21 @@ export default function ActiveInspection() {
       if (!ctx) return;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       addFrameRef.current(canvas.toDataURL('image/jpeg', 0.6));
-
-      // Feed the next transcript chunk
-      const chunks = transcriptChunksRef.current;
-      const idx = chunkIndexRef.current;
-      if (chunks.length > 0 && idx < chunks.length) {
-        addTranscriptRef.current(chunks[idx]);
-        chunkIndexRef.current = idx + 1;
-      } else {
-        // No transcript or all chunks fed — just trigger frame-only analysis
-        analyzeNowRef.current();
-      }
+      // Trigger analysis with whatever transcript + frames have accumulated
+      analyzeNowRef.current();
     }, 6000);
+  }, [transcribeChunk]);
+
+  // Cleanup audio recorder
+  const stopAudioCapture = useCallback(() => {
+    if (audioChunkIntervalRef.current) {
+      clearInterval(audioChunkIntervalRef.current);
+      audioChunkIntervalRef.current = null;
+    }
+    if (audioRecorderRef.current && audioRecorderRef.current.state === 'recording') {
+      audioRecorderRef.current.stop(); // This fires onstop which sends final chunk
+    }
+    audioRecorderRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -322,7 +268,9 @@ export default function ActiveInspection() {
       setIsVideoPlaying(false);
       setUploadPhase('done');
       if (frameIntervalRef.current) { clearInterval(frameIntervalRef.current); frameIntervalRef.current = null; }
-      analyzeNow();
+      stopAudioCapture();
+      // Final analysis with all remaining data
+      setTimeout(() => analyzeNowRef.current(), 2000);
       toast({ title: 'Video analysis complete', description: 'Review results below.' });
     };
     const onPlay = () => setIsVideoPlaying(true);
@@ -340,7 +288,7 @@ export default function ActiveInspection() {
       video.removeEventListener('pause', onPause);
       if (frameIntervalRef.current) clearInterval(frameIntervalRef.current);
     };
-  }, [uploadedFile, analyzeNow, toast]);
+  }, [uploadedFile, toast, stopAudioCapture]);
 
   const handleFileSelected = useCallback(async (file: File) => {
     if (!file.type.startsWith('video/') && !file.type.startsWith('audio/')) {
@@ -351,29 +299,17 @@ export default function ActiveInspection() {
     const url = URL.createObjectURL(file);
     setUploadVideoUrl(url);
 
-    if (file.type.startsWith('video/') || file.type.startsWith('audio/')) {
-      // Step 1: Transcribe audio from the file server-side
-      const transcript = await transcribeVideoAudio(file);
-      
-      if (file.type.startsWith('video/')) {
-        // Step 2: Wait for video element to be ready, then start analysis with transcript
-        const waitForVideo = () => {
-          const video = uploadVideoRef.current;
-          if (video && video.readyState >= 2) startVideoAnalysis(transcript);
-          else setTimeout(waitForVideo, 200);
-        };
-        setTimeout(waitForVideo, 500);
+    // Wait for video to be ready, then start streaming analysis (same as live mode)
+    const waitForVideo = () => {
+      const video = uploadVideoRef.current;
+      if (video && video.readyState >= 2) {
+        startVideoStream(video);
       } else {
-        // Audio-only: just feed transcript and finish
-        if (transcript.trim()) {
-          addTranscript(transcript);
-          setCommittedTexts([transcript]);
-        }
-        setUploadPhase('done');
-        analyzeNow();
+        setTimeout(waitForVideo, 200);
       }
-    }
-  }, [startVideoAnalysis, toast, transcribeVideoAudio, addTranscript, analyzeNow]);
+    };
+    setTimeout(waitForVideo, 500);
+  }, [startVideoStream, toast]);
 
   const handleVideoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -389,6 +325,7 @@ export default function ActiveInspection() {
     if (!video) return;
     if (video.paused) {
       video.play();
+      // Restart frame capture if needed
       if (!frameIntervalRef.current) {
         frameIntervalRef.current = window.setInterval(() => {
           if (!video || video.paused || video.ended) return;
@@ -401,20 +338,19 @@ export default function ActiveInspection() {
           if (!ctx) return;
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           addFrameRef.current(canvas.toDataURL('image/jpeg', 0.6));
-
-          const chunks = transcriptChunksRef.current;
-          const idx = chunkIndexRef.current;
-          if (chunks.length > 0 && idx < chunks.length) {
-            addTranscriptRef.current(chunks[idx]);
-            chunkIndexRef.current = idx + 1;
-          } else {
-            analyzeNowRef.current();
-          }
+          analyzeNowRef.current();
         }, 6000);
+      }
+      // Resume audio capture
+      if (audioRecorderRef.current && audioRecorderRef.current.state === 'paused') {
+        audioRecorderRef.current.resume();
       }
     } else {
       video.pause();
       if (frameIntervalRef.current) { clearInterval(frameIntervalRef.current); frameIntervalRef.current = null; }
+      if (audioRecorderRef.current && audioRecorderRef.current.state === 'recording') {
+        audioRecorderRef.current.pause();
+      }
     }
   }, []);
 
@@ -439,10 +375,11 @@ export default function ActiveInspection() {
     if (uploadVideo) {
       uploadVideo.pause();
       if (frameIntervalRef.current) { clearInterval(frameIntervalRef.current); frameIntervalRef.current = null; }
+      stopAudioCapture();
     }
     await analyzeNow();
     navigate(`/review/${machine?.id}`, { state: { analyzedItems: Object.fromEntries(analyzedItems), transcript: committedTexts.join(' '), elapsed } });
-  }, [speech, cameraStream, analyzeNow, navigate, machine, analyzedItems, committedTexts, elapsed]);
+  }, [speech, cameraStream, analyzeNow, navigate, machine, analyzedItems, committedTexts, elapsed, stopAudioCapture]);
 
   const handleManualEdit = useCallback((id: string, result: AnalysisResult) => { setManualItem(id, result); }, [setManualItem]);
 
@@ -502,7 +439,7 @@ export default function ActiveInspection() {
             <>
               <Film className="w-4 h-4 text-primary" />
               <span className="text-xs font-mono font-bold text-primary">
-                {uploadPhase === 'select' ? 'UPLOAD' : uploadPhase === 'transcribing' ? 'TRANSCRIBING' : uploadPhase === 'playing' ? 'ANALYZING' : 'DONE'}
+                {uploadPhase === 'select' ? 'UPLOAD' : uploadPhase === 'playing' ? 'ANALYZING' : 'DONE'}
               </span>
             </>
           )}
@@ -589,15 +526,7 @@ export default function ActiveInspection() {
         </div>
       )}
 
-      {isUploadMode && uploadPhase === 'transcribing' && (
-        <div className="mx-4 mb-2 shrink-0">
-          <div className="card-elevated p-6 flex flex-col items-center gap-3">
-            <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm font-bold">Transcribing Audio...</p>
-            <p className="text-xs text-muted-foreground/50">{uploadedFile?.name}</p>
-          </div>
-        </div>
-      )}
+      {/* Audio is now streamed live from video — no separate transcription phase */}
 
       {isUploadMode && uploadVideoUrl && (
         <div className="mx-4 mb-2 shrink-0">
@@ -639,7 +568,7 @@ export default function ActiveInspection() {
         {isUploadMode ? (
           <button
             onClick={handleStop}
-            disabled={uploadPhase === 'select' || uploadPhase === 'transcribing'}
+            disabled={uploadPhase === 'select'}
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-primary text-primary-foreground font-bold text-base active:scale-[0.98] transition-all disabled:opacity-30"
           >
             Review Results ({itemCount}/{totalFields})
