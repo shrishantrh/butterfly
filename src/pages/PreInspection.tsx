@@ -347,7 +347,7 @@ export default function PreInspection() {
           <div className="text-center absolute left-1/2 -translate-x-1/2">
             <p className="ios-title text-foreground">{machine.model.replace('Hydraulic Excavator', '').trim()}</p>
           </div>
-          <button className="w-[36px] h-[36px] rounded-full bg-white/[0.06] backdrop-blur-xl flex items-center justify-center ring-1 ring-white/[0.06]">
+          <button className="glass-icon-btn w-[38px] h-[38px]">
             <Share2 className="w-[16px] h-[16px] text-muted-foreground" />
           </button>
         </div>
@@ -550,28 +550,14 @@ export default function PreInspection() {
         <div className="flex gap-2.5">
           <button
             onClick={() => navigate(`/inspect/${machine.id}?mode=upload`)}
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl ios-subhead font-medium active:scale-[0.98] transition-all"
-            style={{
-              background: 'hsla(220, 10%, 14%, 0.5)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              border: '0.5px solid hsla(220, 10%, 24%, 0.25)',
-              color: 'hsl(var(--foreground))',
-            }}
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl ios-subhead font-medium text-foreground glass-btn-secondary active:scale-[0.98] transition-all"
           >
             <Upload className="w-4 h-4" />
             Upload Video
           </button>
           <button
             onClick={() => navigate(`/history/${machine.id}`)}
-            className="flex items-center justify-center gap-2 py-3.5 px-5 rounded-2xl ios-subhead font-medium active:scale-[0.98] transition-all"
-            style={{
-              background: 'hsla(220, 10%, 14%, 0.5)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              border: '0.5px solid hsla(220, 10%, 24%, 0.25)',
-              color: 'hsl(var(--foreground))',
-            }}
+            className="flex items-center justify-center gap-2 py-3.5 px-5 rounded-2xl ios-subhead font-medium text-foreground glass-btn-secondary active:scale-[0.98] transition-all"
           >
             <History className="w-4 h-4" />
           </button>

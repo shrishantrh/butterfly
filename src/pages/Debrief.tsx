@@ -264,12 +264,12 @@ export default function Debrief() {
           </div>
           <div className="flex items-center gap-2">
             <button onClick={handleDownloadPdf} disabled={isDownloadingPdf}
-              className="w-[36px] h-[36px] rounded-full bg-white/[0.06] backdrop-blur-xl flex items-center justify-center ring-1 ring-white/[0.06]"
+              className="glass-icon-btn w-[38px] h-[38px]"
             >
               {isDownloadingPdf ? <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" /> : <Download className="w-4 h-4 text-muted-foreground" />}
             </button>
             <button onClick={() => navigate(`/history/${machineId}`)}
-              className="w-[36px] h-[36px] rounded-full bg-white/[0.06] backdrop-blur-xl flex items-center justify-center ring-1 ring-white/[0.06]"
+              className="glass-icon-btn w-[38px] h-[38px]"
             >
               <History className="w-4 h-4 text-muted-foreground" />
             </button>

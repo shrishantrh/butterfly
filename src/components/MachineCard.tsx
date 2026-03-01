@@ -17,10 +17,16 @@ export function MachineCard({ machine, showSeparator = true }: MachineCardProps)
     <button
       onClick={() => navigate(`/pre-inspection/${machine.id}`)}
       className="w-full text-left flex items-center gap-3.5 px-4 py-3.5 active:bg-white/[0.03] transition-colors"
-      style={showSeparator ? { borderBottom: '0.33px solid hsla(220, 10%, 24%, 0.3)' } : {}}
+      style={showSeparator ? { borderBottom: '0.33px solid hsla(210, 20%, 40%, 0.1)' } : {}}
     >
       {/* Thumbnail */}
-      <div className="w-[52px] h-[52px] rounded-[14px] bg-surface-2 overflow-hidden shrink-0 ring-1 ring-white/[0.06]">
+      <div className="w-[52px] h-[52px] rounded-[14px] overflow-hidden shrink-0"
+        style={{
+          background: 'linear-gradient(145deg, hsla(222, 12%, 18%, 0.5), hsla(222, 12%, 12%, 0.5))',
+          border: '0.5px solid hsla(210, 20%, 40%, 0.1)',
+          boxShadow: '0 2px 8px -2px hsla(225, 30%, 3%, 0.4)',
+        }}
+      >
         <img src={excavatorHero} alt={machine.model} className="w-full h-full object-cover" />
       </div>
 
@@ -46,7 +52,7 @@ export function MachineCard({ machine, showSeparator = true }: MachineCardProps)
         </div>
       </div>
 
-      <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/30 shrink-0" />
+      <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/20 shrink-0" />
     </button>
   );
 }
