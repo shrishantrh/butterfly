@@ -19,19 +19,21 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/pre-inspection/:machineId" element={<PreInspection />} />
-          <Route path="/inspect/:machineId" element={<ActiveInspection />} />
-          <Route path="/review/:machineId" element={<ReviewInspection />} />
-          <Route path="/debrief/:machineId" element={<Debrief />} />
-          <Route path="/history/:machineId" element={<InspectionHistory />} />
-          <Route path="/history" element={<InspectionHistory />} />
-          <Route path="/inspection-detail/:inspectionId" element={<InspectionDetail />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <div className="mx-auto w-full max-w-[430px] min-h-screen relative" style={{ boxShadow: '0 0 40px hsl(var(--background) / 0.8)' }}>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/pre-inspection/:machineId" element={<PreInspection />} />
+            <Route path="/inspect/:machineId" element={<ActiveInspection />} />
+            <Route path="/review/:machineId" element={<ReviewInspection />} />
+            <Route path="/debrief/:machineId" element={<Debrief />} />
+            <Route path="/history/:machineId" element={<InspectionHistory />} />
+            <Route path="/history" element={<InspectionHistory />} />
+            <Route path="/inspection-detail/:inspectionId" element={<InspectionDetail />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </div>
     </TooltipProvider>
   </QueryClientProvider>
 );
