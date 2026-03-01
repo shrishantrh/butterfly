@@ -1,14 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { mockMachines } from '@/lib/mock-data';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Navigation, ChevronRight, Maximize2, RotateCcw } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { Navigation, ChevronRight, Compass } from 'lucide-react';
+import { useState } from 'react';
 
 export function FleetMap() {
   const navigate = useNavigate();
   const [selectedMachine, setSelectedMachine] = useState<string | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const statusColor = (m: typeof mockMachines[0]) => {
     if (m.activeFaultCodes.some(f => f.severity === 'critical')) return 'hsl(var(--status-fail))';
@@ -22,45 +20,49 @@ export function FleetMap() {
     return 'Online';
   };
 
+  // Spread markers across the map area
   const markerPositions = [
-    { top: '18%', left: '12%' },
-    { top: '72%', left: '78%' },
-    { top: '28%', right: '10%' },
-    { top: '65%', left: '15%' },
-    { top: '45%', right: '8%' },
+    { top: '25%', left: '42%' },
+    { top: '48%', right: '18%' },
+    { top: '68%', left: '25%' },
+    { top: '35%', right: '28%' },
+    { top: '58%', left: '55%' },
   ];
-
-  const toggleFullscreen = () => {
-    if (!isFullscreen && containerRef.current) {
-      containerRef.current.requestFullscreen?.();
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen?.();
-      setIsFullscreen(false);
-    }
-  };
 
   return (
     <div>
-      <div className="mx-5 ios-card overflow-hidden" ref={containerRef}>
-        <div className="relative" style={{ height: isFullscreen ? '100vh' : 340 }}>
-          {/* Sketchfab Embed */}
-          <iframe
-            title="Excavator (CAT) 3D Model"
-            src="https://sketchfab.com/models/5f195244108c46e495a1e78040f02f7e/embed?autostart=1&ui_hint=0&ui_theme=dark&dnt=1&ui_infos=0&ui_watermark_link=0&ui_watermark=0&ui_ar=0&ui_help=0&ui_settings=0&ui_inspector=0&ui_fullscreen=0&ui_annotations=0&ui_vr=0&ui_color=FFCD11&preload=1&transparent=1&camera=0"
-            className="absolute inset-0 w-full h-full"
-            style={{ border: 'none', background: 'transparent' }}
-            allow="autoplay; fullscreen; xr-spatial-tracking"
-          />
+      <div className="mx-5 ios-card overflow-hidden">
+        {/* 2D Map Area */}
+        <div className="relative" style={{ height: 340 }}>
+          {/* Dark map background with grid/road lines */}
+          <div className="absolute inset-0" style={{
+            background: 'linear-gradient(160deg, hsl(var(--card)), hsl(var(--background)))',
+          }}>
+            {/* Road/grid lines */}
+            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 400 340" preserveAspectRatio="none">
+              {/* Diagonal roads */}
+              <line x1="0" y1="280" x2="400" y2="60" stroke="hsl(var(--border))" strokeWidth="0.5" opacity="0.3" />
+              <line x1="50" y1="340" x2="350" y2="0" stroke="hsl(var(--border))" strokeWidth="0.5" opacity="0.2" />
+              <line x1="0" y1="180" x2="400" y2="200" stroke="hsl(var(--border))" strokeWidth="0.5" opacity="0.15" />
+              <line x1="200" y1="0" x2="150" y2="340" stroke="hsl(var(--border))" strokeWidth="0.5" opacity="0.2" />
+              {/* Curved path */}
+              <path d="M 0 120 Q 200 80 400 160" fill="none" stroke="hsl(var(--border))" strokeWidth="0.5" opacity="0.25" />
+              <path d="M 100 0 Q 180 170 300 340" fill="none" stroke="hsl(var(--border))" strokeWidth="0.5" opacity="0.2" />
+            </svg>
 
-          {/* Gradient overlays */}
-          <div className="absolute inset-0 pointer-events-none"
-            style={{
-              background: 'linear-gradient(180deg, hsl(var(--background) / 0.3) 0%, transparent 20%, transparent 80%, hsl(var(--background) / 0.5) 100%)',
-            }}
-          />
+            {/* Subtle scan line effect */}
+            <div className="absolute inset-0 opacity-[0.03]" style={{
+              backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, hsl(var(--foreground)) 3px, hsl(var(--foreground)) 4px)',
+            }} />
+          </div>
 
-          {/* Floating machine markers */}
+          {/* Compass indicator */}
+          <div className="absolute top-3 right-4 z-10 flex flex-col items-center gap-0.5">
+            <span className="text-[10px] font-bold tracking-wider" style={{ color: 'hsl(var(--status-fail))' }}>N</span>
+            <div className="w-px h-3" style={{ background: 'hsl(var(--muted-foreground) / 0.4)' }} />
+          </div>
+
+          {/* Machine markers */}
           {mockMachines.slice(0, 5).map((m, i) => {
             const pos = markerPositions[i] || markerPositions[0];
             const color = statusColor(m);
@@ -71,50 +73,74 @@ export function FleetMap() {
                 key={m.id}
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.5 + i * 0.12, type: 'spring', stiffness: 300 }}
-                className="absolute z-10 group"
+                transition={{ delay: 0.3 + i * 0.1, type: 'spring', stiffness: 300 }}
+                className="absolute z-10"
                 style={{ ...pos } as React.CSSProperties}
                 onClick={(e) => {
                   e.stopPropagation();
                   setSelectedMachine(isSelected ? null : m.id);
                 }}
               >
-                {/* Pulse */}
-                <span className="absolute inset-0 rounded-full animate-ping"
-                  style={{ background: color, opacity: 0.2, animationDuration: '2.5s' }}
-                />
-                {/* Dot */}
-                <span className="relative flex items-center justify-center w-5 h-5 rounded-full"
+                {/* Outer glow ring */}
+                <span className="absolute rounded-full"
                   style={{
-                    background: `${color}25`,
-                    border: `1.5px solid ${color}`,
-                    boxShadow: `0 0 12px ${color}40`,
+                    width: 44,
+                    height: 44,
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    background: `radial-gradient(circle, ${color}15 0%, ${color}08 50%, transparent 70%)`,
+                  }}
+                />
+
+                {/* Pulse ring */}
+                <span className="absolute inset-0 rounded-full animate-ping"
+                  style={{ background: color, opacity: 0.15, animationDuration: '3s' }}
+                />
+
+                {/* Dot with border */}
+                <span className="relative flex items-center justify-center w-6 h-6 rounded-full"
+                  style={{
+                    background: `${color}20`,
+                    border: `1.5px solid ${color}80`,
+                    boxShadow: `0 0 16px ${color}30`,
                   }}
                 >
-                  <span className="w-2 h-2 rounded-full" style={{ background: color }} />
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />
                 </span>
 
-                {/* Expanded info card */}
+                {/* Label tag */}
+                <div className="absolute left-8 top-1/2 -translate-y-1/2 whitespace-nowrap px-2.5 py-1 rounded-lg"
+                  style={{
+                    background: 'hsl(var(--card) / 0.9)',
+                    backdropFilter: 'blur(16px)',
+                    border: '0.5px solid hsl(var(--border) / 0.3)',
+                  }}
+                >
+                  <span className="text-[11px] font-semibold text-foreground">{m.assetId}</span>
+                </div>
+
+                {/* Expanded info card on tap */}
                 <AnimatePresence>
                   {isSelected && (
                     <motion.div
-                      initial={{ opacity: 0, scale: 0.8, y: 4 }}
+                      initial={{ opacity: 0, scale: 0.85, y: 6 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.8, y: 4 }}
-                      className="absolute left-7 top-1/2 -translate-y-1/2 z-20 min-w-[160px]"
+                      exit={{ opacity: 0, scale: 0.85, y: 6 }}
+                      className="absolute left-8 top-8 z-20 min-w-[150px]"
                       style={{
-                        background: 'hsl(var(--card) / 0.92)',
+                        background: 'hsl(var(--card) / 0.95)',
                         backdropFilter: 'blur(24px)',
-                        border: `0.5px solid ${color}30`,
+                        border: `0.5px solid ${color}25`,
                         borderRadius: 14,
                         padding: '10px 14px',
-                        boxShadow: `0 8px 32px hsl(var(--background) / 0.5), 0 0 0 0.5px ${color}15`,
+                        boxShadow: `0 8px 32px hsl(var(--background) / 0.6)`,
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
                       <p className="text-[11px] font-semibold text-foreground">{m.assetId}</p>
                       <p className="text-[10px] text-muted-foreground mt-0.5">{m.location}</p>
-                      <div className="flex items-center gap-1.5 mt-2">
+                      <div className="flex items-center gap-1.5 mt-1.5">
                         <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
                         <span className="text-[9px] font-medium" style={{ color }}>{statusLabel(m)}</span>
                       </div>
@@ -122,9 +148,9 @@ export function FleetMap() {
                         onClick={() => navigate(`/pre-inspection/${m.id}`)}
                         className="mt-2 w-full text-[10px] font-semibold py-1.5 rounded-lg transition-colors"
                         style={{
-                          background: `${color}18`,
+                          background: `${color}15`,
                           color: color,
-                          border: `0.5px solid ${color}30`,
+                          border: `0.5px solid ${color}25`,
                         }}
                       >
                         Inspect →
@@ -135,32 +161,6 @@ export function FleetMap() {
               </motion.button>
             );
           })}
-
-          {/* Top-right controls */}
-          <div className="absolute top-3 right-3 flex gap-1.5 z-10">
-            <button
-              onClick={toggleFullscreen}
-              className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors"
-              style={{
-                background: 'hsl(var(--card) / 0.7)',
-                backdropFilter: 'blur(16px)',
-                border: '0.5px solid hsl(var(--border) / 0.3)',
-              }}
-            >
-              <Maximize2 className="w-3.5 h-3.5 text-muted-foreground" />
-            </button>
-          </div>
-
-          {/* Title badge */}
-          <div className="absolute top-3 left-3 z-10 px-3 py-1.5 rounded-xl"
-            style={{
-              background: 'hsl(var(--card) / 0.8)',
-              backdropFilter: 'blur(20px)',
-              border: '0.5px solid hsl(var(--border) / 0.3)',
-            }}
-          >
-            <p className="text-[10px] font-semibold text-foreground tracking-wide uppercase">Live Fleet · 3D</p>
-          </div>
 
           {/* Bottom legend */}
           <div className="absolute bottom-3 left-3 flex items-center gap-3 px-3 py-1.5 rounded-xl z-10"
@@ -181,26 +181,9 @@ export function FleetMap() {
               </span>
             ))}
           </div>
-
-          {/* Interaction hint */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.5 }}
-            className="absolute bottom-3 right-3 z-10 px-2.5 py-1 rounded-lg"
-            style={{
-              background: 'hsl(var(--card) / 0.6)',
-              backdropFilter: 'blur(16px)',
-              border: '0.5px solid hsl(var(--border) / 0.2)',
-            }}
-          >
-            <p className="text-[9px] text-muted-foreground/60 flex items-center gap-1">
-              <RotateCcw className="w-2.5 h-2.5" /> Drag to rotate
-            </p>
-          </motion.div>
         </div>
 
-        {/* Machine list below model */}
+        {/* Machine list below map */}
         {mockMachines.map((m, i) => (
           <motion.button
             key={m.id}
