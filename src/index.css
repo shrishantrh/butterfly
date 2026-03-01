@@ -2,67 +2,75 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
-
 @layer base {
   :root {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 95%;
+    /* iOS-inspired dark theme with CAT yellow */
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
 
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 95%;
+    --card: 0 0% 11%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 0 0% 11%;
+    --popover-foreground: 0 0% 100%;
 
     --primary: 46 100% 50%;
     --primary-foreground: 0 0% 0%;
 
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 70%;
+    --secondary: 0 0% 17%;
+    --secondary-foreground: 0 0% 65%;
 
-    --muted: 0 0% 10%;
-    --muted-foreground: 0 0% 55%;
+    --muted: 0 0% 11%;
+    --muted-foreground: 0 0% 60%;
 
     --accent: 46 90% 45%;
     --accent-foreground: 0 0% 0%;
 
-    --destructive: 0 72% 50%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 16%;
-    --input: 0 0% 16%;
+    --border: 0 0% 20%;
+    --input: 0 0% 17%;
     --ring: 46 100% 50%;
 
-    --radius: 1rem;
+    --radius: 0.75rem;
 
-    /* Status */
-    --status-pass: 152 69% 46%;
+    /* Status colors */
+    --status-pass: 142 71% 45%;
     --status-monitor: 38 92% 50%;
-    --status-fail: 0 72% 50%;
-    --status-normal: 0 0% 45%;
+    --status-fail: 0 84% 60%;
+    --status-normal: 0 0% 50%;
     --status-conflicted: 280 70% 55%;
 
     /* Sensor */
-    --sensor: 190 80% 50%;
+    --sensor: 199 89% 48%;
 
-    /* Surfaces — layered depth */
-    --surface-1: 0 0% 8%;
-    --surface-2: 0 0% 11%;
-    --surface-3: 0 0% 14%;
+    /* iOS-style grouped surfaces */
+    --surface-1: 0 0% 11%;
+    --surface-2: 0 0% 17%;
+    --surface-3: 0 0% 22%;
 
     /* Glow */
     --glow-primary: 46 100% 50%;
     --glow-fail: 0 72% 50%;
 
-    --sidebar-background: 0 0% 4%;
-    --sidebar-foreground: 0 0% 95%;
+    /* Sidebar */
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 46 100% 50%;
     --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 0 0% 70%;
-    --sidebar-border: 0 0% 16%;
+    --sidebar-accent: 0 0% 17%;
+    --sidebar-accent-foreground: 0 0% 65%;
+    --sidebar-border: 0 0% 20%;
     --sidebar-ring: 46 100% 50%;
+
+    /* iOS grouped background */
+    --ios-grouped-bg: 0 0% 0%;
+    --ios-card-bg: 0 0% 11%;
+    --ios-separator: 0 0% 20%;
+    --ios-label: 0 0% 60%;
+    --ios-secondary-label: 0 0% 40%;
+    --ios-fill: 0 0% 15%;
   }
 }
 
@@ -79,10 +87,10 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    font-size: 16px;
-    line-height: 1.55;
-    letter-spacing: -0.01em;
+    font-family: -apple-system, 'SF Pro Display', 'SF Pro Text', system-ui, BlinkMacSystemFont, sans-serif;
+    font-size: 17px;
+    line-height: 1.47;
+    letter-spacing: -0.022em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
@@ -90,36 +98,128 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold;
-    font-family: 'Inter', system-ui, sans-serif;
-    letter-spacing: -0.025em;
+    font-family: -apple-system, 'SF Pro Display', system-ui, BlinkMacSystemFont, sans-serif;
+    letter-spacing: -0.022em;
   }
 }
 
 @layer utilities {
   .font-mono {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
     letter-spacing: -0.02em;
   }
 
-  .text-gradient-primary {
-    @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  /* iOS Large Title — 34pt bold */
+  .ios-large-title {
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: 0.011em;
+    line-height: 1.18;
   }
 
-  .glass-surface {
-    @apply bg-card/80 backdrop-blur-xl border border-border/60;
-    box-shadow: 0 1px 0 0 hsl(0 0% 100% / 0.03) inset,
-                0 1px 3px 0 hsl(0 0% 0% / 0.2);
+  /* iOS Title — 17pt semibold */
+  .ios-title {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.022em;
   }
 
-  .glass-surface-elevated {
-    @apply bg-card/90 backdrop-blur-xl border border-border/50;
-    box-shadow: 0 1px 0 0 hsl(0 0% 100% / 0.04) inset,
-                0 4px 16px -2px hsl(0 0% 0% / 0.3),
-                0 1px 3px 0 hsl(0 0% 0% / 0.15);
+  /* iOS Headline — 17pt semibold */
+  .ios-headline {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.022em;
   }
 
+  /* iOS Body — 17pt regular */
+  .ios-body {
+    font-size: 17px;
+    font-weight: 400;
+    letter-spacing: -0.022em;
+  }
+
+  /* iOS Subheadline — 15pt regular */
+  .ios-subhead {
+    font-size: 15px;
+    font-weight: 400;
+    letter-spacing: -0.016em;
+  }
+
+  /* iOS Footnote — 13pt regular */
+  .ios-footnote {
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: -0.008em;
+  }
+
+  /* iOS Caption — 12pt regular */
+  .ios-caption {
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+
+  /* iOS Caption 2 — 11pt regular */
+  .ios-caption2 {
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.006em;
+  }
+
+  /* iOS Grouped Inset Card — rounded container like Settings.app */
+  .ios-card {
+    @apply rounded-xl overflow-hidden;
+    background: hsl(var(--ios-card-bg));
+  }
+
+  /* iOS cell row with separator */
+  .ios-cell {
+    @apply flex items-center gap-3 px-4 min-h-[44px];
+    background: hsl(var(--ios-card-bg));
+  }
+
+  .ios-cell + .ios-cell {
+    border-top: 0.33px solid hsl(var(--ios-separator));
+  }
+
+  /* iOS Section header text */
+  .ios-section-header {
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: -0.008em;
+    text-transform: uppercase;
+    color: hsl(var(--ios-label));
+    padding: 6px 20px 6px;
+  }
+
+  .ios-section-footer {
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: -0.008em;
+    color: hsl(var(--ios-secondary-label));
+    padding: 6px 20px 12px;
+    line-height: 1.38;
+  }
+
+  /* iOS Segmented Control */
+  .ios-segmented {
+    @apply flex p-[2px] rounded-lg;
+    background: hsl(var(--ios-fill));
+  }
+
+  .ios-segmented-btn {
+    @apply flex-1 py-[7px] text-center rounded-md transition-all;
+    font-size: 13px;
+    font-weight: 600;
+    color: hsl(var(--foreground));
+  }
+
+  .ios-segmented-btn-active {
+    background: hsl(var(--surface-2));
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+  }
+
+  /* Status dots */
   .status-dot {
     @apply w-2.5 h-2.5 rounded-full inline-block;
   }
@@ -149,16 +249,11 @@
   }
 
   .glow-primary {
-    box-shadow: 0 0 24px hsl(var(--primary) / 0.35), 0 0 80px hsl(var(--primary) / 0.1);
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3), 0 0 60px hsl(var(--primary) / 0.08);
   }
 
   .glow-sensor {
     box-shadow: 0 0 10px hsl(var(--sensor) / 0.3);
-  }
-
-  .inset-surface {
-    @apply bg-surface-2 rounded-2xl;
-    box-shadow: 0 1px 2px 0 hsl(0 0% 0% / 0.15) inset;
   }
 
   .safe-bottom {
@@ -170,32 +265,52 @@
   }
 
   .touch-target {
-    min-height: 48px;
-    min-width: 48px;
+    min-height: 44px;
+    min-width: 44px;
   }
 
+  /* iOS-style card elevated (used for backward compat) */
   .card-elevated {
-    @apply bg-card border border-border/40 rounded-2xl;
-    box-shadow: 0 1px 0 0 hsl(0 0% 100% / 0.03) inset,
-                0 4px 12px -4px hsl(0 0% 0% / 0.3);
+    @apply rounded-xl overflow-hidden;
+    background: hsl(var(--ios-card-bg));
+  }
+
+  .glass-surface {
+    @apply backdrop-blur-2xl;
+    background: hsla(0, 0%, 0%, 0.85);
+  }
+
+  .glass-surface-elevated {
+    @apply backdrop-blur-2xl;
+    background: hsla(0, 0%, 0%, 0.92);
   }
 
   .divider {
-    @apply border-t border-border/30;
+    border-top: 0.33px solid hsl(var(--ios-separator));
+  }
+
+  .inset-surface {
+    @apply rounded-xl;
+    background: hsl(var(--surface-2));
   }
 
   .label-caps {
-    @apply text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground;
-    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: -0.008em;
+    color: hsl(var(--ios-label));
   }
 
   .metric-pill {
-    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold font-mono;
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-semibold font-mono;
+    font-size: 15px;
     background: hsl(var(--surface-2));
-    border: 1px solid hsl(var(--border) / 0.5);
+    border: 0.33px solid hsl(var(--ios-separator));
   }
 
-  .metric-pill-status {
-    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold font-mono;
+  .text-gradient-primary {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
   }
 }

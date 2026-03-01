@@ -10,66 +10,8 @@ import excavatorHero from '@/assets/cat-320-hero.jpg';
 import {
   AlertTriangle, Clock, Fuel, MapPin, Activity,
   Droplets, Play, Cpu, Upload, History,
-  ChevronDown, ChevronRight, ArrowLeft, Share2,
+  ChevronRight, ChevronLeft, Share2,
 } from 'lucide-react';
-
-// ─── PALETTE ──────────────────────────────────────────────────────────────────
-const C = {
-  yellow:      'hsl(var(--primary))',
-  yellowFaint: 'hsl(var(--primary) / 0.08)',
-  yellowDim:   'hsl(var(--primary) / 0.19)',
-  black:       'hsl(var(--background))',
-  card:        'hsl(var(--surface-1))',
-  cardRaised:  'hsl(var(--surface-2))',
-  border:      'hsl(var(--border))',
-  borderMid:   'hsl(var(--border))',
-  white:       'hsl(var(--foreground))',
-  textPrimary: 'hsl(var(--foreground))',
-  textMid:     'hsl(var(--muted-foreground))',
-  textDim:     'hsl(var(--muted-foreground) / 0.6)',
-  safe:        'hsl(var(--status-pass))',
-  warning:     'hsl(var(--status-monitor))',
-  critical:    'hsl(var(--status-fail))',
-};
-
-// ─── REPORT DATA ──────────────────────────────────────────────────────────────
-const STATUS_DOT: Record<string, string> = {
-  FAIL:    C.critical,
-  MONITOR: C.warning,
-  PASS:    C.safe,
-  NORMAL:  'hsl(var(--status-normal))',
-};
-
-type ReportItem  = { label: string; status: string; comment: string };
-type ReportSection = { title: string; items: ReportItem[] };
-type Report = {
-  id: string; date: string; time: string; inspector: string;
-  smu: number; workOrder: string; location: string;
-  counts: Record<string,number>; sections: ReportSection[];
-};
-
-const REPORTS: Report[] = [
-  {
-    id: '22892110', date: '2025-06-28', time: '11:07 AM',
-    inspector: 'John Doe', smu: 1027, workOrder: 'FW12076',
-    location: '601 Richland St, East Peoria, IL 61611',
-    counts: { FAIL: 2, MONITOR: 7, PASS: 31, NORMAL: 0 },
-    sections: [
-      { title: 'General Info & Comments', items: [{ label: 'General Info / Comments', status: 'MONITOR', comment: 'Scales screen freezes during operation' }] },
-      { title: 'From the Ground', items: [
-        { label: '1.1 Tires and Rims', status: 'NORMAL', comment: '' },
-        { label: '1.2 Bucket Cutting Edge', status: 'MONITOR', comment: 'Inspect tips for wear.' },
-        { label: '1.7 Transmission and Transfer Gears', status: 'FAIL', comment: 'Abnormal noise detected.' },
-      ]},
-      { title: 'Engine Compartment', items: [
-        { label: '2.1 Engine Oil Level', status: 'PASS', comment: '' },
-        { label: '2.3 Radiator Cores for Debris', status: 'FAIL', comment: 'Debris accumulation detected.' },
-      ]},
-    ],
-  },
-];
-
-// ─── SENSOR DATA ──────────────────────────────────────────────────────────────
 import { SENSORS, getData, getAlert } from '@/lib/sensor-data';
 import type { DataPoint } from '@/lib/sensor-data';
 import { useLiveSensorData, useLiveTick } from '@/hooks/useLiveSensorData';
@@ -86,7 +28,7 @@ function Sparkline({ k, machineId, tick }: { k: string; machineId?: string; tick
     `${((i/(a.length-1))*W).toFixed(2)},${(H - ((d.value! - min)/range) * (H - 8) - 4).toFixed(2)}`
   ).join(' ');
   const strokeCol = data.some(d => d.status === 'critical')
-    ? C.critical : data.some(d => d.status === 'warning') ? C.warning : C.safe;
+    ? 'hsl(var(--status-fail))' : data.some(d => d.status === 'warning') ? 'hsl(var(--status-monitor))' : 'hsl(var(--status-pass))';
   return (
     <svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={{ display:'block' }}>
       <defs>
@@ -103,37 +45,20 @@ function Sparkline({ k, machineId, tick }: { k: string; machineId?: string; tick
 
 function DotSummary({ counts, size = 'md' }: { counts: Record<string,number>; size?: 'sm'|'md' }) {
   const dotCls = size === 'sm' ? 'w-[7px] h-[7px]' : 'w-[9px] h-[9px]';
-  const textCls = size === 'sm' ? 'text-[10px]' : 'text-[13px]';
   const entries: [string, string, string][] = [
-    ['FAIL','text-status-fail','status-dot-fail'],
-    ['MONITOR','text-status-monitor','status-dot-monitor'],
-    ['PASS','text-status-pass','status-dot-pass'],
-    ['NORMAL','text-muted-foreground','status-dot-normal'],
+    ['FAIL','text-status-fail','bg-status-fail'],
+    ['MONITOR','text-status-monitor','bg-status-monitor'],
+    ['PASS','text-status-pass','bg-status-pass'],
+    ['NORMAL','text-muted-foreground','bg-muted-foreground'],
   ];
   return (
-    <div className={`flex items-center ${size === 'sm' ? 'gap-2' : 'gap-2.5'}`}>
-      {entries.map(([k, textColor, dotClass]) => (
-        <span key={k} className={`flex items-center gap-1 ${textCls} font-mono font-bold ${textColor}`}>
-          <span className={`${dotCls} rounded-full inline-block shrink-0 ${dotClass}`} />
+    <div className="flex items-center gap-2.5">
+      {entries.map(([k, textColor, dotBg]) => (
+        <span key={k} className={`flex items-center gap-1 ios-caption font-mono font-bold ${textColor}`}>
+          <span className={`${dotCls} rounded-full inline-block shrink-0 ${dotBg}`} />
           {counts[k] ?? 0}
         </span>
       ))}
-    </div>
-  );
-}
-
-function ChartTooltip({ active, payload, sensor }: any) {
-  if (!active || !payload?.length || payload[0].payload.value === null) return null;
-  const d = payload[0].payload;
-  const bCol = d.status==='critical' ? C.critical : d.status==='warning' ? C.warning : C.yellow;
-  return (
-    <div style={{ background:C.card, border:`1px solid ${bCol}`, borderRadius:8, padding:'9px 13px',
-      fontFamily:"'Courier New',monospace", fontSize:11, boxShadow:'0 4px 24px #00000080' }}>
-      <div style={{ color:C.textDim, marginBottom:2 }}>{d.time}</div>
-      <div style={{ fontSize:22, fontWeight:700, color:C.white }}>
-        {d.value}<span style={{ fontSize:10, color:C.textDim, marginLeft:4 }}>{sensor.unit}</span>
-      </div>
-      <div style={{ marginTop:3, fontSize:10, fontWeight:700, letterSpacing:1, color:bCol }}>{d.status.toUpperCase()}</div>
     </div>
   );
 }
@@ -151,104 +76,108 @@ function SensorChart({ sensorKey, onBack, machineId }: { sensorKey: string; onBa
   const yMin = Math.floor(minVal * 0.95);
   const yMax = Math.ceil(Math.max(maxVal, sensor.warn ?? 0, sensor.crit ?? 0) * 1.06);
   const xTicks = data.filter((_, i) => i % 24 === 0).map(d => d.time);
-  const statusCol = curStatus === 'critical' ? C.critical : curStatus === 'warning' ? C.warning : C.yellow;
+  const statusCol = curStatus === 'critical' ? 'hsl(var(--status-fail))' : curStatus === 'warning' ? 'hsl(var(--status-monitor))' : 'hsl(var(--primary))';
 
   return (
-    <div style={{ padding:'14px 0 24px', fontFamily:"'Courier New',monospace" }}>
-      <button onClick={onBack} style={{ background:'none', border:'none', color:C.yellow, fontSize:13,
-        cursor:'pointer', padding:'0 0 14px', fontFamily:'inherit', display:'flex', alignItems:'center', gap:4 }}>
-        ‹ Sensors
+    <div className="py-3">
+      <button onClick={onBack} className="flex items-center gap-0.5 text-primary ios-body mb-3 active:opacity-50 transition-opacity">
+        <ChevronLeft className="w-5 h-5" /> Sensors
       </button>
-      <div style={{ marginBottom:14 }}>
-        <div style={{ fontSize:17, fontWeight:700, color:C.white }}>{sensor.label}</div>
-        <div style={{ display:'flex', gap:8, alignItems:'center', marginTop:4 }}>
-          <div style={{ width:7, height:7, borderRadius:'50%', background:statusCol }}/>
-          <span style={{ fontSize:10, fontWeight:700, color:statusCol }}>{curStatus.toUpperCase()}</span>
+      <div className="mb-3">
+        <p className="ios-headline text-foreground">{sensor.label}</p>
+        <div className="flex items-center gap-2 mt-1">
+          <div className="w-2 h-2 rounded-full" style={{ background: statusCol }} />
+          <span className="ios-caption font-semibold" style={{ color: statusCol }}>{curStatus.toUpperCase()}</span>
         </div>
       </div>
-      <div style={{ display:'flex', gap:8, marginBottom:12 }}>
-        {([['NOW', curVal?.toFixed(1), curStatus!=='normal'],
-           ['MAX', maxVal.toFixed(1), maxVal>=(sensor.warn??Infinity)],
+
+      {/* Stats row */}
+      <div className="grid grid-cols-4 gap-2 mb-3">
+        {([['NOW', curVal?.toFixed(1), curStatus !== 'normal'],
+           ['MAX', maxVal.toFixed(1), maxVal >= (sensor.warn ?? Infinity)],
            ['AVG', avgVal.toFixed(1), false],
-           ['MIN', minVal.toFixed(1), false]] as [string,string,boolean][]).map(([l,v,hi])=>(
-          <div key={l} style={{ flex:1, background:C.card, border:`1px solid ${C.border}`,
-            borderTop:`2px solid ${hi ? statusCol : C.yellow}`, borderRadius:8, padding:'9px 10px' }}>
-            <div style={{ fontSize:8, color:C.textDim, letterSpacing:1, marginBottom:3 }}>{l}</div>
-            <div style={{ fontSize:17, fontWeight:700, color: hi ? statusCol : C.white }}>{v}</div>
-            <div style={{ fontSize:8, color:C.textDim }}>{sensor.unit}</div>
+           ['MIN', minVal.toFixed(1), false]] as [string,string,boolean][]).map(([l, v, hi]) => (
+          <div key={l} className="ios-card p-2.5" style={{ borderTop: `2px solid ${hi ? statusCol : 'hsl(var(--primary))'}` }}>
+            <p className="ios-caption2 text-muted-foreground uppercase">{l}</p>
+            <p className="text-[18px] font-bold font-mono" style={{ color: hi ? statusCol : 'hsl(var(--foreground))' }}>{v}</p>
+            <p className="ios-caption2 text-muted-foreground">{sensor.unit}</p>
           </div>
         ))}
       </div>
+
+      {/* Thresholds */}
       {(sensor.warn !== null || sensor.crit !== null) && (
-        <div style={{ display:'flex', gap:8, marginBottom:12 }}>
+        <div className="flex gap-2 mb-3">
           {sensor.warn !== null && (
-            <div style={{ flex:1, background:`${C.warning}10`, border:`1px solid ${C.warning}30`, borderRadius:8, padding:'8px 11px' }}>
-              <div style={{ fontSize:8, color:C.warning, letterSpacing:1 }}>⚠ WARNING</div>
-              <div style={{ fontSize:14, fontWeight:700, color:C.warning, marginTop:2 }}>
-                {sensor.dir==='above'?'≥':'≤'} {sensor.warn} <span style={{ fontSize:9 }}>{sensor.unit}</span>
-              </div>
+            <div className="flex-1 ios-card p-2.5 border border-status-monitor/20">
+              <p className="ios-caption2 text-status-monitor uppercase font-semibold">⚠ Warning</p>
+              <p className="ios-subhead font-bold text-status-monitor mt-0.5">
+                {sensor.dir === 'above' ? '≥' : '≤'} {sensor.warn} {sensor.unit}
+              </p>
             </div>
           )}
           {sensor.crit !== null && (
-            <div style={{ flex:1, background:`${C.critical}10`, border:`1px solid ${C.critical}30`, borderRadius:8, padding:'8px 11px' }}>
-              <div style={{ fontSize:8, color:C.critical, letterSpacing:1 }}>✕ CRITICAL</div>
-              <div style={{ fontSize:14, fontWeight:700, color:C.critical, marginTop:2 }}>
-                {sensor.dir==='above'?'≥':'≤'} {sensor.crit} <span style={{ fontSize:9 }}>{sensor.unit}</span>
-              </div>
+            <div className="flex-1 ios-card p-2.5 border border-status-fail/20">
+              <p className="ios-caption2 text-status-fail uppercase font-semibold">✕ Critical</p>
+              <p className="ios-subhead font-bold text-status-fail mt-0.5">
+                {sensor.dir === 'above' ? '≥' : '≤'} {sensor.crit} {sensor.unit}
+              </p>
             </div>
           )}
         </div>
       )}
-      <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:'14px 4px 10px 0', marginBottom:12 }}>
-        <ResponsiveContainer width="100%" height={400}>
-          <LineChart data={data} margin={{ top:8, right:14, left:0, bottom:0 }}>
-            <CartesianGrid strokeDasharray="2 6" stroke="#1C1C1C" vertical={false}/>
-            <XAxis dataKey="time" ticks={xTicks} tick={{ fill:C.textDim, fontSize:9 }} axisLine={{ stroke:C.border }} tickLine={false}/>
-            <YAxis domain={[yMin, yMax]} tick={{ fill:C.textDim, fontSize:9 }} axisLine={false} tickLine={false} width={46}/>
-            <Tooltip content={<ChartTooltip sensor={sensor}/>}/>
-            {sensor.warn!==null && sensor.crit!==null && (
+
+      {/* Chart */}
+      <div className="ios-card p-3 mb-3">
+        <ResponsiveContainer width="100%" height={320}>
+          <LineChart data={data} margin={{ top: 8, right: 14, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="2 6" stroke="hsl(var(--border))" vertical={false} />
+            <XAxis dataKey="time" ticks={xTicks} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={{ stroke: 'hsl(var(--border))' }} tickLine={false} />
+            <YAxis domain={[yMin, yMax]} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} width={46} />
+            <Tooltip content={<ChartTooltip sensor={sensor} />} />
+            {sensor.warn !== null && sensor.crit !== null && (
               sensor.dir === 'above' ? <>
-                <ReferenceArea y1={yMin} y2={sensor.warn} fill={C.safe} fillOpacity={0.04}/>
-                <ReferenceArea y1={sensor.warn} y2={sensor.crit} fill={C.warning} fillOpacity={0.08}/>
-                <ReferenceArea y1={sensor.crit} y2={yMax} fill={C.critical} fillOpacity={0.10}/>
+                <ReferenceArea y1={yMin} y2={sensor.warn} fill="hsl(var(--status-pass))" fillOpacity={0.04} />
+                <ReferenceArea y1={sensor.warn} y2={sensor.crit} fill="hsl(var(--status-monitor))" fillOpacity={0.06} />
+                <ReferenceArea y1={sensor.crit} y2={yMax} fill="hsl(var(--status-fail))" fillOpacity={0.08} />
               </> : <>
-                <ReferenceArea y1={sensor.warn} y2={yMax} fill={C.safe} fillOpacity={0.04}/>
-                <ReferenceArea y1={sensor.crit} y2={sensor.warn} fill={C.warning} fillOpacity={0.08}/>
-                <ReferenceArea y1={yMin} y2={sensor.crit} fill={C.critical} fillOpacity={0.10}/>
+                <ReferenceArea y1={sensor.warn} y2={yMax} fill="hsl(var(--status-pass))" fillOpacity={0.04} />
+                <ReferenceArea y1={sensor.crit} y2={sensor.warn} fill="hsl(var(--status-monitor))" fillOpacity={0.06} />
+                <ReferenceArea y1={yMin} y2={sensor.crit} fill="hsl(var(--status-fail))" fillOpacity={0.08} />
               </>
             )}
-            {sensor.warn!==null && <ReferenceLine y={sensor.warn} stroke={C.warning} strokeDasharray="5 3" strokeWidth={1.2}
-              label={{ value:'WARN', position:'insideTopRight', fill:C.warning, fontSize:8 }}/>}
-            {sensor.crit!==null && <ReferenceLine y={sensor.crit} stroke={C.critical} strokeDasharray="5 3" strokeWidth={1.2}
-              label={{ value:'CRIT', position:'insideTopRight', fill:C.critical, fontSize:8 }}/>}
-            <Line type="monotone" dataKey="value" stroke={C.yellow} strokeWidth={2}
+            {sensor.warn !== null && <ReferenceLine y={sensor.warn} stroke="hsl(var(--status-monitor))" strokeDasharray="5 3" strokeWidth={1.2} />}
+            {sensor.crit !== null && <ReferenceLine y={sensor.crit} stroke="hsl(var(--status-fail))" strokeDasharray="5 3" strokeWidth={1.2} />}
+            <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2}
               dot={(props: any) => {
                 const { cx, cy, payload, index } = props;
-                if (!payload?.value) return <g key={`d${index}`}/>;
-                if (payload.status === 'critical') return <circle key={`d${index}`} cx={cx} cy={cy} r={4.5} fill={C.critical} stroke={C.black} strokeWidth={1.5}/>;
-                if (payload.status === 'warning') return <circle key={`d${index}`} cx={cx} cy={cy} r={3.5} fill={C.warning} stroke={C.black} strokeWidth={1.5}/>;
-                return <g key={`d${index}`}/>;
+                if (!payload?.value) return <g key={`d${index}`} />;
+                if (payload.status === 'critical') return <circle key={`d${index}`} cx={cx} cy={cy} r={4} fill="hsl(var(--status-fail))" stroke="hsl(var(--background))" strokeWidth={1.5} />;
+                if (payload.status === 'warning') return <circle key={`d${index}`} cx={cx} cy={cy} r={3} fill="hsl(var(--status-monitor))" stroke="hsl(var(--background))" strokeWidth={1.5} />;
+                return <g key={`d${index}`} />;
               }}
-              activeDot={{ r:6, fill:C.yellow, stroke:C.black, strokeWidth:2 }}
+              activeDot={{ r: 5, fill: 'hsl(var(--primary))', stroke: 'hsl(var(--background))', strokeWidth: 2 }}
               connectNulls={false}
             />
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:'13px' }}>
-        <div style={{ fontSize:9, color:C.textDim, letterSpacing:2, marginBottom:9 }}>THRESHOLD EVENTS · {events.length}</div>
+
+      {/* Events */}
+      <div className="ios-card p-3">
+        <p className="ios-caption text-muted-foreground uppercase mb-2">Threshold Events · {events.length}</p>
         {events.length === 0 ? (
-          <div style={{ color:C.yellow, fontSize:11, textAlign:'center', padding:'6px 0', opacity:0.7 }}>── No threshold events ──</div>
+          <p className="ios-subhead text-muted-foreground text-center py-3">No threshold events</p>
         ) : (
-          <div style={{ display:'flex', flexDirection:'column', gap:6, maxHeight:190, overflowY:'auto' }}>
+          <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
             {events.map((d, i) => {
-              const col = d.status === 'critical' ? C.critical : C.warning;
+              const col = d.status === 'critical' ? 'hsl(var(--status-fail))' : 'hsl(var(--status-monitor))';
               return (
-                <div key={i} style={{ display:'flex', alignItems:'center', gap:10, fontSize:11, padding:'6px 10px',
-                  background:`${col}0C`, borderRadius:7, borderLeft:`2px solid ${col}` }}>
-                  <span style={{ color:C.textDim, width:40 }}>{d.time}</span>
-                  <span style={{ color:col, fontWeight:700, width:62 }}>{d.status.toUpperCase()}</span>
-                  <span style={{ color:C.textPrimary }}>{d.value} {sensor.unit}</span>
+                <div key={i} className="flex items-center gap-2.5 ios-caption px-2.5 py-2 rounded-lg"
+                  style={{ background: `${col}10`, borderLeft: `2px solid ${col}` }}>
+                  <span className="text-muted-foreground w-[40px]">{d.time}</span>
+                  <span className="font-bold w-[60px]" style={{ color: col }}>{d.status.toUpperCase()}</span>
+                  <span className="text-foreground">{d.value} {sensor.unit}</span>
                 </div>
               );
             })}
@@ -259,61 +188,73 @@ function SensorChart({ sensorKey, onBack, machineId }: { sensorKey: string; onBa
   );
 }
 
+function ChartTooltip({ active, payload, sensor }: any) {
+  if (!active || !payload?.length || payload[0].payload.value === null) return null;
+  const d = payload[0].payload;
+  const col = d.status === 'critical' ? 'hsl(var(--status-fail))' : d.status === 'warning' ? 'hsl(var(--status-monitor))' : 'hsl(var(--primary))';
+  return (
+    <div className="ios-card p-2.5" style={{ border: `1px solid ${col}`, boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
+      <p className="ios-caption2 text-muted-foreground">{d.time}</p>
+      <p className="text-[20px] font-bold text-foreground">{d.value}<span className="ios-caption2 text-muted-foreground ml-1">{sensor.unit}</span></p>
+      <p className="ios-caption2 font-bold mt-0.5" style={{ color: col }}>{d.status.toUpperCase()}</p>
+    </div>
+  );
+}
+
 // ─── TELEMETRY SECTION ────────────────────────────────────────────────────────
 function TelemetrySection({ machineId }: { machineId?: string }) {
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const tick = useLiveTick(machineId, 5000);
 
   if (activeKey) {
-    return (
-      <div style={{ background:C.black, borderRadius:12, padding:'0 14px', fontFamily:"'Courier New',monospace" }}>
-        <SensorChart sensorKey={activeKey} onBack={() => setActiveKey(null)} machineId={machineId}/>
-      </div>
-    );
+    return <SensorChart sensorKey={activeKey} onBack={() => setActiveKey(null)} machineId={machineId} />;
   }
 
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8, fontFamily:"'Courier New',monospace", paddingTop:12 }}>
-      <div style={{ gridColumn:'1/-1', fontSize:9, color:C.textDim, letterSpacing:2, marginBottom:2 }}>
-        ALL SENSORS · {Object.keys(SENSORS).length}
-      </div>
-      {Object.entries(SENSORS).map(([k, s]) => {
-        const d = getData(k, machineId);
-        const v = d.filter(p => p.value !== null).map(p => p.value as number);
-        const cur = v[v.length - 1];
-        const alert = getAlert(k, machineId);
-        const ac = alert === 'critical' ? C.critical : alert === 'warning' ? C.warning : C.safe;
-        const cnt = d.filter(p => p.status !== 'normal' && p.value !== null).length;
-        return (
-          <button key={k} onClick={() => setActiveKey(k)} style={{
-            background: C.card, borderRadius:10,
-            border:`1px solid ${alert ? ac+'35' : C.border}`,
-            borderTop:`2px solid ${ac}`,
-            padding:'10px', cursor:'pointer',
-            display:'flex', flexDirection:'row', alignItems:'center', gap:8,
-            textAlign:'left', width:'100%', transition:'all 0.12s', height:80,
-          }}>
-            <div style={{ display:'flex', flexDirection:'column', justifyContent:'space-between', flexShrink:0, width:58, height:'100%' }}>
-              <div style={{ fontSize:9, fontWeight:600, color:C.white, lineHeight:1.3, wordBreak:'break-word' }}>{s.label}</div>
-              <div>
-                <div style={{ fontSize:20, fontWeight:700, color:ac, lineHeight:1 }}>{cur?.toFixed(1)}</div>
-                <div style={{ fontSize:8, color:C.textDim }}>{s.unit}</div>
-                {cnt > 0 && <div style={{ fontSize:8, color:ac, fontWeight:700, marginTop:1 }}>{cnt} evt</div>}
+    <div className="pt-3 space-y-2">
+      <p className="ios-caption text-muted-foreground uppercase">All Sensors · {Object.keys(SENSORS).length}</p>
+      <div className="grid grid-cols-3 gap-2">
+        {Object.entries(SENSORS).map(([k, s]) => {
+          const d = getData(k, machineId);
+          const v = d.filter(p => p.value !== null).map(p => p.value as number);
+          const cur = v[v.length - 1];
+          const alert = getAlert(k, machineId);
+          const ac = alert === 'critical' ? 'hsl(var(--status-fail))' : alert === 'warning' ? 'hsl(var(--status-monitor))' : 'hsl(var(--status-pass))';
+          const cnt = d.filter(p => p.status !== 'normal' && p.value !== null).length;
+          return (
+            <button key={k} onClick={() => setActiveKey(k)}
+              className="ios-card p-2.5 text-left active:opacity-70 transition-opacity flex flex-col justify-between"
+              style={{ borderTop: `2px solid ${ac}`, minHeight: 80 }}>
+              <p className="ios-caption2 text-foreground font-medium leading-tight">{s.label}</p>
+              <div className="mt-auto">
+                <p className="text-[18px] font-bold font-mono leading-none" style={{ color: ac }}>{cur?.toFixed(1)}</p>
+                <p className="ios-caption2 text-muted-foreground">{s.unit}</p>
+                {cnt > 0 && <p className="ios-caption2 font-bold mt-0.5" style={{ color: ac }}>{cnt} evt</p>}
               </div>
-            </div>
-            <div style={{ flex:1, height:60, minWidth:0 }}>
-              <Sparkline k={k} machineId={machineId} tick={tick}/>
-            </div>
-          </button>
-        );
-      })}
+              <div className="h-[40px] mt-1">
+                <Sparkline k={k} machineId={machineId} tick={tick} />
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 // ─── REPORTS SECTION ──────────────────────────────────────────────────────────
+const REPORTS = [
+  {
+    id: '22892110', date: '2025-06-28', time: '11:07 AM',
+    inspector: 'John Doe', smu: 1027, workOrder: 'FW12076',
+    location: '601 Richland St, East Peoria, IL 61611',
+    counts: { FAIL: 2, MONITOR: 7, PASS: 31, NORMAL: 0 },
+    sections: [],
+  },
+];
+
 function ReportsSection({ machineId }: { machineId?: string }) {
-  const { getInspectionHistory, getInspectionDetail } = useInspectionStorage();
+  const { getInspectionHistory } = useInspectionStorage();
   const [dbInspections, setDbInspections] = useState<any[]>([]);
   const [loadingDb, setLoadingDb] = useState(true);
 
@@ -326,40 +267,38 @@ function ReportsSection({ machineId }: { machineId?: string }) {
     })();
   }, [machineId, getInspectionHistory]);
 
-  const totalCount = REPORTS.length + dbInspections.length;
-
   return (
-    <div className="space-y-2.5 pt-3" style={{ fontFamily: "'Courier New',monospace" }}>
-      <div className="text-[9px] text-muted-foreground tracking-widest uppercase mb-1">
-        INSPECTION HISTORY · {totalCount} REPORTS
-      </div>
+    <div className="pt-3 space-y-2">
+      <p className="ios-caption text-muted-foreground uppercase">
+        Inspection History · {REPORTS.length + dbInspections.length} reports
+      </p>
       {dbInspections.map(insp => (
-        <div key={insp.id} className="card-elevated p-3.5">
+        <div key={insp.id} className="ios-card p-3.5">
           <div className="flex justify-between items-start mb-1">
             <div>
-              <p className="text-xs text-muted-foreground/60">{new Date(insp.created_at).toLocaleDateString()}</p>
-              <p className="text-sm font-bold">{insp.asset_id}</p>
+              <p className="ios-caption text-muted-foreground">{new Date(insp.created_at).toLocaleDateString()}</p>
+              <p className="ios-body font-medium text-foreground">{insp.asset_id}</p>
             </div>
             {insp.health_score != null && (
-              <span className={`text-lg font-bold font-mono ${insp.health_score >= 80 ? 'text-status-pass' : insp.health_score >= 50 ? 'text-status-monitor' : 'text-status-fail'}`}>
+              <span className={`text-[20px] font-bold font-mono ${insp.health_score >= 80 ? 'text-status-pass' : insp.health_score >= 50 ? 'text-status-monitor' : 'text-status-fail'}`}>
                 {insp.health_score}
               </span>
             )}
           </div>
-          {insp.executive_summary && <p className="text-xs text-muted-foreground line-clamp-2">{insp.executive_summary}</p>}
+          {insp.executive_summary && <p className="ios-caption text-muted-foreground line-clamp-2">{insp.executive_summary}</p>}
         </div>
       ))}
-      {loadingDb && <div className="text-xs text-muted-foreground text-center p-4">Loading...</div>}
+      {loadingDb && <p className="ios-subhead text-muted-foreground text-center p-4">Loading...</p>}
       {REPORTS.map(r => (
-        <div key={r.id} className="card-elevated p-3.5">
+        <div key={r.id} className="ios-card p-3.5">
           <div className="flex justify-between items-start mb-1">
             <div>
-              <p className="text-xs text-muted-foreground/60">#{r.id} · {r.date}</p>
-              <p className="text-sm font-bold">{r.inspector}</p>
+              <p className="ios-caption text-muted-foreground">#{r.id} · {r.date}</p>
+              <p className="ios-body font-medium text-foreground">{r.inspector}</p>
             </div>
             <DotSummary counts={r.counts} size="sm" />
           </div>
-          <p className="text-xs text-muted-foreground">SMH {r.smu} · {r.workOrder}</p>
+          <p className="ios-caption text-muted-foreground">SMH {r.smu} · {r.workOrder}</p>
         </div>
       ))}
     </div>
@@ -373,12 +312,10 @@ export default function PreInspection() {
   const machine = mockMachines.find(m => m.id === machineId);
   const [activeSection, setActiveSection] = useState<'telemetry' | 'reports' | null>(null);
 
-  // Live tick — re-renders component every 5s with fresh sensor values
   const tick = useLiveTick(machineId, 5000);
 
   if (!machine) return <div className="p-8 text-center text-muted-foreground">Machine not found</div>;
 
-  // Live sensor data (re-computed each tick)
   const fuelData = getData('fuel_level', machineId);
   const fuelVals = fuelData.filter(d => d.value !== null);
   const liveFuel = fuelVals.length > 0 ? fuelVals[fuelVals.length - 1].value! : machine.fuelLevel;
@@ -400,215 +337,200 @@ export default function PreInspection() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="flex items-center justify-between px-5 pt-14 pb-3 sticky top-0 z-40 bg-background/90 backdrop-blur-2xl border-b border-border/20">
-        <button onClick={() => navigate('/')} className="w-9 h-9 rounded-xl bg-surface-2 border border-border/30 flex items-center justify-center">
-          <ArrowLeft className="w-4 h-4 text-foreground" />
-        </button>
-        <div className="text-center flex-1">
-          <h1 className="text-base font-bold">{machine.model.replace('Hydraulic Excavator', '').trim()}</h1>
-          <p className="text-xs text-muted-foreground">{machine.assetId}</p>
+      {/* iOS Nav Bar */}
+      <header className="sticky top-0 z-40 glass-surface" style={{ borderBottom: '0.33px solid hsl(var(--ios-separator))' }}>
+        <div className="flex items-center justify-between px-4 pt-14 pb-2">
+          <button onClick={() => navigate('/')} className="flex items-center gap-0.5 text-primary active:opacity-50 transition-opacity touch-target">
+            <ChevronLeft className="w-[22px] h-[22px]" />
+            <span className="ios-body">Fleet</span>
+          </button>
+          <div className="text-center absolute left-1/2 -translate-x-1/2">
+            <p className="ios-title text-foreground">{machine.model.replace('Hydraulic Excavator', '').trim()}</p>
+          </div>
+          <button className="w-[34px] h-[34px] rounded-full bg-surface-2 flex items-center justify-center">
+            <Share2 className="w-[16px] h-[16px] text-muted-foreground" />
+          </button>
         </div>
-        <button className="w-9 h-9 rounded-xl bg-surface-2 border border-border/30 flex items-center justify-center">
-          <Share2 className="w-4 h-4 text-muted-foreground" />
-        </button>
       </header>
 
-      <div className="px-5 py-5 space-y-4 pb-40">
-        {/* Machine hero image */}
-        <div className="card-elevated overflow-hidden">
-          <div className="relative h-52 bg-surface-2 overflow-hidden flex items-center justify-center">
+      <div className="pb-44">
+        {/* Hero image */}
+        <div className="relative">
+          <div className="h-[220px] bg-surface-2 overflow-hidden">
             <img src={excavatorHero} alt={machine.model} className="w-full h-full object-cover" />
-            {/* Health indicator */}
-            <div className="absolute top-3 right-3 bg-primary/90 text-primary-foreground text-sm font-bold px-3 py-1.5 rounded-lg">
-              {liveFuel.toFixed(0)}%
-            </div>
+          </div>
+          <div className="absolute bottom-3 right-3 bg-primary text-primary-foreground ios-footnote font-bold px-3 py-1.5 rounded-lg">
+            {liveFuel.toFixed(0)}% Fuel
           </div>
         </div>
 
-        {/* Specification — reference style pill grid */}
-        <div className="space-y-3">
-          <h2 className="text-base font-bold px-1">Specification</h2>
-
-          {/* Top row: Engine / Remaining / Oil Level */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="card-elevated p-3 flex items-center gap-2.5">
-              <div className="flex flex-col flex-1 min-w-0">
-                <span className="text-[10px] text-muted-foreground">Engine</span>
-                <span className="text-sm font-bold text-foreground mt-0.5">ON</span>
-              </div>
-              <span className="px-2 py-1 rounded-md bg-status-pass/15 text-status-pass text-[10px] font-bold">ON</span>
-            </div>
-            <div className="card-elevated p-3">
-              <span className="text-[10px] text-muted-foreground">Remaining</span>
-              <p className="text-sm font-bold text-foreground mt-0.5 font-mono">{liveSmu.toLocaleString()}h</p>
-            </div>
-            <div className="card-elevated p-3 flex items-center gap-2">
-              <div className="flex flex-col flex-1 min-w-0">
-                <span className="text-[10px] text-muted-foreground">Fuel</span>
-                <span className={`text-sm font-bold font-mono mt-0.5 ${liveFuel < 25 ? 'text-status-fail' : liveFuel < 40 ? 'text-status-monitor' : 'text-foreground'}`}>
-                  {liveFuel.toFixed(0)}%
-                </span>
-              </div>
-              {liveFuel < 25 && <AlertTriangle className="w-4 h-4 text-status-fail" />}
-            </div>
-          </div>
-
-          {/* Bottom row: Speed / RPM / SMU */}
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { icon: <Activity className="w-3.5 h-3.5 text-primary" />, label: 'Hydraulic', value: `${getData('pump_pressure_front', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'} bar` },
-              { icon: <Cpu className="w-3.5 h-3.5 text-primary" />, label: 'Engine RPM', value: `${getData('engine_rpm', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'}` },
-              { icon: <Clock className="w-3.5 h-3.5 text-primary" />, label: 'SMU Hours', value: liveSmu.toLocaleString() },
-            ].map((item, i) => (
-              <div key={i} className="card-elevated p-3 flex items-start gap-2">
-                {item.icon}
-                <div>
-                  <span className="text-[10px] text-muted-foreground block">{item.label}</span>
-                  <span className="text-sm font-bold font-mono mt-0.5 block">{item.value}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Other metrics — list style */}
-        <div className="space-y-1">
-          <h2 className="text-base font-bold px-1 mb-2">Other metrics</h2>
+        {/* Machine Info — iOS grouped section */}
+        <div className="ios-section-header mt-3">Specification</div>
+        <div className="mx-4 ios-card">
           {[
-            { label: 'Engine Coolant', value: `${getData('engine_coolant_temp', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'}°C`, alert: getAlert('engine_coolant_temp', machineId) },
-            { label: 'Hydraulic Temp', value: `${getData('hydraulic_oil_temp', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'}°C`, alert: getAlert('hydraulic_oil_temp', machineId) },
-            { label: 'DEF Level', value: `${getData('def_level', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'}%`, alert: getAlert('def_level', machineId) },
-            { label: 'Exhaust Temp', value: `${getData('exhaust_gas_temp', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'}°C`, alert: getAlert('exhaust_gas_temp', machineId) },
-          ].map((m, i) => (
-            <div key={i} className="flex items-center justify-between py-3 px-3 rounded-xl hover:bg-surface-2/50 transition-colors">
-              <div className="flex items-center gap-3">
-                <div className={`w-2 h-2 rounded-full ${m.alert === 'critical' ? 'bg-status-fail' : m.alert === 'warning' ? 'bg-status-monitor' : 'bg-status-pass'}`} />
-                <span className="text-sm text-foreground">{m.label}</span>
-              </div>
-              <span className={`text-sm font-bold font-mono ${m.alert === 'critical' ? 'text-status-fail' : m.alert === 'warning' ? 'text-status-monitor' : 'text-foreground'}`}>
-                {m.value}
+            { label: 'Asset ID', value: machine.assetId },
+            { label: 'Serial Number', value: machine.serial },
+            { label: 'SMU Hours', value: liveSmu.toLocaleString() },
+            { label: 'Fuel Level', value: `${liveFuel.toFixed(0)}%`, alert: liveFuel < 25 },
+            { label: 'Engine', value: 'ON', good: true },
+          ].map((row, i, arr) => (
+            <div key={row.label} className="ios-cell py-3"
+              style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsl(var(--ios-separator))' } : {}}>
+              <span className="ios-body text-foreground flex-1">{row.label}</span>
+              <span className={`ios-body font-mono ${row.alert ? 'text-status-fail font-semibold' : row.good ? 'text-status-pass font-semibold' : 'text-muted-foreground'}`}>
+                {row.value}
               </span>
             </div>
           ))}
         </div>
 
+        {/* Live Metrics */}
+        <div className="ios-section-header mt-5">Live Metrics</div>
+        <div className="mx-4 ios-card">
+          {[
+            { label: 'Hydraulic Pressure', key: 'pump_pressure_front', unit: 'bar' },
+            { label: 'Engine RPM', key: 'engine_rpm', unit: 'rpm' },
+            { label: 'Coolant Temp', key: 'engine_coolant_temp', unit: '°C' },
+            { label: 'Hydraulic Temp', key: 'hydraulic_oil_temp', unit: '°C' },
+            { label: 'DEF Level', key: 'def_level', unit: '%' },
+            { label: 'Exhaust Temp', key: 'exhaust_gas_temp', unit: '°C' },
+          ].map((m, i, arr) => {
+            const val = getData(m.key, machineId).filter(d => d.value !== null).slice(-1)[0]?.value;
+            const alert = getAlert(m.key, machineId);
+            return (
+              <div key={m.key} className="ios-cell py-3"
+                style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsl(var(--ios-separator))' } : {}}>
+                <div className={`w-2 h-2 rounded-full shrink-0 ${alert === 'critical' ? 'bg-status-fail' : alert === 'warning' ? 'bg-status-monitor' : 'bg-status-pass'}`} />
+                <span className="ios-body text-foreground flex-1">{m.label}</span>
+                <span className={`ios-body font-mono ${alert === 'critical' ? 'text-status-fail font-semibold' : alert === 'warning' ? 'text-status-monitor font-semibold' : 'text-muted-foreground'}`}>
+                  {val?.toFixed(0) ?? '—'} {m.unit}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
         {/* Location */}
-        <div className="card-elevated p-4 flex items-center gap-3">
-          <MapPin className="w-5 h-5 text-primary shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground truncate">{machine.location}</p>
-            <p className="text-xs text-muted-foreground font-mono">
-              {machine.gpsCoords.lat.toFixed(3)}°N, {machine.gpsCoords.lng.toFixed(3)}°W
-            </p>
+        <div className="ios-section-header mt-5">Location</div>
+        <div className="mx-4 ios-card">
+          <div className="ios-cell py-3">
+            <MapPin className="w-5 h-5 text-primary shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="ios-body text-foreground truncate">{machine.location}</p>
+              <p className="ios-caption font-mono text-muted-foreground">
+                {machine.gpsCoords.lat.toFixed(3)}°N, {machine.gpsCoords.lng.toFixed(3)}°W
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Active Fault Codes */}
+        {/* Active Faults */}
         {machine.activeFaultCodes.length > 0 && (
-          <div className="card-elevated p-4 border-status-fail/20">
-            <div className="flex items-center gap-2.5 mb-3">
-              <AlertTriangle className="w-4 h-4 text-status-fail" />
-              <h3 className="text-sm font-bold text-status-fail flex-1">Active Fault Codes</h3>
-              <span className="text-[10px] font-bold text-status-fail bg-status-fail/12 border border-status-fail/20 px-2 py-0.5 rounded-md">
-                {machine.activeFaultCodes.length}
-              </span>
+          <>
+            <div className="ios-section-header mt-5 text-status-fail">
+              Active Fault Codes · {machine.activeFaultCodes.length}
             </div>
-            <div className="space-y-2">
-              {machine.activeFaultCodes.map((fc) => (
-                <div key={fc.code} className="inset-surface rounded-xl p-3">
+            <div className="mx-4 ios-card border border-status-fail/20">
+              {machine.activeFaultCodes.map((fc, i) => (
+                <div key={fc.code} className="px-4 py-3"
+                  style={i < machine.activeFaultCodes.length - 1 ? { borderBottom: '0.33px solid hsl(var(--ios-separator))' } : {}}>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-mono text-sm text-sensor font-bold">{fc.code}</span>
-                    <span className={`ml-auto text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md border ${
-                      fc.severity === 'critical' ? 'bg-status-fail/10 text-status-fail border-status-fail/15' : 'bg-status-monitor/10 text-status-monitor border-status-monitor/15'
+                    <AlertTriangle className="w-4 h-4 text-status-fail shrink-0" />
+                    <span className="font-mono ios-subhead text-sensor font-bold">{fc.code}</span>
+                    <span className={`ml-auto ios-caption2 font-semibold uppercase px-2 py-0.5 rounded ${
+                      fc.severity === 'critical' ? 'bg-status-fail/15 text-status-fail' : 'bg-status-monitor/15 text-status-monitor'
                     }`}>
                       {fc.severity}
                     </span>
                   </div>
-                  <p className="text-sm text-foreground/80">{fc.description}</p>
+                  <p className="ios-subhead text-muted-foreground">{fc.description}</p>
                 </div>
               ))}
             </div>
-          </div>
+          </>
         )}
 
-        {/* VisionLink Telemetry — expandable */}
-        <div className="card-elevated">
+        {/* Telemetry — expandable */}
+        <div className="ios-section-header mt-5">VisionLink Telemetry</div>
+        <div className="mx-4 ios-card">
           <button
             onClick={() => setActiveSection(activeSection === 'telemetry' ? null : 'telemetry')}
-            className="w-full flex items-center gap-3 p-4 text-left"
+            className="ios-cell py-3.5 w-full active:bg-surface-2 transition-colors"
           >
-            <Activity className="w-5 h-5 text-primary" />
-            <h3 className="text-sm font-bold flex-1">VisionLink Telemetry</h3>
-            <div className="flex items-center gap-1.5 mr-2">
+            <Activity className="w-5 h-5 text-primary shrink-0" />
+            <span className="ios-body text-foreground flex-1">Sensor Dashboard</span>
+            <div className="flex items-center gap-1.5 mr-1">
               {criticalSensors.length > 0 ? (
                 <>
                   <AlertTriangle className="w-3.5 h-3.5 text-status-fail" />
-                  <span className="text-[10px] text-status-fail font-mono font-semibold">{criticalSensors.length} ALERT{criticalSensors.length !== 1 ? 'S' : ''}</span>
+                  <span className="ios-caption2 text-status-fail font-mono font-semibold">{criticalSensors.length}</span>
                 </>
               ) : (
                 <>
-                  <div className="w-1.5 h-1.5 rounded-full bg-status-pass" style={{ boxShadow:'0 0 5px hsl(var(--status-pass))' }}/>
-                  <span className="text-[10px] text-status-pass font-mono font-semibold tracking-widest">LIVE</span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-status-pass" style={{ boxShadow: '0 0 5px hsl(var(--status-pass))' }} />
+                  <span className="ios-caption2 text-status-pass font-mono font-semibold">LIVE</span>
                 </>
               )}
             </div>
-            {activeSection === 'telemetry' ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+            <ChevronRight className={`w-[14px] h-[14px] text-muted-foreground/40 transition-transform ${activeSection === 'telemetry' ? 'rotate-90' : ''}`} />
           </button>
           {activeSection !== 'telemetry' && criticalSensors.length > 0 && (
             <div className="px-4 pb-3 space-y-1.5">
               {criticalSensors.map(s => {
                 const isCrit = s.alert === 'critical';
                 return (
-                  <div key={s.key} className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 ${isCrit ? 'bg-status-fail/8 border border-status-fail/20' : 'bg-status-monitor/8 border border-status-monitor/20'}`}>
+                  <div key={s.key} className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 ${isCrit ? 'bg-status-fail/8 border border-status-fail/20' : 'bg-status-monitor/8 border border-status-monitor/20'}`}>
                     <div className={`w-2 h-2 rounded-full shrink-0 ${isCrit ? 'bg-status-fail' : 'bg-status-monitor'}`} />
-                    <span className="text-xs font-semibold text-foreground flex-1">{s.label}</span>
-                    <span className={`font-mono text-sm font-bold ${isCrit ? 'text-status-fail' : 'text-status-monitor'}`}>{s.value?.toFixed(1)}</span>
-                    <span className="text-[10px] text-muted-foreground">{s.unit}</span>
+                    <span className="ios-subhead text-foreground flex-1">{s.label}</span>
+                    <span className={`font-mono ios-body font-bold ${isCrit ? 'text-status-fail' : 'text-status-monitor'}`}>{s.value?.toFixed(1)}</span>
+                    <span className="ios-caption2 text-muted-foreground">{s.unit}</span>
                   </div>
                 );
               })}
             </div>
           )}
           {activeSection === 'telemetry' && (
-            <div className="px-4 pb-4 border-t border-border/20">
+            <div className="px-4 pb-4" style={{ borderTop: '0.33px solid hsl(var(--ios-separator))' }}>
               <TelemetrySection machineId={machineId} />
             </div>
           )}
         </div>
 
         {/* S·O·S Fluid Analysis */}
-        <div className="card-elevated p-4">
-          <div className="flex items-center gap-2.5 mb-3">
-            <Droplets className="w-5 h-5 text-sensor" />
-            <h3 className="text-sm font-bold flex-1">S·O·S Fluid Analysis</h3>
-            <span className="text-xs text-muted-foreground font-mono">02/15/2026</span>
+        <div className="ios-section-header mt-5">S·O·S Fluid Analysis</div>
+        <div className="mx-4 ios-card">
+          <div className="ios-cell py-3" style={{ borderBottom: '0.33px solid hsl(var(--ios-separator))' }}>
+            <Droplets className="w-5 h-5 text-sensor shrink-0" />
+            <span className="ios-body text-foreground flex-1">Last Sample</span>
+            <span className="ios-subhead font-mono text-muted-foreground">02/15/2026</span>
           </div>
           {([
             ['Engine Oil', 'Normal', 'text-status-pass'],
             ['Hydraulic Fluid', 'Elevated Iron — 45 ppm', 'text-status-monitor'],
             ['Coolant', 'Normal', 'text-status-pass'],
             ['Final Drive Oil', 'Normal', 'text-status-pass'],
-          ] as [string,string,string][]).map(([label, value, cls], i) => (
-            <div key={label} className={`flex justify-between items-center py-3 ${i < 3 ? 'border-b border-border/20' : ''}`}>
-              <span className="text-sm text-muted-foreground">{label}</span>
-              <span className={`text-xs font-bold ${cls}`}>{value}</span>
+          ] as [string, string, string][]).map(([label, value, cls], i, arr) => (
+            <div key={label} className="ios-cell py-3"
+              style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsl(var(--ios-separator))' } : {}}>
+              <span className="ios-body text-foreground flex-1">{label}</span>
+              <span className={`ios-subhead font-semibold ${cls}`}>{value}</span>
             </div>
           ))}
         </div>
 
         {/* Inspection Reports — expandable */}
-        <div className="card-elevated">
+        <div className="ios-section-header mt-5">Inspection Reports</div>
+        <div className="mx-4 ios-card">
           <button
             onClick={() => setActiveSection(activeSection === 'reports' ? null : 'reports')}
-            className="w-full flex items-center gap-3 p-4 text-left"
+            className="ios-cell py-3.5 w-full active:bg-surface-2 transition-colors"
           >
-            <History className="w-5 h-5 text-primary" />
-            <h3 className="text-sm font-bold flex-1">Inspection Reports</h3>
-            {activeSection === 'reports' ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+            <History className="w-5 h-5 text-primary shrink-0" />
+            <span className="ios-body text-foreground flex-1">View Reports</span>
+            <ChevronRight className={`w-[14px] h-[14px] text-muted-foreground/40 transition-transform ${activeSection === 'reports' ? 'rotate-90' : ''}`} />
           </button>
           {activeSection === 'reports' && (
-            <div className="px-4 pb-4 border-t border-border/20">
+            <div className="px-4 pb-4" style={{ borderTop: '0.33px solid hsl(var(--ios-separator))' }}>
               <ReportsSection machineId={machineId} />
             </div>
           )}
@@ -616,26 +538,25 @@ export default function PreInspection() {
       </div>
 
       {/* Sticky CTA */}
-      <div className="fixed bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-background via-background/95 to-transparent safe-bottom space-y-2.5">
+      <div className="fixed bottom-0 left-0 right-0 p-4 glass-surface safe-bottom space-y-2" style={{ borderTop: '0.33px solid hsl(var(--ios-separator))' }}>
         <button
           onClick={() => navigate(`/inspect/${machine.id}`)}
-          className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-base glow-primary active:scale-[0.98] transition-all"
+          className="w-full flex items-center justify-center gap-2.5 py-[14px] rounded-xl bg-primary text-primary-foreground font-semibold text-[17px] glow-primary active:scale-[0.98] transition-all"
         >
           <Play className="w-5 h-5" />
           Start Inspection
-          <ChevronRight className="w-5 h-5 opacity-60" />
         </button>
-        <div className="flex gap-2.5">
+        <div className="flex gap-2">
           <button
             onClick={() => navigate(`/inspect/${machine.id}?mode=upload`)}
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-surface-2 text-secondary-foreground font-semibold text-sm border border-border/30 active:scale-[0.98] transition-all"
+            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-surface-2 text-foreground font-medium ios-subhead active:scale-[0.98] transition-all"
           >
             <Upload className="w-4 h-4" />
             Upload Video
           </button>
           <button
             onClick={() => navigate(`/history/${machine.id}`)}
-            className="flex items-center justify-center gap-2 py-3.5 px-5 rounded-2xl bg-surface-2 text-secondary-foreground font-semibold text-sm border border-border/30 active:scale-[0.98] transition-all"
+            className="flex items-center justify-center gap-2 py-3 px-5 rounded-xl bg-surface-2 text-foreground font-medium ios-subhead active:scale-[0.98] transition-all"
           >
             <History className="w-4 h-4" />
           </button>
