@@ -41,11 +41,11 @@ export default function InspectionHistory() {
             <div className="ios-section-header mt-2">Summary</div>
             <div className="mx-5 ios-card">
               <div className="grid grid-cols-3">
-                <div className="py-3.5 text-center" style={{ borderRight: '0.33px solid hsla(220, 10%, 24%, 0.3)' }}>
+                <div className="py-3.5 text-center" style={{ borderRight: '0.33px solid hsl(var(--border) / 0.3)' }}>
                   <p className="text-[22px] font-bold font-mono text-foreground">{inspections.length}</p>
                   <p className="ios-caption text-muted-foreground">Total</p>
                 </div>
-                <div className="py-3.5 text-center" style={{ borderRight: '0.33px solid hsla(220, 10%, 24%, 0.3)' }}>
+                <div className="py-3.5 text-center" style={{ borderRight: '0.33px solid hsl(var(--border) / 0.3)' }}>
                   <p className="text-[22px] font-bold font-mono text-status-pass">{inspections.filter(i => i.status === 'READY').length}</p>
                   <p className="ios-caption text-muted-foreground">Ready</p>
                 </div>

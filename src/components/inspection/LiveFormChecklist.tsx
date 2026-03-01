@@ -1,5 +1,6 @@
 import { InspectionSection, InspectionStatus } from '@/lib/mock-data';
 import { StatusBadge } from '@/components/StatusBadge';
+import { GearStatusIndicator } from '@/components/GearStatusIndicator';
 import { AIValidationIndicator } from './AIValidationIndicator';
 import { ChevronDown, ChevronUp, MessageSquare, X, Check, Image } from 'lucide-react';
 import { useState } from 'react';
@@ -167,7 +168,7 @@ export function LiveFormChecklist({ sections, analyzedItems, isAnalyzing, onManu
                               <Image className="w-3.5 h-3.5 text-primary" />
                             </button>
                           )}
-                          <StatusBadge status={status} showLabel={false} className="scale-90" />
+                          <GearStatusIndicator status={status} showLabel={false} size="sm" />
                         </div>
                       </button>
 
@@ -196,7 +197,7 @@ export function LiveFormChecklist({ sections, analyzedItems, isAnalyzing, onManu
                                 onClick={() => handleManualStatus(item.id, opt.status)}
                                 className="touch-target py-1.5"
                               >
-                                <StatusBadge status={opt.status} className="w-full justify-center text-[10px]" />
+                                <GearStatusIndicator status={opt.status} size="md" />
                               </button>
                             ))}
                           </div>

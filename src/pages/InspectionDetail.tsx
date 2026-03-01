@@ -1,7 +1,9 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { AnimatedHealthRing } from '@/components/AnimatedHealthRing';
 import { PageHeader } from '@/components/PageHeader';
 import { StatusBadge } from '@/components/StatusBadge';
+import { GearStatusIndicator } from '@/components/GearStatusIndicator';
 import { AIValidationIndicator } from '@/components/inspection/AIValidationIndicator';
 import { useInspectionStorage } from '@/hooks/useInspectionStorage';
 import { Progress } from '@/components/ui/progress';
@@ -131,19 +133,7 @@ export default function InspectionDetail() {
               </div>
               {insp.health_score != null && (
                 <div className="text-right shrink-0">
-                  <div className="relative">
-                    <svg className="w-14 h-14 -rotate-90" viewBox="0 0 80 80">
-                      <circle cx="40" cy="40" r="34" fill="none" stroke="hsl(var(--surface-2))" strokeWidth="5" />
-                      <circle cx="40" cy="40" r="34" fill="none"
-                        stroke={safetyClearance === 'GO' ? 'hsl(var(--status-pass))' : safetyClearance === 'NO_GO' ? 'hsl(var(--status-fail))' : 'hsl(var(--status-monitor))'}
-                        strokeWidth="5" strokeLinecap="round"
-                        strokeDasharray={`${(insp.health_score / 100) * 213.6} 213.6`}
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-lg font-bold font-mono">{insp.health_score}</span>
-                    </div>
-                  </div>
+                  <AnimatedHealthRing score={insp.health_score} size={56} strokeWidth={4} />
                 </div>
               )}
             </div>
@@ -172,19 +162,7 @@ export default function InspectionDetail() {
         {!clearanceCfg && insp.health_score != null && (
           <div className="card-elevated overflow-hidden">
             <div className="p-5 flex items-center gap-4">
-              <div className="relative">
-                <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
-                  <circle cx="40" cy="40" r="34" fill="none" stroke="hsl(var(--surface-2))" strokeWidth="6" />
-                  <circle cx="40" cy="40" r="34" fill="none"
-                    stroke={insp.status === 'READY' ? 'hsl(var(--status-pass))' : insp.status === 'CAUTION' ? 'hsl(var(--status-monitor))' : 'hsl(var(--status-fail))'}
-                    strokeWidth="6" strokeLinecap="round"
-                    strokeDasharray={`${(insp.health_score / 100) * 213.6} 213.6`}
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl font-bold font-mono">{insp.health_score}</span>
-                </div>
-              </div>
+              <AnimatedHealthRing score={insp.health_score} size={80} strokeWidth={6} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className={`text-sm font-bold ${statusColor[insp.status] || 'text-foreground'}`}>
@@ -315,7 +293,7 @@ export default function InspectionDetail() {
                                 <Image className="w-3.5 h-3.5 text-primary" />
                               </button>
                             )}
-                            <StatusBadge status={item.status} showLabel={false} className="scale-90" />
+                            <GearStatusIndicator status={item.status} showLabel={false} size="sm" />
                           </div>
                         </div>
                         {item.photo_url && (
