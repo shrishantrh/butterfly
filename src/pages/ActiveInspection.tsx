@@ -163,18 +163,46 @@ export default function ActiveInspection() {
     }
   }, [toast]);
 
+  // Store transcript chunks and refs for stable interval callbacks
+  const transcriptChunksRef = useRef<string[]>([]);
+  const chunkIndexRef = useRef(0);
+  const addTranscriptRef = useRef(addTranscript);
+  const addFrameRef = useRef(addFrame);
+  const analyzeNowRef = useRef(analyzeNow);
+  useEffect(() => { addTranscriptRef.current = addTranscript; }, [addTranscript]);
+  useEffect(() => { addFrameRef.current = addFrame; }, [addFrame]);
+  useEffect(() => { analyzeNowRef.current = analyzeNow; }, [analyzeNow]);
+
   const startVideoAnalysis = useCallback((transcript: string) => {
     const video = uploadVideoRef.current;
     if (!video) return;
     setUploadPhase('playing');
+
+    // Split transcript into chunks to feed progressively during playback
+    // Each chunk corresponds to ~6 seconds of video
     if (transcript.trim()) {
-      addTranscript(transcript);
+      const words = transcript.trim().split(/\s+/);
+      const duration = video.duration || 60;
+      const numChunks = Math.max(1, Math.ceil(duration / 6));
+      const wordsPerChunk = Math.ceil(words.length / numChunks);
+      const chunks: string[] = [];
+      for (let i = 0; i < words.length; i += wordsPerChunk) {
+        chunks.push(words.slice(i, i + wordsPerChunk).join(' '));
+      }
+      transcriptChunksRef.current = chunks;
+      chunkIndexRef.current = 0;
       setCommittedTexts([transcript]);
+    } else {
+      transcriptChunksRef.current = [];
+      chunkIndexRef.current = 0;
     }
+
     video.currentTime = 0;
     video.playbackRate = 1.0;
     video.play().catch(console.error);
     setIsVideoPlaying(true);
+
+    // Feed frames + transcript chunks every 6 seconds
     frameIntervalRef.current = window.setInterval(() => {
       if (!video || video.paused || video.ended) return;
       const canvas = uploadCanvasRef.current;
@@ -185,14 +213,20 @@ export default function ActiveInspection() {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      addFrame(canvas.toDataURL('image/jpeg', 0.6));
-      analysisQueueRef.current++;
-      if (analysisQueueRef.current >= 2) {
-        analysisQueueRef.current = 0;
-        analyzeNow();
+      addFrameRef.current(canvas.toDataURL('image/jpeg', 0.6));
+
+      // Feed the next transcript chunk
+      const chunks = transcriptChunksRef.current;
+      const idx = chunkIndexRef.current;
+      if (chunks.length > 0 && idx < chunks.length) {
+        addTranscriptRef.current(chunks[idx]);
+        chunkIndexRef.current = idx + 1;
+      } else {
+        // No transcript or all chunks fed — just trigger frame-only analysis
+        analyzeNowRef.current();
       }
-    }, 3000);
-  }, [addTranscript, addFrame, analyzeNow]);
+    }, 6000);
+  }, []);
 
   useEffect(() => {
     const video = uploadVideoRef.current;
@@ -231,20 +265,30 @@ export default function ActiveInspection() {
     setUploadedFile(file);
     const url = URL.createObjectURL(file);
     setUploadVideoUrl(url);
-    // Skip server-side transcription — play locally and analyze live via frames + browser speech
-    if (file.type.startsWith('video/')) {
-      const waitForVideo = () => {
-        const video = uploadVideoRef.current;
-        if (video && video.readyState >= 2) startVideoAnalysis('');
-        else setTimeout(waitForVideo, 200);
-      };
-      setTimeout(waitForVideo, 500);
-    } else {
-      // For audio-only files, just start analysis with empty transcript
-      setUploadPhase('done');
-      toast({ title: 'Audio uploaded', description: 'Use mic for live narration during playback.' });
+
+    if (file.type.startsWith('video/') || file.type.startsWith('audio/')) {
+      // Step 1: Transcribe audio from the file server-side
+      const transcript = await transcribeVideoAudio(file);
+      
+      if (file.type.startsWith('video/')) {
+        // Step 2: Wait for video element to be ready, then start analysis with transcript
+        const waitForVideo = () => {
+          const video = uploadVideoRef.current;
+          if (video && video.readyState >= 2) startVideoAnalysis(transcript);
+          else setTimeout(waitForVideo, 200);
+        };
+        setTimeout(waitForVideo, 500);
+      } else {
+        // Audio-only: just feed transcript and finish
+        if (transcript.trim()) {
+          addTranscript(transcript);
+          setCommittedTexts([transcript]);
+        }
+        setUploadPhase('done');
+        analyzeNow();
+      }
     }
-  }, [startVideoAnalysis, toast]);
+  }, [startVideoAnalysis, toast, transcribeVideoAudio, addTranscript, analyzeNow]);
 
   const handleVideoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -271,16 +315,23 @@ export default function ActiveInspection() {
           const ctx = canvas.getContext('2d');
           if (!ctx) return;
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          addFrame(canvas.toDataURL('image/jpeg', 0.6));
-          analysisQueueRef.current++;
-          if (analysisQueueRef.current >= 2) { analysisQueueRef.current = 0; analyzeNow(); }
-        }, 3000);
+          addFrameRef.current(canvas.toDataURL('image/jpeg', 0.6));
+
+          const chunks = transcriptChunksRef.current;
+          const idx = chunkIndexRef.current;
+          if (chunks.length > 0 && idx < chunks.length) {
+            addTranscriptRef.current(chunks[idx]);
+            chunkIndexRef.current = idx + 1;
+          } else {
+            analyzeNowRef.current();
+          }
+        }, 6000);
       }
     } else {
       video.pause();
       if (frameIntervalRef.current) { clearInterval(frameIntervalRef.current); frameIntervalRef.current = null; }
     }
-  }, [addFrame, analyzeNow]);
+  }, []);
 
   const skipForward = useCallback(() => {
     const video = uploadVideoRef.current;
