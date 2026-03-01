@@ -144,16 +144,101 @@ export default function ActiveInspection() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Upload mode handlers
+  // Extract audio from video file client-side to reduce upload size
+  const extractAudioFromVideo = useCallback(async (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.muted = true;
+      video.src = URL.createObjectURL(file);
+
+      video.onloadedmetadata = () => {
+        const audioContext = new AudioContext();
+        const source = audioContext.createMediaElementSource(video);
+        const destination = audioContext.createMediaStreamDestination();
+        source.connect(destination);
+        // Also connect to speakers so the video actually plays (required for MediaRecorder)
+        source.connect(audioContext.destination);
+
+        const mediaRecorder = new MediaRecorder(destination.stream, {
+          mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+            ? 'audio/webm;codecs=opus'
+            : 'audio/webm',
+        });
+        const chunks: Blob[] = [];
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+          video.pause();
+          URL.revokeObjectURL(video.src);
+          audioContext.close();
+          console.log(`[Upload] Extracted audio: ${(audioBlob.size / 1024 / 1024).toFixed(1)}MB from ${(file.size / 1024 / 1024).toFixed(1)}MB video`);
+          resolve(audioBlob);
+        };
+
+        mediaRecorder.onerror = () => reject(new Error('Audio extraction failed'));
+
+        mediaRecorder.start();
+        // Play video at max speed to extract audio quickly
+        video.playbackRate = 16;
+        video.muted = false;
+        // Actually we need to keep it muted to avoid audio playing out loud
+        // MediaRecorder captures from the destination stream, not speakers
+        video.volume = 0;
+        video.play().catch(reject);
+
+        video.onended = () => {
+          mediaRecorder.stop();
+        };
+
+        // Safety timeout: if video is longer than expected
+        const maxWaitMs = (video.duration / 16 + 10) * 1000;
+        setTimeout(() => {
+          if (mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+            video.pause();
+          }
+        }, maxWaitMs);
+      };
+
+      video.onerror = () => reject(new Error('Failed to load video for audio extraction'));
+    });
+  }, []);
+
   const transcribeVideoAudio = useCallback(async (file: File): Promise<string> => {
     setIsTranscribing(true);
     setUploadPhase('transcribing');
     try {
+      let audioToSend: Blob | File = file;
+
+      // For large video files, extract just the audio track client-side
+      if (file.size > 15 * 1024 * 1024 && file.type.startsWith('video/')) {
+        toast({ title: 'Extracting audio...', description: 'Preparing video for transcription.' });
+        try {
+          audioToSend = await extractAudioFromVideo(file);
+        } catch (e) {
+          console.error('[Upload] Audio extraction failed, trying raw file:', e);
+          // If extraction fails and file is too large, skip transcription
+          if (file.size > 20 * 1024 * 1024) {
+            toast({ title: 'Video too large', description: 'Proceeding with visual analysis only.', variant: 'destructive' });
+            return '';
+          }
+        }
+      }
+
       const formData = new FormData();
-      formData.append('audio', file);
+      formData.append('audio', audioToSend, 'audio.webm');
       const { data, error } = await supabase.functions.invoke('transcribe-audio', { body: formData });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      return data?.text || '';
+      const text = data?.text || '';
+      if (text) {
+        toast({ title: 'Transcription complete', description: `${text.split(/\s+/).length} words transcribed.` });
+      }
+      return text;
     } catch (e) {
       console.error('[Upload] Transcription failed:', e);
       toast({ title: 'Transcription issue', description: 'Proceeding with visual analysis only.', variant: 'destructive' });
@@ -161,7 +246,7 @@ export default function ActiveInspection() {
     } finally {
       setIsTranscribing(false);
     }
-  }, [toast]);
+  }, [toast, extractAudioFromVideo]);
 
   // Store transcript chunks and refs for stable interval callbacks
   const transcriptChunksRef = useRef<string[]>([]);

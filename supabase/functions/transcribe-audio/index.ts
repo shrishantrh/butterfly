@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,27 +27,20 @@ serve(async (req) => {
 
     console.log(`Transcribing file: ${audioFile.name}, size: ${audioFile.size}, type: ${audioFile.type}`);
 
-    // Size limit check: 20MB max for base64 approach
-    const MAX_SIZE = 20 * 1024 * 1024;
-    if (audioFile.size > MAX_SIZE) {
-      console.log("File too large for full transcription, will return empty transcript for frame-only analysis");
-      return new Response(JSON.stringify({ text: "", warning: "File too large for transcription" }), {
+    // Reject files over 50MB even after audio extraction
+    if (audioFile.size > 50 * 1024 * 1024) {
+      console.log("File too large for transcription");
+      return new Response(JSON.stringify({ text: "", warning: "File too large" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Convert file to base64
+    // Convert file to base64 using Deno's built-in encoder (handles large files safely)
     const arrayBuffer = await audioFile.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-    // Use chunked base64 encoding to avoid stack overflow on large files
-    let base64 = "";
-    const chunkSize = 8192;
-    for (let i = 0; i < uint8Array.length; i += chunkSize) {
-      const chunk = uint8Array.slice(i, i + chunkSize);
-      base64 += btoa(String.fromCharCode(...chunk));
-    }
+    const base64 = base64Encode(new Uint8Array(arrayBuffer));
 
-    const mimeType = audioFile.type || "video/mp4";
+    // Determine MIME type
+    let mimeType = audioFile.type || "audio/webm";
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -62,7 +56,7 @@ serve(async (req) => {
             content: [
               {
                 type: "text",
-                text: "Transcribe ALL spoken words from this audio/video file. Output ONLY the raw transcription text, nothing else. No labels, no timestamps, no formatting. If there is no speech, output an empty string.",
+                text: "Transcribe ALL spoken words from this audio/video file verbatim. Output ONLY the raw transcription text — every word that is spoken, in order. No labels, no timestamps, no formatting, no commentary. If there is no speech, output an empty string.",
               },
               {
                 type: "image_url",
@@ -81,12 +75,22 @@ serve(async (req) => {
     if (!response.ok) {
       const text = await response.text();
       console.error("AI transcription error:", response.status, text);
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limited, please wait" }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "AI credits exhausted" }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       throw new Error(`Transcription failed: ${response.status}`);
     }
 
     const result = await response.json();
     const transcribedText = result.choices?.[0]?.message?.content?.trim() || "";
-    console.log(`Transcription complete: ${transcribedText.length} chars`);
+    console.log(`Transcription complete: ${transcribedText.length} chars, ~${transcribedText.split(/\s+/).length} words`);
 
     return new Response(JSON.stringify({ text: transcribedText }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
