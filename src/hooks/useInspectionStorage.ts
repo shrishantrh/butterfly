@@ -75,38 +75,48 @@ export function useInspectionStorage() {
 
       const inspectionId = inspection.id;
 
-      // Upload photos and save items
-      const itemsToInsert = [];
+      // Collect all items with their photo upload needs
+      const itemsRaw: Array<{
+        item: any;
+        section: any;
+        aiResult: any;
+        rawPhotoUrl: string | null;
+      }> = [];
+
       for (const section of sections) {
         for (const item of section.items) {
           const aiResult = analyzedItems?.[item.id];
-          let photoUrl = null;
-
-          // Upload photo if exists (base64 data URL)
-          const rawPhotoUrl = aiResult?.photoUrl || (item as any).photoUrl;
-          if (rawPhotoUrl && rawPhotoUrl.startsWith('data:')) {
-            photoUrl = await uploadPhoto(rawPhotoUrl, inspectionId, item.id);
-          } else if (rawPhotoUrl) {
-            photoUrl = rawPhotoUrl;
-          }
-
-          itemsToInsert.push({
-            inspection_id: inspectionId,
-            item_id: item.id,
-            label: item.label,
-            section_id: section.id,
-            section_title: section.title,
-            status: item.status,
-            comment: item.comment || aiResult?.comment || null,
-            evidence_types: item.evidence || aiResult?.evidence || [],
-            fault_code: item.faultCode || aiResult?.faultCode || null,
-            annotation: (item as any).annotation || aiResult?.annotation || null,
-            photo_url: photoUrl,
-            ai_agreement: aiResult?.aiAgreement || (item as any).aiAgreement || null,
-            ai_visual_note: aiResult?.aiVisualNote || (item as any).aiVisualNote || null,
-          });
+          const rawPhotoUrl = aiResult?.photoUrl || (item as any).photoUrl || null;
+          itemsRaw.push({ item, section, aiResult, rawPhotoUrl });
         }
       }
+
+      // Upload ALL photos in parallel (instead of one-by-one)
+      const photoUploadPromises = itemsRaw.map(async ({ item, rawPhotoUrl }) => {
+        if (rawPhotoUrl && rawPhotoUrl.startsWith('data:')) {
+          return uploadPhoto(rawPhotoUrl, inspectionId, item.id);
+        }
+        return rawPhotoUrl; // already a URL or null
+      });
+
+      const photoUrls = await Promise.all(photoUploadPromises);
+
+      // Build items to insert with resolved photo URLs
+      const itemsToInsert = itemsRaw.map(({ item, section, aiResult }, idx) => ({
+        inspection_id: inspectionId,
+        item_id: item.id,
+        label: item.label,
+        section_id: section.id,
+        section_title: section.title,
+        status: item.status,
+        comment: item.comment || aiResult?.comment || null,
+        evidence_types: item.evidence || aiResult?.evidence || [],
+        fault_code: item.faultCode || aiResult?.faultCode || null,
+        annotation: (item as any).annotation || aiResult?.annotation || null,
+        photo_url: photoUrls[idx] || null,
+        ai_agreement: aiResult?.aiAgreement || (item as any).aiAgreement || null,
+        ai_visual_note: aiResult?.aiVisualNote || (item as any).aiVisualNote || null,
+      }));
 
       // Batch insert items
       if (itemsToInsert.length > 0) {

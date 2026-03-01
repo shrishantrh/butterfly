@@ -54,9 +54,22 @@ export default function Debrief() {
     });
   };
 
+  // Strip base64 photo data before sending to AI (prevents massive payloads / timeouts)
+  const strippedSections = useMemo(() => {
+    return sections.map(s => ({
+      ...s,
+      items: s.items.map(item => {
+        const { photoUrl, ...rest } = item as any;
+        // Keep URL-based photos (already uploaded), strip base64
+        const cleanPhotoUrl = photoUrl && !photoUrl.startsWith('data:') ? photoUrl : undefined;
+        return { ...rest, photoUrl: cleanPhotoUrl };
+      }),
+    }));
+  }, [sections]);
+
   useEffect(() => {
     if (machine && !analysis && !isAnalyzing && !error) {
-      runAnalysis(sections, machine, routerState?.transcript, elapsed).then(result => {
+      runAnalysis(strippedSections, machine, routerState?.transcript, elapsed).then(result => {
         if (result?.partsRecommendations?.length && machine) {
           lookupParts(result.partsRecommendations, machine);
         }
