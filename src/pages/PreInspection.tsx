@@ -12,6 +12,7 @@ import {
   Droplets, Play, Cpu, Upload, History,
   ChevronRight, ChevronLeft, Share2,
 } from 'lucide-react';
+import { SlideToInspect } from '@/components/SlideToInspect';
 import { SENSORS, getData, getAlert } from '@/lib/sensor-data';
 import type { DataPoint } from '@/lib/sensor-data';
 import { useLiveSensorData, useLiveTick } from '@/hooks/useLiveSensorData';
@@ -540,13 +541,7 @@ export default function PreInspection() {
 
       {/* Sticky CTA */}
       <div className="fixed bottom-0 left-0 right-0 p-5 glass-surface-elevated safe-bottom space-y-2.5">
-        <button
-          onClick={() => navigate(`/inspect/${machine.id}`)}
-          className="w-full flex items-center justify-center gap-2.5 py-[15px] rounded-2xl bg-primary text-primary-foreground font-semibold text-[17px] glow-primary active:scale-[0.98] transition-all"
-        >
-          <Play className="w-5 h-5" />
-          Start Inspection
-        </button>
+        <SlideToInspect onSlideComplete={() => navigate(`/inspect/${machine.id}`)} />
         <div className="flex gap-2.5">
           <button
             onClick={() => navigate(`/inspect/${machine.id}?mode=upload`)}

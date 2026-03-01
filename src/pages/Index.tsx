@@ -1,17 +1,33 @@
 import { mockMachines } from '@/lib/mock-data';
 import { MachineCard } from '@/components/MachineCard';
+import { FleetMap } from '@/components/FleetMap';
 import {
-  Search, History, AlertTriangle, CheckCircle,
-  Clock, BarChart3, MapPin, ChevronRight,
+  Search, History, BarChart3, MapPin, Clock, ChevronRight, TrendingDown, TrendingUp, Fuel, AlertTriangle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { getData } from '@/lib/sensor-data';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const tabVariants = {
+  enter: (dir: number) => ({ x: dir > 0 ? 60 : -60, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (dir: number) => ({ x: dir > 0 ? -60 : 60, opacity: 0 }),
+};
 
 const Index = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'fleet' | 'map' | 'history'>('fleet');
+  const [direction, setDirection] = useState(0);
+  const tabOrder = ['fleet', 'map', 'history'] as const;
+
+  const switchTab = (tab: typeof activeTab) => {
+    const oldIdx = tabOrder.indexOf(activeTab);
+    const newIdx = tabOrder.indexOf(tab);
+    setDirection(newIdx > oldIdx ? 1 : -1);
+    setActiveTab(tab);
+  };
 
   const filteredMachines = mockMachines.filter(m =>
     !searchQuery ||
@@ -59,10 +75,10 @@ const Index = () => {
         {/* Segmented Control */}
         <div className="px-5 pb-3.5">
           <div className="ios-segmented">
-            {(['fleet', 'map', 'history'] as const).map(tab => (
+            {tabOrder.map(tab => (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => switchTab(tab)}
                 className={`ios-segmented-btn capitalize ${activeTab === tab ? 'ios-segmented-btn-active' : ''}`}
               >
                 {tab}
@@ -72,158 +88,185 @@ const Index = () => {
         </div>
       </header>
 
-      <div className="pb-24">
-        {activeTab === 'fleet' && (
-          <>
-            {/* Stats */}
-            <div className="ios-section-header mt-3">Overview</div>
-            <div className="mx-5 ios-card">
-              <div className="grid grid-cols-2">
-                <div className="ios-cell py-4 flex-col items-start !gap-0" style={{ borderRight: '0.33px solid hsla(210, 20%, 40%, 0.1)' }}>
-                  <span className="ios-caption text-muted-foreground">Failures</span>
-                  <span className="text-[28px] font-bold font-mono text-status-fail leading-tight mt-0.5">{totalFails}</span>
-                </div>
-                <div className="ios-cell py-4 flex-col items-start !gap-0">
-                  <span className="ios-caption text-muted-foreground">Monitor</span>
-                  <span className="text-[28px] font-bold font-mono text-status-monitor leading-tight mt-0.5">{totalMonitor}</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2" style={{ borderTop: '0.33px solid hsla(210, 20%, 40%, 0.1)' }}>
-                <div className="ios-cell py-4 flex-col items-start !gap-0" style={{ borderRight: '0.33px solid hsla(210, 20%, 40%, 0.1)' }}>
-                  <span className="ios-caption text-muted-foreground">Avg Fuel</span>
-                  <span className="text-[28px] font-bold font-mono text-foreground leading-tight mt-0.5">{avgFuel.toFixed(0)}%</span>
-                </div>
-                <div className="ios-cell py-4 flex-col items-start !gap-0">
-                  <span className="ios-caption text-muted-foreground">Active Alerts</span>
-                  <span className="text-[28px] font-bold font-mono text-primary leading-tight mt-0.5">{totalAlerts}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="ios-section-header mt-6">Quick Actions</div>
-            <div className="mx-5 ios-card">
-              {[
-                { icon: <BarChart3 className="w-[16px] h-[16px] text-primary" />, label: 'Inspection Analytics', bg: 'bg-primary/10', onClick: () => navigate('/history') },
-                { icon: <MapPin className="w-[16px] h-[16px] text-status-pass" />, label: 'Fleet Map', bg: 'bg-status-pass/10', onClick: () => setActiveTab('map') },
-                { icon: <Clock className="w-[16px] h-[16px] text-status-monitor" />, label: 'Recent Reports', bg: 'bg-status-monitor/10', onClick: () => setActiveTab('history') },
-              ].map((action, i, arr) => (
-                <button
-                  key={action.label}
-                  onClick={action.onClick}
-                  className="ios-cell py-4 w-full active:bg-white/[0.03] transition-colors"
-                  style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsla(210, 20%, 40%, 0.1)' } : {}}
-                >
-                  <div className={`w-[32px] h-[32px] rounded-[10px] ${action.bg} flex items-center justify-center shrink-0`}>
-                    {action.icon}
-                  </div>
-                  <span className="ios-body text-foreground flex-1">{action.label}</span>
-                  <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/20" />
-                </button>
-              ))}
-            </div>
-
-            {/* Machines */}
-            <div className="ios-section-header mt-6">All Machines · {filteredMachines.length}</div>
-            <div className="mx-5 ios-card">
-              {filteredMachines.map((machine, i) => (
-                <MachineCard key={machine.id} machine={machine} showSeparator={i < filteredMachines.length - 1} />
-              ))}
-              {filteredMachines.length === 0 && searchQuery && (
-                <div className="p-10 text-center">
-                  <Search className="w-6 h-6 text-muted-foreground/15 mx-auto mb-2" />
-                  <p className="ios-subhead text-muted-foreground">No machines found</p>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {activeTab === 'map' && (
-          <>
-            <div className="ios-section-header mt-3">Fleet Locations</div>
-            <div className="mx-5 ios-card">
-              <div className="h-[200px] flex items-center justify-center relative" style={{ borderBottom: '0.33px solid hsla(210, 20%, 40%, 0.1)' }}>
-                <div className="absolute inset-0 opacity-10" style={{
-                  backgroundImage: 'radial-gradient(circle at 30% 40%, hsl(var(--primary) / 0.4) 0%, transparent 50%), radial-gradient(circle at 70% 60%, hsl(var(--status-fail) / 0.2) 0%, transparent 40%)',
-                }} />
-                <div className="text-center z-10">
-                  <MapPin className="w-8 h-8 text-primary mx-auto mb-2" />
-                  <p className="ios-headline text-foreground">Fleet Location Map</p>
-                  <p className="ios-caption text-muted-foreground mt-1">GPS tracking for all assets</p>
-                </div>
-              </div>
-              {mockMachines.map((m, i) => (
-                <button
-                  key={m.id}
-                  onClick={() => navigate(`/pre-inspection/${m.id}`)}
-                  className="ios-cell py-3.5 w-full text-left active:bg-white/[0.03] transition-colors"
-                  style={i < mockMachines.length - 1 ? { borderBottom: '0.33px solid hsla(210, 20%, 40%, 0.1)' } : {}}
-                >
-                  <div className="w-[32px] h-[32px] rounded-[10px] bg-primary/10 flex items-center justify-center shrink-0">
-                    <MapPin className="w-[16px] h-[16px] text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="ios-body font-medium text-foreground truncate">{m.assetId}</p>
-                    <p className="ios-caption text-muted-foreground truncate">{m.location}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="ios-caption font-mono text-muted-foreground">{m.gpsCoords.lat.toFixed(3)}°N</p>
-                    <p className="ios-caption font-mono text-muted-foreground">{m.gpsCoords.lng.toFixed(3)}°W</p>
-                  </div>
-                  <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/20 shrink-0" />
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-
-        {activeTab === 'history' && (
-          <>
-            <div className="ios-section-header mt-3 flex items-center justify-between pr-5">
-              <span>Recent Inspections</span>
-              <button onClick={() => navigate('/history')} className="ios-footnote text-primary font-normal normal-case tracking-normal">
-                View All
-              </button>
-            </div>
-            <div className="mx-5 ios-card">
-              {mockMachines.filter(m => m.lastInspection).map((m, i, arr) => {
-                const insp = m.lastInspection!;
-                const total = insp.summary.pass + insp.summary.monitor + insp.summary.fail + insp.summary.normal;
-                const healthPct = Math.round(((insp.summary.pass + insp.summary.normal) / total) * 100);
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => navigate(`/pre-inspection/${m.id}`)}
-                    className="w-full text-left px-4 py-4 active:bg-white/[0.03] transition-colors"
-                    style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsla(210, 20%, 40%, 0.1)' } : {}}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <p className="ios-body font-medium text-foreground">{m.assetId}</p>
-                        <p className="ios-caption text-muted-foreground mt-0.5">{insp.date} · {insp.inspector}</p>
+      <div className="pb-24 overflow-hidden">
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={activeTab}
+            custom={direction}
+            variants={tabVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+          >
+            {activeTab === 'fleet' && (
+              <>
+                {/* Stats — redesigned */}
+                <div className="ios-section-header mt-3">Overview</div>
+                <div className="mx-5 grid grid-cols-2 gap-2.5">
+                  {[
+                    {
+                      label: 'Failures',
+                      value: totalFails,
+                      icon: <TrendingDown className="w-4 h-4" />,
+                      color: 'var(--status-fail)',
+                      bgAlpha: '0.08',
+                    },
+                    {
+                      label: 'Monitor',
+                      value: totalMonitor,
+                      icon: <AlertTriangle className="w-4 h-4" />,
+                      color: 'var(--status-monitor)',
+                      bgAlpha: '0.08',
+                    },
+                    {
+                      label: 'Avg Fuel',
+                      value: `${avgFuel.toFixed(0)}%`,
+                      icon: <Fuel className="w-4 h-4" />,
+                      color: 'var(--primary)',
+                      bgAlpha: '0.06',
+                    },
+                    {
+                      label: 'Active Alerts',
+                      value: totalAlerts,
+                      icon: <TrendingUp className="w-4 h-4" />,
+                      color: 'var(--sensor)',
+                      bgAlpha: '0.08',
+                    },
+                  ].map((stat, i) => (
+                    <motion.div
+                      key={stat.label}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.06, duration: 0.35 }}
+                      className="ios-card p-4 flex flex-col gap-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="ios-caption text-muted-foreground">{stat.label}</span>
+                        <div
+                          className="w-7 h-7 rounded-lg flex items-center justify-center"
+                          style={{
+                            background: `hsl(${stat.color} / ${stat.bgAlpha})`,
+                            color: `hsl(${stat.color})`,
+                          }}
+                        >
+                          {stat.icon}
+                        </div>
                       </div>
-                      <span className={`text-[22px] font-bold font-mono ${healthPct >= 80 ? 'text-status-pass' : healthPct >= 60 ? 'text-status-monitor' : 'text-status-fail'}`}>
-                        {healthPct}%
+                      <span
+                        className="text-[28px] font-bold font-mono leading-none"
+                        style={{ color: `hsl(${stat.color})` }}
+                      >
+                        {stat.value}
                       </span>
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* Quick Actions */}
+                <div className="ios-section-header mt-6">Quick Actions</div>
+                <div className="mx-5 ios-card">
+                  {[
+                    { icon: <BarChart3 className="w-[16px] h-[16px] text-primary" />, label: 'Inspection Analytics', bg: 'bg-primary/10', onClick: () => navigate('/history') },
+                    { icon: <MapPin className="w-[16px] h-[16px] text-status-pass" />, label: 'Fleet Map', bg: 'bg-status-pass/10', onClick: () => switchTab('map') },
+                    { icon: <Clock className="w-[16px] h-[16px] text-status-monitor" />, label: 'Recent Reports', bg: 'bg-status-monitor/10', onClick: () => switchTab('history') },
+                  ].map((action, i, arr) => (
+                    <button
+                      key={action.label}
+                      onClick={action.onClick}
+                      className="ios-cell py-4 w-full active:bg-white/[0.03] transition-colors"
+                      style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsla(210, 20%, 40%, 0.08)' } : {}}
+                    >
+                      <div className={`w-[32px] h-[32px] rounded-[10px] ${action.bg} flex items-center justify-center shrink-0`}>
+                        {action.icon}
+                      </div>
+                      <span className="ios-body text-foreground flex-1 text-left">{action.label}</span>
+                      <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/20" />
+                    </button>
+                  ))}
+                </div>
+
+                {/* Machines */}
+                <div className="ios-section-header mt-6">All Machines · {filteredMachines.length}</div>
+                <div className="mx-5 ios-card">
+                  {filteredMachines.map((machine, i) => (
+                    <motion.div
+                      key={machine.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.15 + i * 0.04, duration: 0.3 }}
+                    >
+                      <MachineCard machine={machine} showSeparator={i < filteredMachines.length - 1} />
+                    </motion.div>
+                  ))}
+                  {filteredMachines.length === 0 && searchQuery && (
+                    <div className="p-10 text-center">
+                      <Search className="w-6 h-6 text-muted-foreground/15 mx-auto mb-2" />
+                      <p className="ios-subhead text-muted-foreground">No machines found</p>
                     </div>
-                    <div className="flex items-center gap-4 ios-caption font-mono mt-1.5">
-                      <span className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-status-pass" /> {insp.summary.pass}
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-status-monitor" /> {insp.summary.monitor}
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-status-fail" /> {insp.summary.fail}
-                      </span>
-                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {activeTab === 'map' && (
+              <>
+                <div className="ios-section-header mt-3">Fleet Locations</div>
+                <FleetMap />
+              </>
+            )}
+
+            {activeTab === 'history' && (
+              <>
+                <div className="ios-section-header mt-3 flex items-center justify-between pr-5">
+                  <span>Recent Inspections</span>
+                  <button onClick={() => navigate('/history')} className="ios-footnote text-primary font-normal normal-case tracking-normal">
+                    View All
                   </button>
-                );
-              })}
-            </div>
-          </>
-        )}
+                </div>
+                <div className="mx-5 ios-card">
+                  {mockMachines.filter(m => m.lastInspection).map((m, i, arr) => {
+                    const insp = m.lastInspection!;
+                    const total = insp.summary.pass + insp.summary.monitor + insp.summary.fail + insp.summary.normal;
+                    const healthPct = Math.round(((insp.summary.pass + insp.summary.normal) / total) * 100);
+                    return (
+                      <motion.button
+                        key={m.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.05 + i * 0.06, duration: 0.3 }}
+                        onClick={() => navigate(`/pre-inspection/${m.id}`)}
+                        className="w-full text-left px-4 py-4 active:bg-white/[0.03] transition-colors"
+                        style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsla(210, 20%, 40%, 0.08)' } : {}}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <p className="ios-body font-medium text-foreground">{m.assetId}</p>
+                            <p className="ios-caption text-muted-foreground mt-0.5">{insp.date} · {insp.inspector}</p>
+                          </div>
+                          <span className={`text-[22px] font-bold font-mono ${healthPct >= 80 ? 'text-status-pass' : healthPct >= 60 ? 'text-status-monitor' : 'text-status-fail'}`}>
+                            {healthPct}%
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-4 ios-caption font-mono mt-1.5">
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-status-pass" /> {insp.summary.pass}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-status-monitor" /> {insp.summary.monitor}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-status-fail" /> {insp.summary.fail}
+                          </span>
+                        </div>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );

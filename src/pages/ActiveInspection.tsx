@@ -463,7 +463,7 @@ export default function ActiveInspection() {
         </div>
       )}
 
-      {isUploadMode && uploadVideoUrl && (uploadPhase === 'playing' || uploadPhase === 'done') && (
+      {isUploadMode && uploadVideoUrl && (
         <div className="mx-4 mb-2 shrink-0">
           <div className="card-elevated overflow-hidden">
             <div className="relative">
