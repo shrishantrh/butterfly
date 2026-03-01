@@ -451,7 +451,7 @@ export default function PreInspection() {
           {/* Bottom row: Speed / RPM / SMU */}
           <div className="grid grid-cols-3 gap-2">
             {[
-              { icon: <Activity className="w-3.5 h-3.5 text-primary" />, label: 'Hydraulic', value: `${getData('hydraulic_pressure', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'} psi` },
+              { icon: <Activity className="w-3.5 h-3.5 text-primary" />, label: 'Hydraulic', value: `${getData('pump_pressure_front', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'} bar` },
               { icon: <Cpu className="w-3.5 h-3.5 text-primary" />, label: 'Engine RPM', value: `${getData('engine_rpm', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'}` },
               { icon: <Clock className="w-3.5 h-3.5 text-primary" />, label: 'SMU Hours', value: liveSmu.toLocaleString() },
             ].map((item, i) => (
@@ -470,10 +470,10 @@ export default function PreInspection() {
         <div className="space-y-1">
           <h2 className="text-base font-bold px-1 mb-2">Other metrics</h2>
           {[
-            { label: 'Engine Coolant', value: `${getData('coolant_temp', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'}°`, alert: getAlert('coolant_temp', machineId) },
-            { label: 'Hydraulic Temp', value: `${getData('hydraulic_temp', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'}°C`, alert: getAlert('hydraulic_temp', machineId) },
+            { label: 'Engine Coolant', value: `${getData('engine_coolant_temp', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'}°C`, alert: getAlert('engine_coolant_temp', machineId) },
+            { label: 'Hydraulic Temp', value: `${getData('hydraulic_oil_temp', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'}°C`, alert: getAlert('hydraulic_oil_temp', machineId) },
             { label: 'DEF Level', value: `${getData('def_level', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'}%`, alert: getAlert('def_level', machineId) },
-            { label: 'Exhaust Temp', value: `${getData('exhaust_temp', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'}°C`, alert: getAlert('exhaust_temp', machineId) },
+            { label: 'Exhaust Temp', value: `${getData('exhaust_gas_temp', machineId).filter(d=>d.value!==null).slice(-1)[0]?.value?.toFixed(0) || '—'}°C`, alert: getAlert('exhaust_gas_temp', machineId) },
           ].map((m, i) => (
             <div key={i} className="flex items-center justify-between py-3 px-3 rounded-xl hover:bg-surface-2/50 transition-colors">
               <div className="flex items-center gap-3">
