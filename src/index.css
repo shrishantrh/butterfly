@@ -4,73 +4,73 @@
 
 @layer base {
   :root {
-    /* iOS-inspired dark theme with CAT yellow */
-    --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
+    /* Premium dark theme with CAT yellow */
+    --background: 220 16% 4%;
+    --foreground: 0 0% 96%;
 
-    --card: 0 0% 11%;
-    --card-foreground: 0 0% 100%;
+    --card: 220 12% 9%;
+    --card-foreground: 0 0% 96%;
 
-    --popover: 0 0% 11%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 220 12% 9%;
+    --popover-foreground: 0 0% 96%;
 
     --primary: 46 100% 50%;
-    --primary-foreground: 0 0% 0%;
+    --primary-foreground: 0 0% 4%;
 
-    --secondary: 0 0% 17%;
-    --secondary-foreground: 0 0% 65%;
+    --secondary: 220 10% 14%;
+    --secondary-foreground: 0 0% 60%;
 
-    --muted: 0 0% 11%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 220 10% 12%;
+    --muted-foreground: 220 8% 52%;
 
     --accent: 46 90% 45%;
-    --accent-foreground: 0 0% 0%;
+    --accent-foreground: 0 0% 4%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 17%;
+    --border: 220 10% 16%;
+    --input: 220 10% 14%;
     --ring: 46 100% 50%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
     /* Status colors */
-    --status-pass: 142 71% 45%;
+    --status-pass: 152 60% 46%;
     --status-monitor: 38 92% 50%;
-    --status-fail: 0 84% 60%;
-    --status-normal: 0 0% 50%;
-    --status-conflicted: 280 70% 55%;
+    --status-fail: 0 76% 58%;
+    --status-normal: 220 8% 46%;
+    --status-conflicted: 280 60% 58%;
 
     /* Sensor */
-    --sensor: 199 89% 48%;
+    --sensor: 199 82% 52%;
 
-    /* iOS-style grouped surfaces */
-    --surface-1: 0 0% 11%;
-    --surface-2: 0 0% 17%;
-    --surface-3: 0 0% 22%;
+    /* Refined layered surfaces */
+    --surface-1: 220 12% 9%;
+    --surface-2: 220 10% 14%;
+    --surface-3: 220 8% 20%;
 
     /* Glow */
     --glow-primary: 46 100% 50%;
     --glow-fail: 0 72% 50%;
 
     /* Sidebar */
-    --sidebar-background: 0 0% 0%;
-    --sidebar-foreground: 0 0% 100%;
+    --sidebar-background: 220 16% 4%;
+    --sidebar-foreground: 0 0% 96%;
     --sidebar-primary: 46 100% 50%;
-    --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 0 0% 17%;
-    --sidebar-accent-foreground: 0 0% 65%;
-    --sidebar-border: 0 0% 20%;
+    --sidebar-primary-foreground: 0 0% 4%;
+    --sidebar-accent: 220 10% 14%;
+    --sidebar-accent-foreground: 0 0% 60%;
+    --sidebar-border: 220 10% 16%;
     --sidebar-ring: 46 100% 50%;
 
-    /* iOS grouped background */
-    --ios-grouped-bg: 0 0% 0%;
-    --ios-card-bg: 0 0% 11%;
-    --ios-separator: 0 0% 20%;
-    --ios-label: 0 0% 60%;
-    --ios-secondary-label: 0 0% 40%;
-    --ios-fill: 0 0% 15%;
+    /* iOS grouped background — refined */
+    --ios-grouped-bg: 220 16% 4%;
+    --ios-card-bg: 220 12% 9%;
+    --ios-separator: 220 10% 16%;
+    --ios-label: 220 8% 52%;
+    --ios-secondary-label: 220 8% 36%;
+    --ios-fill: 220 10% 12%;
   }
 }
 
@@ -166,30 +166,32 @@
     letter-spacing: 0.006em;
   }
 
-  /* iOS Grouped Inset Card — rounded container like Settings.app */
+  /* ─── FROSTED GLASS CARDS ─── */
   .ios-card {
-    @apply rounded-xl overflow-hidden;
-    background: hsl(var(--ios-card-bg));
+    @apply rounded-2xl overflow-hidden;
+    background: hsla(220, 12%, 9%, 0.65);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border: 0.5px solid hsla(220, 10%, 24%, 0.35);
   }
 
-  /* iOS cell row with separator */
+  /* iOS cell row */
   .ios-cell {
-    @apply flex items-center gap-3 px-4 min-h-[44px];
-    background: hsl(var(--ios-card-bg));
+    @apply flex items-center gap-3 px-4 min-h-[48px];
   }
 
   .ios-cell + .ios-cell {
-    border-top: 0.33px solid hsl(var(--ios-separator));
+    border-top: 0.33px solid hsla(220, 10%, 24%, 0.3);
   }
 
   /* iOS Section header text */
   .ios-section-header {
     font-size: 13px;
-    font-weight: 400;
-    letter-spacing: -0.008em;
+    font-weight: 500;
+    letter-spacing: 0.02em;
     text-transform: uppercase;
     color: hsl(var(--ios-label));
-    padding: 6px 20px 6px;
+    padding: 8px 20px 6px;
   }
 
   .ios-section-footer {
@@ -197,26 +199,30 @@
     font-weight: 400;
     letter-spacing: -0.008em;
     color: hsl(var(--ios-secondary-label));
-    padding: 6px 20px 12px;
+    padding: 6px 20px 14px;
     line-height: 1.38;
   }
 
-  /* iOS Segmented Control */
+  /* iOS Segmented Control — frosted */
   .ios-segmented {
-    @apply flex p-[2px] rounded-lg;
-    background: hsl(var(--ios-fill));
+    @apply flex p-[3px] rounded-xl;
+    background: hsla(220, 10%, 12%, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 0.5px solid hsla(220, 10%, 24%, 0.25);
   }
 
   .ios-segmented-btn {
-    @apply flex-1 py-[7px] text-center rounded-md transition-all;
+    @apply flex-1 py-[8px] text-center rounded-[10px] transition-all;
     font-size: 13px;
     font-weight: 600;
-    color: hsl(var(--foreground));
+    color: hsl(var(--muted-foreground));
   }
 
   .ios-segmented-btn-active {
-    background: hsl(var(--surface-2));
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+    background: hsla(220, 10%, 18%, 0.9);
+    color: hsl(var(--foreground));
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3), 0 0.5px 1px rgba(0,0,0,0.2);
   }
 
   /* Status dots */
@@ -226,17 +232,17 @@
 
   .status-dot-pass {
     background-color: hsl(var(--status-pass));
-    box-shadow: 0 0 6px hsl(var(--status-pass) / 0.4);
+    box-shadow: 0 0 8px hsl(var(--status-pass) / 0.35);
   }
 
   .status-dot-monitor {
     background-color: hsl(var(--status-monitor));
-    box-shadow: 0 0 6px hsl(var(--status-monitor) / 0.4);
+    box-shadow: 0 0 8px hsl(var(--status-monitor) / 0.35);
   }
 
   .status-dot-fail {
     background-color: hsl(var(--status-fail));
-    box-shadow: 0 0 6px hsl(var(--status-fail) / 0.4);
+    box-shadow: 0 0 8px hsl(var(--status-fail) / 0.35);
   }
 
   .status-dot-normal {
@@ -245,19 +251,19 @@
 
   .status-dot-conflicted {
     background-color: hsl(var(--status-conflicted));
-    box-shadow: 0 0 6px hsl(var(--status-conflicted) / 0.4);
+    box-shadow: 0 0 8px hsl(var(--status-conflicted) / 0.35);
   }
 
   .glow-primary {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.3), 0 0 60px hsl(var(--primary) / 0.08);
+    box-shadow: 0 0 24px hsl(var(--primary) / 0.25), 0 0 80px hsl(var(--primary) / 0.06);
   }
 
   .glow-sensor {
-    box-shadow: 0 0 10px hsl(var(--sensor) / 0.3);
+    box-shadow: 0 0 12px hsl(var(--sensor) / 0.25);
   }
 
   .safe-bottom {
-    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
   }
 
   .safe-top {
@@ -269,44 +275,54 @@
     min-width: 44px;
   }
 
-  /* iOS-style card elevated (used for backward compat) */
+  /* Frosted card elevated */
   .card-elevated {
-    @apply rounded-xl overflow-hidden;
-    background: hsl(var(--ios-card-bg));
+    @apply rounded-2xl overflow-hidden;
+    background: hsla(220, 12%, 9%, 0.65);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border: 0.5px solid hsla(220, 10%, 24%, 0.35);
   }
 
+  /* ─── PREMIUM GLASS SURFACES ─── */
   .glass-surface {
-    @apply backdrop-blur-2xl;
-    background: hsla(0, 0%, 0%, 0.85);
+    @apply backdrop-blur-3xl;
+    background: hsla(220, 16%, 4%, 0.78);
+    border-bottom: 0.5px solid hsla(220, 10%, 24%, 0.25);
   }
 
   .glass-surface-elevated {
-    @apply backdrop-blur-2xl;
-    background: hsla(0, 0%, 0%, 0.92);
+    @apply backdrop-blur-3xl;
+    background: hsla(220, 14%, 6%, 0.88);
+    border-bottom: 0.5px solid hsla(220, 10%, 24%, 0.3);
   }
 
   .divider {
-    border-top: 0.33px solid hsl(var(--ios-separator));
+    border-top: 0.33px solid hsla(220, 10%, 24%, 0.3);
   }
 
   .inset-surface {
     @apply rounded-xl;
-    background: hsl(var(--surface-2));
+    background: hsla(220, 10%, 14%, 0.5);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
   }
 
   .label-caps {
     font-size: 13px;
-    font-weight: 400;
+    font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: -0.008em;
+    letter-spacing: 0.02em;
     color: hsl(var(--ios-label));
   }
 
   .metric-pill {
-    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-semibold font-mono;
+    @apply inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full font-semibold font-mono;
     font-size: 15px;
-    background: hsl(var(--surface-2));
-    border: 0.33px solid hsl(var(--ios-separator));
+    background: hsla(220, 10%, 14%, 0.5);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 0.5px solid hsla(220, 10%, 24%, 0.25);
   }
 
   .text-gradient-primary {

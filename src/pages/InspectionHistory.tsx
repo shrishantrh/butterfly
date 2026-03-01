@@ -39,17 +39,17 @@ export default function InspectionHistory() {
         {inspections.length > 0 && (
           <>
             <div className="ios-section-header mt-2">Summary</div>
-            <div className="mx-4 ios-card">
+            <div className="mx-5 ios-card">
               <div className="grid grid-cols-3">
-                <div className="py-3 text-center" style={{ borderRight: '0.33px solid hsl(var(--ios-separator))' }}>
+                <div className="py-3.5 text-center" style={{ borderRight: '0.33px solid hsla(220, 10%, 24%, 0.3)' }}>
                   <p className="text-[22px] font-bold font-mono text-foreground">{inspections.length}</p>
                   <p className="ios-caption text-muted-foreground">Total</p>
                 </div>
-                <div className="py-3 text-center" style={{ borderRight: '0.33px solid hsl(var(--ios-separator))' }}>
+                <div className="py-3.5 text-center" style={{ borderRight: '0.33px solid hsla(220, 10%, 24%, 0.3)' }}>
                   <p className="text-[22px] font-bold font-mono text-status-pass">{inspections.filter(i => i.status === 'READY').length}</p>
                   <p className="ios-caption text-muted-foreground">Ready</p>
                 </div>
-                <div className="py-3 text-center">
+                <div className="py-3.5 text-center">
                   <p className="text-[22px] font-bold font-mono text-status-fail">{inspections.filter(i => i.status === 'DOWN').length}</p>
                   <p className="ios-caption text-muted-foreground">Down</p>
                 </div>
@@ -59,14 +59,14 @@ export default function InspectionHistory() {
         )}
 
         {isLoading && (
-          <div className="mx-4 mt-4 ios-card p-8 flex flex-col items-center gap-3">
+          <div className="mx-5 mt-4 ios-card p-8 flex flex-col items-center gap-3">
             <Loader2 className="w-6 h-6 text-primary animate-spin" />
             <p className="ios-subhead text-muted-foreground">Loading inspection history...</p>
           </div>
         )}
 
         {!isLoading && inspections.length === 0 && (
-          <div className="mx-4 mt-4 ios-card p-8 text-center">
+          <div className="mx-5 mt-4 ios-card p-8 text-center">
             <FileText className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
             <p className="ios-body font-semibold text-muted-foreground">No inspections yet</p>
             <p className="ios-caption text-muted-foreground mt-1">Completed inspections will appear here.</p>
@@ -75,8 +75,8 @@ export default function InspectionHistory() {
 
         {inspections.length > 0 && (
           <>
-            <div className="ios-section-header mt-5">Inspections</div>
-            <div className="mx-4 ios-card">
+            <div className="ios-section-header mt-6">Inspections</div>
+            <div className="mx-5 ios-card">
               {inspections.map((insp, i) => {
                 const analysis = insp.analysis_json as any;
                 const safetyClearance = analysis?.executiveSummary?.safetyClearance;
@@ -91,8 +91,8 @@ export default function InspectionHistory() {
                   <button
                     key={insp.id}
                     onClick={() => navigate(`/inspection-detail/${insp.id}`)}
-                    className="w-full text-left px-4 py-3.5 active:bg-surface-2 transition-colors"
-                    style={i < inspections.length - 1 ? { borderBottom: '0.33px solid hsl(var(--ios-separator))' } : {}}
+                    className="w-full text-left px-4 py-4 active:bg-white/[0.03] transition-colors"
+                    style={i < inspections.length - 1 ? { borderBottom: '0.33px solid hsla(220, 10%, 24%, 0.3)' } : {}}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">

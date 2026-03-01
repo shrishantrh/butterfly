@@ -32,32 +32,38 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* iOS-style large title header */}
       <header className="sticky top-0 z-40 glass-surface">
-        <div className="px-4 pt-14 pb-2 flex items-center justify-between">
+        <div className="px-5 pt-14 pb-2.5 flex items-center justify-between">
           <h1 className="ios-large-title text-foreground">Fleet</h1>
           <button
             onClick={() => navigate('/history')}
-            className="w-[34px] h-[34px] rounded-full bg-surface-2 flex items-center justify-center"
+            className="w-[36px] h-[36px] rounded-full bg-white/[0.06] backdrop-blur-xl flex items-center justify-center ring-1 ring-white/[0.06]"
           >
             <History className="w-[18px] h-[18px] text-muted-foreground" />
           </button>
         </div>
 
-        {/* Search bar — iOS style */}
-        <div className="px-4 pb-2.5">
+        {/* Search bar */}
+        <div className="px-5 pb-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-[16px] h-[16px] text-muted-foreground/60" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[15px] h-[15px] text-muted-foreground/50" />
             <input
               type="text"
               placeholder="Search fleet"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-surface-2 rounded-lg pl-9 pr-4 py-2 ios-body text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+              className="w-full rounded-xl pl-10 pr-4 py-2.5 ios-body text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+              style={{
+                background: 'hsla(220, 10%, 12%, 0.6)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                border: '0.5px solid hsla(220, 10%, 24%, 0.2)',
+              }}
             />
           </div>
         </div>
 
         {/* iOS Segmented Control */}
-        <div className="px-4 pb-3">
+        <div className="px-5 pb-3.5">
           <div className="ios-segmented">
             {(['fleet', 'map', 'history'] as const).map(tab => (
               <button
@@ -76,73 +82,71 @@ const Index = () => {
       <div className="pb-24">
         {activeTab === 'fleet' && (
           <>
-            {/* Stats — iOS grouped inset cards */}
-            <div className="ios-section-header mt-2">Overview</div>
-            <div className="mx-4 ios-card">
+            {/* Stats */}
+            <div className="ios-section-header mt-3">Overview</div>
+            <div className="mx-5 ios-card">
               <div className="grid grid-cols-2">
-                <div className="ios-cell py-3 flex-col items-start !gap-0" style={{ borderRight: '0.33px solid hsl(var(--ios-separator))' }}>
+                <div className="ios-cell py-4 flex-col items-start !gap-0" style={{ borderRight: '0.33px solid hsla(220, 10%, 24%, 0.3)' }}>
                   <span className="ios-caption text-muted-foreground">Failures</span>
-                  <span className="text-[28px] font-bold font-mono text-status-fail leading-tight">{totalFails}</span>
+                  <span className="text-[28px] font-bold font-mono text-status-fail leading-tight mt-0.5">{totalFails}</span>
                 </div>
-                <div className="ios-cell py-3 flex-col items-start !gap-0">
+                <div className="ios-cell py-4 flex-col items-start !gap-0">
                   <span className="ios-caption text-muted-foreground">Monitor</span>
-                  <span className="text-[28px] font-bold font-mono text-status-monitor leading-tight">{totalMonitor}</span>
+                  <span className="text-[28px] font-bold font-mono text-status-monitor leading-tight mt-0.5">{totalMonitor}</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2" style={{ borderTop: '0.33px solid hsl(var(--ios-separator))' }}>
-                <div className="ios-cell py-3 flex-col items-start !gap-0" style={{ borderRight: '0.33px solid hsl(var(--ios-separator))' }}>
+              <div className="grid grid-cols-2" style={{ borderTop: '0.33px solid hsla(220, 10%, 24%, 0.3)' }}>
+                <div className="ios-cell py-4 flex-col items-start !gap-0" style={{ borderRight: '0.33px solid hsla(220, 10%, 24%, 0.3)' }}>
                   <span className="ios-caption text-muted-foreground">Avg Fuel</span>
-                  <span className="text-[28px] font-bold font-mono text-foreground leading-tight">{avgFuel.toFixed(0)}%</span>
+                  <span className="text-[28px] font-bold font-mono text-foreground leading-tight mt-0.5">{avgFuel.toFixed(0)}%</span>
                 </div>
-                <div className="ios-cell py-3 flex-col items-start !gap-0">
+                <div className="ios-cell py-4 flex-col items-start !gap-0">
                   <span className="ios-caption text-muted-foreground">Active Alerts</span>
-                  <span className="text-[28px] font-bold font-mono text-primary leading-tight">{totalAlerts}</span>
+                  <span className="text-[28px] font-bold font-mono text-primary leading-tight mt-0.5">{totalAlerts}</span>
                 </div>
               </div>
             </div>
 
             {/* Quick Actions */}
-            <div className="ios-section-header mt-5">Quick Actions</div>
-            <div className="mx-4 ios-card">
+            <div className="ios-section-header mt-6">Quick Actions</div>
+            <div className="mx-5 ios-card">
               <button
                 onClick={() => navigate('/history')}
-                className="ios-cell py-3.5 w-full active:bg-surface-2 transition-colors"
+                className="ios-cell py-4 w-full active:bg-white/[0.03] transition-colors"
               >
-                <div className="w-[30px] h-[30px] rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                <div className="w-[32px] h-[32px] rounded-[10px] bg-primary/12 flex items-center justify-center shrink-0">
                   <BarChart3 className="w-[16px] h-[16px] text-primary" />
                 </div>
                 <span className="ios-body text-foreground flex-1">Inspection Analytics</span>
-                <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/40" />
+                <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/25" />
               </button>
               <button
                 onClick={() => setActiveTab('map')}
-                className="ios-cell py-3.5 w-full active:bg-surface-2 transition-colors"
-                style={{ borderTop: '0.33px solid hsl(var(--ios-separator))' }}
+                className="ios-cell py-4 w-full active:bg-white/[0.03] transition-colors"
               >
-                <div className="w-[30px] h-[30px] rounded-lg bg-status-pass/15 flex items-center justify-center shrink-0">
+                <div className="w-[32px] h-[32px] rounded-[10px] bg-status-pass/12 flex items-center justify-center shrink-0">
                   <MapPin className="w-[16px] h-[16px] text-status-pass" />
                 </div>
                 <span className="ios-body text-foreground flex-1">Fleet Map</span>
-                <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/40" />
+                <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/25" />
               </button>
               <button
                 onClick={() => setActiveTab('history')}
-                className="ios-cell py-3.5 w-full active:bg-surface-2 transition-colors"
-                style={{ borderTop: '0.33px solid hsl(var(--ios-separator))' }}
+                className="ios-cell py-4 w-full active:bg-white/[0.03] transition-colors"
               >
-                <div className="w-[30px] h-[30px] rounded-lg bg-status-monitor/15 flex items-center justify-center shrink-0">
+                <div className="w-[32px] h-[32px] rounded-[10px] bg-status-monitor/12 flex items-center justify-center shrink-0">
                   <Clock className="w-[16px] h-[16px] text-status-monitor" />
                 </div>
                 <span className="ios-body text-foreground flex-1">Recent Reports</span>
-                <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/40" />
+                <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/25" />
               </button>
             </div>
 
             {/* Machines */}
-            <div className="ios-section-header mt-5">
+            <div className="ios-section-header mt-6">
               All Machines · {filteredMachines.length}
             </div>
-            <div className="mx-4 ios-card">
+            <div className="mx-5 ios-card">
               {filteredMachines.map((machine, i) => (
                 <MachineCard
                   key={machine.id}
@@ -151,8 +155,8 @@ const Index = () => {
                 />
               ))}
               {filteredMachines.length === 0 && searchQuery && (
-                <div className="p-8 text-center">
-                  <Search className="w-6 h-6 text-muted-foreground/30 mx-auto mb-2" />
+                <div className="p-10 text-center">
+                  <Search className="w-6 h-6 text-muted-foreground/20 mx-auto mb-2" />
                   <p className="ios-subhead text-muted-foreground">No machines found</p>
                 </div>
               )}
@@ -162,11 +166,11 @@ const Index = () => {
 
         {activeTab === 'map' && (
           <>
-            <div className="ios-section-header mt-2">Fleet Locations</div>
-            <div className="mx-4 ios-card">
+            <div className="ios-section-header mt-3">Fleet Locations</div>
+            <div className="mx-5 ios-card">
               {/* Placeholder map */}
-              <div className="h-[200px] bg-surface-2 flex items-center justify-center relative border-b" style={{ borderBottom: '0.33px solid hsl(var(--ios-separator))' }}>
-                <div className="absolute inset-0 opacity-20" style={{
+              <div className="h-[200px] flex items-center justify-center relative" style={{ borderBottom: '0.33px solid hsla(220, 10%, 24%, 0.3)' }}>
+                <div className="absolute inset-0 opacity-15" style={{
                   backgroundImage: 'radial-gradient(circle at 30% 40%, hsl(var(--primary) / 0.3) 0%, transparent 50%), radial-gradient(circle at 70% 60%, hsl(var(--status-fail) / 0.2) 0%, transparent 40%)',
                 }} />
                 <div className="text-center z-10">
@@ -179,10 +183,10 @@ const Index = () => {
                 <button
                   key={m.id}
                   onClick={() => navigate(`/pre-inspection/${m.id}`)}
-                  className="ios-cell py-3 w-full text-left active:bg-surface-2 transition-colors"
-                  style={i < mockMachines.length - 1 ? { borderBottom: '0.33px solid hsl(var(--ios-separator))' } : {}}
+                  className="ios-cell py-3.5 w-full text-left active:bg-white/[0.03] transition-colors"
+                  style={i < mockMachines.length - 1 ? { borderBottom: '0.33px solid hsla(220, 10%, 24%, 0.3)' } : {}}
                 >
-                  <div className="w-[30px] h-[30px] rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                  <div className="w-[32px] h-[32px] rounded-[10px] bg-primary/12 flex items-center justify-center shrink-0">
                     <MapPin className="w-[16px] h-[16px] text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -193,7 +197,7 @@ const Index = () => {
                     <p className="ios-caption font-mono text-muted-foreground">{m.gpsCoords.lat.toFixed(3)}°N</p>
                     <p className="ios-caption font-mono text-muted-foreground">{m.gpsCoords.lng.toFixed(3)}°W</p>
                   </div>
-                  <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/40 shrink-0" />
+                  <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/25 shrink-0" />
                 </button>
               ))}
             </div>
@@ -202,13 +206,13 @@ const Index = () => {
 
         {activeTab === 'history' && (
           <>
-            <div className="ios-section-header mt-2 flex items-center justify-between pr-4">
+            <div className="ios-section-header mt-3 flex items-center justify-between pr-5">
               <span>Recent Inspections</span>
               <button onClick={() => navigate('/history')} className="ios-footnote text-primary font-normal normal-case tracking-normal">
                 View All
               </button>
             </div>
-            <div className="mx-4 ios-card">
+            <div className="mx-5 ios-card">
               {mockMachines.filter(m => m.lastInspection).map((m, i, arr) => {
                 const insp = m.lastInspection!;
                 const total = insp.summary.pass + insp.summary.monitor + insp.summary.fail + insp.summary.normal;
@@ -217,19 +221,19 @@ const Index = () => {
                   <button
                     key={m.id}
                     onClick={() => navigate(`/pre-inspection/${m.id}`)}
-                    className="w-full text-left px-4 py-3.5 active:bg-surface-2 transition-colors"
-                    style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsl(var(--ios-separator))' } : {}}
+                    className="w-full text-left px-4 py-4 active:bg-white/[0.03] transition-colors"
+                    style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsla(220, 10%, 24%, 0.3)' } : {}}
                   >
-                    <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center justify-between mb-2">
                       <div>
                         <p className="ios-body font-medium text-foreground">{m.assetId}</p>
-                        <p className="ios-caption text-muted-foreground">{insp.date} · {insp.inspector}</p>
+                        <p className="ios-caption text-muted-foreground mt-0.5">{insp.date} · {insp.inspector}</p>
                       </div>
                       <span className={`text-[22px] font-bold font-mono ${healthPct >= 80 ? 'text-status-pass' : healthPct >= 60 ? 'text-status-monitor' : 'text-status-fail'}`}>
                         {healthPct}%
                       </span>
                     </div>
-                    <div className="flex items-center gap-4 ios-caption font-mono mt-1">
+                    <div className="flex items-center gap-4 ios-caption font-mono mt-1.5">
                       <span className="flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-status-pass" /> {insp.summary.pass}
                       </span>
