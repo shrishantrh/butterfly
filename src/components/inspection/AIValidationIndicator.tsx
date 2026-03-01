@@ -55,24 +55,25 @@ export function AIValidationIndicator({ agreement, visualNote, sensorEvidence, c
     );
   }
 
-  return (
-    <div className={cn('rounded-lg p-2 border', config.bg, className)}>
-      <div className="flex items-center gap-1.5 mb-0.5">
-        <Icon className={cn('w-3 h-3', config.color)} />
-        <span className={cn('text-[10px] font-semibold uppercase tracking-wider', config.color)}>{config.label}</span>
-      </div>
-      {visualNote && (
-        <p className="text-[10px] text-muted-foreground leading-snug">{visualNote}</p>
-      )}
+  // When AI disagrees with sensor evidence, combine everything into one unified box
+  if (agreement === 'disagree' && sensorEvidence) {
+    return (
+      <div className={cn('rounded-lg p-2.5 border', config.bg, className)}>
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <Icon className={cn('w-3 h-3', config.color)} />
+          <span className={cn('text-[10px] font-semibold uppercase tracking-wider', config.color)}>{config.label}</span>
+        </div>
 
-      {/* Sensor evidence data point — shown when AI disagrees based on telemetry */}
-      {sensorEvidence && agreement === 'disagree' && (
-        <div className="mt-1.5 rounded-md bg-background/50 border border-border/30 p-2">
-          <div className="flex items-center gap-1.5 mb-1">
+        {/* Unified evidence box — visual note + telemetry in one */}
+        <div className="rounded-md bg-background/50 border border-border/30 p-2.5 space-y-2">
+          {visualNote && (
+            <p className="text-[11px] text-foreground/80 leading-snug">{visualNote}</p>
+          )}
+          <div className="flex items-center gap-1.5">
             <Activity className="w-3 h-3 text-sensor" />
             <span className="text-[9px] font-bold uppercase tracking-widest text-sensor">Telemetry Evidence</span>
           </div>
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-baseline gap-2 flex-wrap">
             <span className="text-xs font-medium text-foreground">{sensorEvidence.sensorLabel}</span>
             <span className={cn(
               'text-sm font-bold font-mono',
@@ -91,8 +92,21 @@ export function AIValidationIndicator({ agreement, visualNote, sensorEvidence, c
               {sensorEvidence.status}
             </span>
           </div>
-          <p className="text-[9px] text-muted-foreground mt-0.5">Reading at {sensorEvidence.time}</p>
+          <p className="text-[9px] text-muted-foreground">Reading at {sensorEvidence.time}</p>
         </div>
+      </div>
+    );
+  }
+
+  // Default layout for agree/uncertain or disagree without sensor evidence
+  return (
+    <div className={cn('rounded-lg p-2 border', config.bg, className)}>
+      <div className="flex items-center gap-1.5 mb-0.5">
+        <Icon className={cn('w-3 h-3', config.color)} />
+        <span className={cn('text-[10px] font-semibold uppercase tracking-wider', config.color)}>{config.label}</span>
+      </div>
+      {visualNote && (
+        <p className="text-[10px] text-muted-foreground leading-snug">{visualNote}</p>
       )}
     </div>
   );
