@@ -1,13 +1,14 @@
 import { Machine } from '@/lib/mock-data';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, AlertTriangle } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import excavatorHero from '@/assets/cat-320-hero.jpg';
 
 interface MachineCardProps {
   machine: Machine;
+  showSeparator?: boolean;
 }
 
-export function MachineCard({ machine }: MachineCardProps) {
+export function MachineCard({ machine, showSeparator = true }: MachineCardProps) {
   const navigate = useNavigate();
   const hasFaults = machine.activeFaultCodes.length > 0;
   const lastInsp = machine.lastInspection;
@@ -15,36 +16,37 @@ export function MachineCard({ machine }: MachineCardProps) {
   return (
     <button
       onClick={() => navigate(`/pre-inspection/${machine.id}`)}
-      className="w-full text-left card-elevated overflow-hidden active:scale-[0.99] transition-all group"
+      className="w-full text-left flex items-center gap-3 px-4 py-3 active:bg-surface-2 transition-colors"
+      style={showSeparator ? { borderBottom: '0.33px solid hsl(var(--ios-separator))' } : {}}
     >
-      <div className="flex items-center gap-3.5 p-3.5">
-        {/* Thumbnail */}
-        <div className="w-14 h-14 rounded-xl bg-surface-2 overflow-hidden shrink-0">
-          <img src={excavatorHero} alt={machine.model} className="w-full h-full object-cover" />
-        </div>
-
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            {lastInsp && (
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-primary/12 text-primary border border-primary/20">
-                {hasFaults ? 'Needs Attention' : 'Ready'}
-              </span>
-            )}
-            {hasFaults && (
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-status-fail/12 text-status-fail border border-status-fail/20">
-                {machine.activeFaultCodes.length} Fault{machine.activeFaultCodes.length !== 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-          <h3 className="text-[15px] font-bold text-foreground leading-tight truncate">
-            {machine.model.replace('Hydraulic Excavator', '').trim()}, {machine.smuHours.toLocaleString()}h
-          </h3>
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">{machine.assetId} · S/N {machine.serial}</p>
-        </div>
-
-        <ChevronRight className="w-5 h-5 text-muted-foreground/20 shrink-0 group-hover:text-primary transition-colors" />
+      {/* Thumbnail */}
+      <div className="w-[56px] h-[56px] rounded-xl bg-surface-2 overflow-hidden shrink-0">
+        <img src={excavatorHero} alt={machine.model} className="w-full h-full object-cover" />
       </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <p className="ios-body font-semibold text-foreground truncate">
+          {machine.model.replace('Hydraulic Excavator', '').trim()}
+        </p>
+        <p className="ios-subhead text-muted-foreground truncate mt-0.5">
+          {machine.assetId} · {machine.smuHours.toLocaleString()} hrs
+        </p>
+        <div className="flex items-center gap-2 mt-1">
+          {lastInsp && (
+            <span className="ios-caption font-medium text-primary">
+              {hasFaults ? 'Needs Attention' : 'Ready'}
+            </span>
+          )}
+          {hasFaults && (
+            <span className="ios-caption font-medium text-status-fail">
+              {machine.activeFaultCodes.length} Fault{machine.activeFaultCodes.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/40 shrink-0" />
     </button>
   );
 }
