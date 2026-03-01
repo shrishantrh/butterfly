@@ -20,7 +20,13 @@ export function MachineCard({ machine, showSeparator = true }: MachineCardProps)
       style={showSeparator ? { borderBottom: '0.33px solid hsl(var(--border) / 0.3)' } : {}}
     >
       {/* Thumbnail */}
-      <div className="w-[52px] h-[52px] rounded-[14px] overflow-hidden shrink-0 border border-border/20 shadow-sm bg-surface-2">
+      <div className="w-[52px] h-[52px] rounded-[14px] overflow-hidden shrink-0"
+        style={{
+          background: 'linear-gradient(145deg, hsla(222, 12%, 18%, 0.5), hsla(222, 12%, 12%, 0.5))',
+          border: '0.5px solid hsla(210, 20%, 40%, 0.1)',
+          boxShadow: '0 2px 8px -2px hsla(225, 30%, 3%, 0.4)',
+        }}
+      >
         <img src={excavatorHero} alt={machine.model} className="w-full h-full object-cover" />
       </div>
 

@@ -2,7 +2,6 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { mockMachines, inspectionFormSections } from '@/lib/mock-data';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Square, Camera, Mic, MicOff, Upload, AlertCircle, Volume2, Play, Pause, SkipForward, Film } from 'lucide-react';
-import { LivePulse } from '@/components/LivePulse';
 import { supabase } from '@/integrations/supabase/client';
 import { useInspectionAI } from '@/hooks/useInspectionAI';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
@@ -430,14 +429,10 @@ export default function ActiveInspection() {
         <div className="flex items-center gap-2.5">
           {!isUploadMode ? (
             <>
-              {speech.isListening ? (
-                <LivePulse label="REC" />
-              ) : (
-                <>
-                  <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
-                  <span className="text-xs font-mono font-bold text-muted-foreground/60">OFF</span>
-                </>
-              )}
+              <div className={`w-2 h-2 rounded-full ${speech.isListening ? 'bg-status-fail animate-recording-pulse' : 'bg-muted-foreground/30'}`} />
+              <span className={`text-xs font-mono font-bold ${speech.isListening ? 'text-status-fail' : 'text-muted-foreground/60'}`}>
+                {speech.isListening ? 'REC' : 'OFF'}
+              </span>
               <span className="text-xs font-mono text-muted-foreground/40">{formatTime(elapsed)}</span>
             </>
           ) : (

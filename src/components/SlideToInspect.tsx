@@ -42,8 +42,13 @@ export function SlideToInspect({ onSlideComplete, label = 'Start Inspection' }: 
   return (
     <div
       ref={containerRef}
-      className="relative h-[60px] rounded-[20px] overflow-hidden glass-surface"
+      className="relative h-[60px] rounded-[20px] overflow-hidden"
       style={{
+        background: 'linear-gradient(145deg, hsla(222, 12%, 14%, 0.7), hsla(222, 12%, 8%, 0.8))',
+        backdropFilter: 'blur(40px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+        border: '0.5px solid hsla(210, 20%, 40%, 0.15)',
+        boxShadow: '0 0 0 0.5px hsla(210, 20%, 100%, 0.04) inset, 0 8px 32px -4px hsla(225, 30%, 3%, 0.5)',
         padding: `${padding}px`,
       }}
     >
