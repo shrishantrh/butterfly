@@ -1,3 +1,4 @@
+import React from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { mockMachines, completedInspection, getStatusCounts, InspectionSection } from '@/lib/mock-data';
 import { PageHeader } from '@/components/PageHeader';
@@ -42,7 +43,7 @@ export default function Debrief() {
     runAnalysis, lookupParts,
   } = useDebriefAnalysis();
 
-  const [activeTab, setActiveTab] = useState('actions');
+  const [activeTab, setActiveTab] = useState('safety');
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
 
@@ -246,6 +247,7 @@ export default function Debrief() {
   ];
 
   const tabs = [
+    { id: 'safety', label: 'Safety', icon: <ShieldCheck className="w-3.5 h-3.5" /> },
     { id: 'actions', label: 'Actions', icon: <Wrench className="w-3.5 h-3.5" /> },
     { id: 'maintenance', label: 'Maintain', icon: <Brain className="w-3.5 h-3.5" /> },
     { id: 'coaching', label: 'Review', icon: <GraduationCap className="w-3.5 h-3.5" /> },
@@ -486,6 +488,172 @@ export default function Debrief() {
                 </button>
               ))}
             </div>
+
+            {/* ─── SAFETY TAB ─── */}
+            {activeTab === 'safety' && (
+              <div className="mx-4 mt-4 space-y-3">
+                {/* Safety Clearance Banner — Large */}
+                {analysis.executiveSummary && (() => {
+                  const clearance = analysis.executiveSummary.safetyClearance || 'CONDITIONAL';
+                  const cfg = clearanceConfig[clearance] || clearanceConfig.CONDITIONAL;
+                  return (
+                    <div className={`ios-card ${cfg.bg} ${cfg.border} border overflow-hidden`}>
+                      <div className="p-5 flex flex-col items-center text-center gap-3">
+                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${cfg.bg} border ${cfg.border}`}>
+                          <div className={cfg.text}>{React.cloneElement(cfg.icon as React.ReactElement, { className: 'w-8 h-8' })}</div>
+                        </div>
+                        <div>
+                          <p className={`text-[22px] font-bold tracking-wide ${cfg.text}`}>{cfg.label}</p>
+                          {analysis.executiveSummary.safetyClearanceReason && (
+                            <p className="ios-subhead text-muted-foreground mt-2 leading-relaxed max-w-xs mx-auto">{analysis.executiveSummary.safetyClearanceReason}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Safety Stats */}
+                <div className="ios-card overflow-hidden">
+                  <div className="grid grid-cols-3">
+                    <div className="p-3.5 text-center" style={{ borderRight: '0.33px solid hsl(var(--ios-separator))' }}>
+                      <p className="text-[22px] font-bold font-mono text-status-fail">{failItems.length}</p>
+                      <p className="ios-caption2 text-muted-foreground uppercase mt-0.5">Critical</p>
+                    </div>
+                    <div className="p-3.5 text-center" style={{ borderRight: '0.33px solid hsl(var(--ios-separator))' }}>
+                      <p className="text-[22px] font-bold font-mono text-status-monitor">{monitorItems.length}</p>
+                      <p className="ios-caption2 text-muted-foreground uppercase mt-0.5">Monitor</p>
+                    </div>
+                    <div className="p-3.5 text-center">
+                      <p className="text-[22px] font-bold font-mono text-status-pass">{counts.pass}</p>
+                      <p className="ios-caption2 text-muted-foreground uppercase mt-0.5">Passed</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Immediate Actions */}
+                {analysis.executiveSummary?.immediateActions?.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="ios-caption text-status-fail uppercase px-1 font-semibold flex items-center gap-1.5">
+                      <AlertCircle className="w-3 h-3" /> Immediate Actions Required
+                    </p>
+                    {analysis.executiveSummary.immediateActions.map((action, i) => (
+                      <div key={i} className="ios-card border border-status-fail/20 p-4 flex items-start gap-3">
+                        <div className="w-7 h-7 rounded-lg bg-status-fail/10 flex items-center justify-center shrink-0 mt-0.5">
+                          <AlertTriangle className="w-4 h-4 text-status-fail" />
+                        </div>
+                        <p className="ios-body text-foreground leading-relaxed">{action}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Failed Items Detail */}
+                {failItems.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="ios-caption text-status-fail uppercase px-1 font-semibold">Failed Components</p>
+                    {failItems.map((item, i) => (
+                      <button key={item.id} onClick={() => toggleExpand(`safety-fail-${i}`)} className="w-full text-left ios-card border-l-[3px] border-l-status-fail overflow-hidden">
+                        <div className="px-4 py-3 flex items-center gap-3">
+                          <ShieldX className="w-4 h-4 text-status-fail shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono ios-caption text-muted-foreground">{item.id}</span>
+                              <p className="ios-body font-medium text-foreground truncate">{item.label}</p>
+                            </div>
+                          </div>
+                          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform shrink-0 ${expandedCards.has(`safety-fail-${i}`) ? 'rotate-180' : ''}`} />
+                        </div>
+                        {expandedCards.has(`safety-fail-${i}`) && (
+                          <div className="px-4 pb-3 pt-3 space-y-2" style={{ borderTop: '0.33px solid hsl(var(--ios-separator))' }}>
+                            {item.comment && <p className="ios-subhead text-muted-foreground leading-relaxed">{item.comment}</p>}
+                            {item.faultCode && (
+                              <div className="flex items-center gap-2 bg-status-fail/8 rounded-lg p-2.5">
+                                <AlertTriangle className="w-3 h-3 text-status-fail" />
+                                <span className="font-mono ios-caption text-status-fail font-bold">{item.faultCode}</span>
+                              </div>
+                            )}
+                            {item.evidence && item.evidence.length > 0 && (
+                              <div className="flex items-center gap-1.5">
+                                {item.evidence.map(e => (
+                                  <span key={e} className="ios-caption2 uppercase font-semibold px-2 py-0.5 rounded bg-muted/50 text-muted-foreground">{e}</span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Monitor Items */}
+                {monitorItems.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="ios-caption text-status-monitor uppercase px-1 font-semibold">Components to Monitor</p>
+                    {monitorItems.map((item, i) => (
+                      <button key={item.id} onClick={() => toggleExpand(`safety-mon-${i}`)} className="w-full text-left ios-card border-l-[3px] border-l-status-monitor overflow-hidden">
+                        <div className="px-4 py-3 flex items-center gap-3">
+                          <ShieldAlert className="w-4 h-4 text-status-monitor shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono ios-caption text-muted-foreground">{item.id}</span>
+                              <p className="ios-body font-medium text-foreground truncate">{item.label}</p>
+                            </div>
+                          </div>
+                          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform shrink-0 ${expandedCards.has(`safety-mon-${i}`) ? 'rotate-180' : ''}`} />
+                        </div>
+                        {expandedCards.has(`safety-mon-${i}`) && (
+                          <div className="px-4 pb-3 pt-3" style={{ borderTop: '0.33px solid hsl(var(--ios-separator))' }}>
+                            {item.comment && <p className="ios-subhead text-muted-foreground leading-relaxed">{item.comment}</p>}
+                            {item.faultCode && (
+                              <div className="flex items-center gap-2 bg-status-monitor/8 rounded-lg p-2.5 mt-2">
+                                <AlertTriangle className="w-3 h-3 text-status-monitor" />
+                                <span className="font-mono ios-caption text-status-monitor font-bold">{item.faultCode}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Safety-critical work orders */}
+                {analysis.workOrders.filter(wo => !wo.canOperate || wo.priority === 'CRITICAL').length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="ios-caption text-status-fail uppercase px-1 font-semibold flex items-center gap-1.5">
+                      <Wrench className="w-3 h-3" /> Safety-Critical Work Orders
+                    </p>
+                    {analysis.workOrders.filter(wo => !wo.canOperate || wo.priority === 'CRITICAL').map((wo, i) => (
+                      <div key={i} className="ios-card border border-status-fail/20 p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          {!wo.canOperate && (
+                            <span className="ios-caption2 font-bold text-primary-foreground bg-status-fail px-2 py-0.5 rounded">MUST FIX BEFORE OPERATION</span>
+                          )}
+                        </div>
+                        <p className="ios-body font-semibold text-foreground">{wo.title}</p>
+                        <p className="ios-subhead text-muted-foreground mt-1 leading-relaxed">{wo.description}</p>
+                        <div className="flex items-center gap-3 mt-2">
+                          <span className="ios-caption font-mono text-muted-foreground flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> {wo.estimatedHours}h labor
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* All clear state */}
+                {failItems.length === 0 && monitorItems.length === 0 && (
+                  <div className="ios-card p-8 text-center">
+                    <ShieldCheck className="w-10 h-10 text-status-pass mx-auto mb-3" />
+                    <p className="ios-headline font-bold text-status-pass">All Safety Checks Passed</p>
+                    <p className="ios-subhead text-muted-foreground mt-1">No safety concerns identified during this inspection</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ─── ACTIONS TAB ─── */}
             {activeTab === 'actions' && (
