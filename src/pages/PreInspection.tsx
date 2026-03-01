@@ -72,10 +72,12 @@ const REPORTS: Report[] = [
 // ─── SENSOR DATA ──────────────────────────────────────────────────────────────
 import { SENSORS, getData, getAlert } from '@/lib/sensor-data';
 import type { DataPoint } from '@/lib/sensor-data';
+import { useLiveSensorData, useLiveTick } from '@/hooks/useLiveSensorData';
 
 // ─── SPARKLINE ────────────────────────────────────────────────────────────────
-function Sparkline({ k, machineId }: { k: string; machineId?: string }) {
-  const data = getData(k, machineId).filter(d => d.value !== null);
+function Sparkline({ k, machineId, tick }: { k: string; machineId?: string; tick?: number }) {
+  const allData = getData(k, machineId);
+  const data = allData.filter(d => d.value !== null);
   if (!data.length) return null;
   const vs = data.map(d => d.value as number);
   const min = Math.min(...vs), range = Math.max(...vs) - min || 1;
@@ -139,7 +141,7 @@ function ChartTooltip({ active, payload, sensor }: any) {
 // ─── SENSOR CHART DETAIL ──────────────────────────────────────────────────────
 function SensorChart({ sensorKey, onBack, machineId }: { sensorKey: string; onBack: () => void; machineId?: string }) {
   const sensor = SENSORS[sensorKey];
-  const data = getData(sensorKey, machineId);
+  const data = useLiveSensorData(sensorKey, machineId, 4000);
   const vals = data.filter(d => d.value !== null).map(d => d.value as number);
   const curVal = vals[vals.length - 1];
   const maxVal = Math.max(...vals), minVal = Math.min(...vals);
@@ -260,6 +262,7 @@ function SensorChart({ sensorKey, onBack, machineId }: { sensorKey: string; onBa
 // ─── TELEMETRY SECTION ────────────────────────────────────────────────────────
 function TelemetrySection({ machineId }: { machineId?: string }) {
   const [activeKey, setActiveKey] = useState<string | null>(null);
+  const tick = useLiveTick(machineId, 5000);
 
   if (activeKey) {
     return (
@@ -299,7 +302,7 @@ function TelemetrySection({ machineId }: { machineId?: string }) {
               </div>
             </div>
             <div style={{ flex:1, height:60, minWidth:0 }}>
-              <Sparkline k={k} machineId={machineId}/>
+              <Sparkline k={k} machineId={machineId} tick={tick}/>
             </div>
           </button>
         );
@@ -370,9 +373,12 @@ export default function PreInspection() {
   const machine = mockMachines.find(m => m.id === machineId);
   const [activeSection, setActiveSection] = useState<'telemetry' | 'reports' | null>(null);
 
+  // Live tick — re-renders component every 5s with fresh sensor values
+  const tick = useLiveTick(machineId, 5000);
+
   if (!machine) return <div className="p-8 text-center text-muted-foreground">Machine not found</div>;
 
-  // Live sensor data
+  // Live sensor data (re-computed each tick)
   const fuelData = getData('fuel_level', machineId);
   const fuelVals = fuelData.filter(d => d.value !== null);
   const liveFuel = fuelVals.length > 0 ? fuelVals[fuelVals.length - 1].value! : machine.fuelLevel;
