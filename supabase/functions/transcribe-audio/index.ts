@@ -26,15 +26,29 @@ serve(async (req) => {
 
     console.log(`Transcribing file: ${audioFile.name}, size: ${audioFile.size}, type: ${audioFile.type}`);
 
-    // Convert file to base64 for Gemini
+    // Size limit check: 20MB max for base64 approach
+    const MAX_SIZE = 20 * 1024 * 1024;
+    if (audioFile.size > MAX_SIZE) {
+      console.log("File too large for full transcription, will return empty transcript for frame-only analysis");
+      return new Response(JSON.stringify({ text: "", warning: "File too large for transcription" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Convert file to base64
     const arrayBuffer = await audioFile.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const uint8Array = new Uint8Array(arrayBuffer);
+    // Use chunked base64 encoding to avoid stack overflow on large files
+    let base64 = "";
+    const chunkSize = 8192;
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      const chunk = uint8Array.slice(i, i + chunkSize);
+      base64 += btoa(String.fromCharCode(...chunk));
+    }
 
-    // Determine MIME type
-    let mimeType = audioFile.type || "video/mp4";
-    // Gemini supports: audio/mp3, audio/wav, audio/ogg, video/mp4, etc.
+    const mimeType = audioFile.type || "video/mp4";
 
-    const response = await fetch("https://api.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${LOVABLE_API_KEY}`,
@@ -59,14 +73,14 @@ serve(async (req) => {
             ],
           },
         ],
-        max_tokens: 4096,
+        max_tokens: 8192,
         temperature: 0,
       }),
     });
 
     if (!response.ok) {
       const text = await response.text();
-      console.error("Lovable AI transcription error:", response.status, text);
+      console.error("AI transcription error:", response.status, text);
       throw new Error(`Transcription failed: ${response.status}`);
     }
 
