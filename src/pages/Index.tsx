@@ -101,74 +101,8 @@ const Index = () => {
           >
             {activeTab === 'fleet' && (
               <>
-                {/* Fleet Status Bar */}
-                <div className="mx-5 mt-3 ios-card">
-                  <div className="flex items-stretch">
-                    {/* Health ring */}
-                    <div className="flex items-center justify-center px-5 py-4" style={{ borderRight: '1px solid hsla(210, 20%, 50%, 0.06)' }}>
-                      <div className="relative w-[64px] h-[64px]">
-                        <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-                          <circle cx="18" cy="18" r="15.5" fill="none" stroke="hsla(210, 20%, 40%, 0.08)" strokeWidth="3" />
-                          <circle cx="18" cy="18" r="15.5" fill="none" stroke="hsl(var(--status-pass))" strokeWidth="3"
-                            strokeDasharray={`${((mockMachines.length - totalFails) / mockMachines.length) * 97.4} 97.4`}
-                            strokeLinecap="round" />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <span className="text-[18px] font-bold font-mono text-foreground leading-none">
-                            {mockMachines.length - totalFails}
-                          </span>
-                          <span className="ios-caption2 text-muted-foreground">/{mockMachines.length}</span>
-                        </div>
-                      </div>
-                    </div>
-                    {/* Metrics */}
-                    <div className="flex-1 flex flex-col justify-center py-3 px-4 gap-2.5">
-                      {[
-                        { label: 'Failures', value: totalFails, color: 'hsl(var(--status-fail))', dot: 'bg-status-fail' },
-                        { label: 'Monitor', value: totalMonitor, color: 'hsl(var(--status-monitor))', dot: 'bg-status-monitor' },
-                        { label: 'Alerts', value: totalAlerts, color: 'hsl(var(--sensor))', dot: 'bg-sensor' },
-                      ].map(row => (
-                        <div key={row.label} className="flex items-center gap-2.5">
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${row.dot}`} />
-                          <span className="ios-subhead text-muted-foreground flex-1">{row.label}</span>
-                          <span className="ios-body font-mono font-bold" style={{ color: row.color }}>{row.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                    {/* Fuel */}
-                    <div className="flex flex-col items-center justify-center px-5 py-4" style={{ borderLeft: '1px solid hsla(210, 20%, 50%, 0.06)' }}>
-                      <Fuel className="w-4 h-4 text-primary mb-1" />
-                      <span className="text-[20px] font-bold font-mono text-primary leading-none">{avgFuel.toFixed(0)}</span>
-                      <span className="ios-caption2 text-muted-foreground">% avg</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick Actions */}
-                <div className="ios-section-header mt-6">Quick Actions</div>
-                <div className="mx-5 ios-card">
-                  {[
-                    { icon: <BarChart3 className="w-[16px] h-[16px] text-primary" />, label: 'Inspection Analytics', bg: 'bg-primary/10', onClick: () => navigate('/history') },
-                    { icon: <MapPin className="w-[16px] h-[16px] text-status-pass" />, label: 'Fleet Map', bg: 'bg-status-pass/10', onClick: () => switchTab('map') },
-                    { icon: <Clock className="w-[16px] h-[16px] text-status-monitor" />, label: 'Recent Reports', bg: 'bg-status-monitor/10', onClick: () => switchTab('history') },
-                  ].map((action, i, arr) => (
-                    <button
-                      key={action.label}
-                      onClick={action.onClick}
-                      className="ios-cell py-4 w-full active:bg-white/[0.03] transition-colors"
-                      style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsla(210, 20%, 40%, 0.08)' } : {}}
-                    >
-                      <div className={`w-[32px] h-[32px] rounded-[10px] ${action.bg} flex items-center justify-center shrink-0`}>
-                        {action.icon}
-                      </div>
-                      <span className="ios-body text-foreground flex-1 text-left">{action.label}</span>
-                      <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/20" />
-                    </button>
-                  ))}
-                </div>
-
                 {/* Machines */}
-                <div className="ios-section-header mt-6">All Machines · {filteredMachines.length}</div>
+                <div className="ios-section-header mt-3">Machines · {filteredMachines.length}</div>
                 <div className="mx-5 ios-card">
                   {filteredMachines.map((machine, i) => (
                     <motion.div
