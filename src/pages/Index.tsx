@@ -2,7 +2,7 @@ import { mockMachines } from '@/lib/mock-data';
 import { MachineCard } from '@/components/MachineCard';
 import { FleetMap } from '@/components/FleetMap';
 import {
-  Search, History, BarChart3, MapPin, Clock, ChevronRight, TrendingDown, TrendingUp, Fuel, AlertTriangle,
+  Search, History, BarChart3, MapPin, Clock, ChevronRight, Fuel, AlertTriangle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useRef } from 'react';
@@ -101,66 +101,47 @@ const Index = () => {
           >
             {activeTab === 'fleet' && (
               <>
-                {/* Stats — redesigned */}
-                <div className="ios-section-header mt-3">Overview</div>
-                <div className="mx-5 grid grid-cols-2 gap-2.5">
-                  {[
-                    {
-                      label: 'Failures',
-                      value: totalFails,
-                      icon: <TrendingDown className="w-4 h-4" />,
-                      color: 'var(--status-fail)',
-                      bgAlpha: '0.08',
-                    },
-                    {
-                      label: 'Monitor',
-                      value: totalMonitor,
-                      icon: <AlertTriangle className="w-4 h-4" />,
-                      color: 'var(--status-monitor)',
-                      bgAlpha: '0.08',
-                    },
-                    {
-                      label: 'Avg Fuel',
-                      value: `${avgFuel.toFixed(0)}%`,
-                      icon: <Fuel className="w-4 h-4" />,
-                      color: 'var(--primary)',
-                      bgAlpha: '0.06',
-                    },
-                    {
-                      label: 'Active Alerts',
-                      value: totalAlerts,
-                      icon: <TrendingUp className="w-4 h-4" />,
-                      color: 'var(--sensor)',
-                      bgAlpha: '0.08',
-                    },
-                  ].map((stat, i) => (
-                    <motion.div
-                      key={stat.label}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.06, duration: 0.35 }}
-                      className="ios-card p-4 flex flex-col gap-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="ios-caption text-muted-foreground">{stat.label}</span>
-                        <div
-                          className="w-7 h-7 rounded-lg flex items-center justify-center"
-                          style={{
-                            background: `hsl(${stat.color} / ${stat.bgAlpha})`,
-                            color: `hsl(${stat.color})`,
-                          }}
-                        >
-                          {stat.icon}
+                {/* Fleet Status Bar */}
+                <div className="mx-5 mt-3 ios-card">
+                  <div className="flex items-stretch">
+                    {/* Health ring */}
+                    <div className="flex items-center justify-center px-5 py-4" style={{ borderRight: '1px solid hsla(210, 20%, 50%, 0.06)' }}>
+                      <div className="relative w-[64px] h-[64px]">
+                        <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
+                          <circle cx="18" cy="18" r="15.5" fill="none" stroke="hsla(210, 20%, 40%, 0.08)" strokeWidth="3" />
+                          <circle cx="18" cy="18" r="15.5" fill="none" stroke="hsl(var(--status-pass))" strokeWidth="3"
+                            strokeDasharray={`${((mockMachines.length - totalFails) / mockMachines.length) * 97.4} 97.4`}
+                            strokeLinecap="round" />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="text-[18px] font-bold font-mono text-foreground leading-none">
+                            {mockMachines.length - totalFails}
+                          </span>
+                          <span className="ios-caption2 text-muted-foreground">/{mockMachines.length}</span>
                         </div>
                       </div>
-                      <span
-                        className="text-[28px] font-bold font-mono leading-none"
-                        style={{ color: `hsl(${stat.color})` }}
-                      >
-                        {stat.value}
-                      </span>
-                    </motion.div>
-                  ))}
+                    </div>
+                    {/* Metrics */}
+                    <div className="flex-1 flex flex-col justify-center py-3 px-4 gap-2.5">
+                      {[
+                        { label: 'Failures', value: totalFails, color: 'hsl(var(--status-fail))', dot: 'bg-status-fail' },
+                        { label: 'Monitor', value: totalMonitor, color: 'hsl(var(--status-monitor))', dot: 'bg-status-monitor' },
+                        { label: 'Alerts', value: totalAlerts, color: 'hsl(var(--sensor))', dot: 'bg-sensor' },
+                      ].map(row => (
+                        <div key={row.label} className="flex items-center gap-2.5">
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${row.dot}`} />
+                          <span className="ios-subhead text-muted-foreground flex-1">{row.label}</span>
+                          <span className="ios-body font-mono font-bold" style={{ color: row.color }}>{row.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Fuel */}
+                    <div className="flex flex-col items-center justify-center px-5 py-4" style={{ borderLeft: '1px solid hsla(210, 20%, 50%, 0.06)' }}>
+                      <Fuel className="w-4 h-4 text-primary mb-1" />
+                      <span className="text-[20px] font-bold font-mono text-primary leading-none">{avgFuel.toFixed(0)}</span>
+                      <span className="ios-caption2 text-muted-foreground">% avg</span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Quick Actions */}

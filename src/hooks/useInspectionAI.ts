@@ -123,16 +123,15 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string,
     if (analysisTimer.current) {
       clearTimeout(analysisTimer.current);
     }
-    // Reduced from 6s to 3s for faster response
+    // Trigger analysis quickly — 1.5s debounce
     analysisTimer.current = window.setTimeout(() => {
       const fullTranscript = transcriptBuffer.current.trim();
       const frames = [...frameBuffer.current];
-      frameBuffer.current = []; // clear after sending
-      // Lower threshold — trigger faster
-      if (fullTranscript.length > 10 || frames.length > 0) {
+      frameBuffer.current = [];
+      if (fullTranscript.length > 5 || frames.length > 0) {
         runAnalysis(fullTranscript, frames);
       }
-    }, 3000);
+    }, 1500);
   }, [runAnalysis]);
 
   const analyzeNow = useCallback(async () => {
