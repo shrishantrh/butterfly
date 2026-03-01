@@ -48,9 +48,9 @@ export default function ActiveInspection() {
 
   const totalFields = inspectionFormSections.reduce((acc, s) => acc + s.items.length, 0);
 
-  // Build sensor context for AI cross-reference
-  const sensorContext = useMemo(() => buildSensorContextForAI(), []);
-  const sensorSnapshot = useMemo(() => buildSensorSnapshot(), []);
+  // Build sensor context for AI cross-reference (machine-specific)
+  const sensorContext = useMemo(() => buildSensorContextForAI(machineId), [machineId]);
+  const sensorSnapshot = useMemo(() => buildSensorSnapshot(machineId), [machineId]);
 
   const {
     analyzedItems, isAnalyzing, error: aiError, addTranscript, addFrame, analyzeNow, itemCount, registerFrameCapture, setManualItem,
