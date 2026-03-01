@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useInspectionStorage } from '@/hooks/useInspectionStorage';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ReferenceLine, ReferenceArea, ResponsiveContainer,
@@ -708,38 +709,185 @@ function ReportDetail({ report, onBack }: { report: Report; onBack: () => void }
 }
 
 // ─── REPORTS SECTION ──────────────────────────────────────────────────────────
-function ReportsSection() {
-  const [selected, setSelected] = useState<Report | null>(null);
+function DbReportDetail({ inspectionId, onBack }: { inspectionId: string; onBack: () => void }) {
+  const { getInspectionDetail } = useInspectionStorage();
+  const [detail, setDetail] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (selected) return <ReportDetail report={selected} onBack={() => setSelected(null)}/>;
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const d = await getInspectionDetail(inspectionId);
+      setDetail(d);
+      setLoading(false);
+    })();
+  }, [inspectionId, getInspectionDetail]);
+
+  if (loading) return (
+    <div style={{ padding: 24, textAlign: 'center', fontFamily: "'Courier New',monospace" }}>
+      <div style={{ color: C.textDim, fontSize: 12 }}>Loading report...</div>
+    </div>
+  );
+  if (!detail) return null;
+
+  const { inspection: insp, items } = detail;
+  const sections: Record<string, any[]> = {};
+  items.forEach((item: any) => {
+    if (!sections[item.section_title]) sections[item.section_title] = [];
+    sections[item.section_title].push(item);
+  });
+
+  const counts = {
+    FAIL: items.filter((i: any) => i.status?.toUpperCase() === 'FAIL').length,
+    MONITOR: items.filter((i: any) => i.status?.toUpperCase() === 'MONITOR').length,
+    PASS: items.filter((i: any) => i.status?.toUpperCase() === 'PASS').length,
+    NORMAL: items.filter((i: any) => i.status?.toUpperCase() === 'NORMAL').length,
+  };
+  const issues = items.filter((i: any) => ['FAIL', 'MONITOR'].includes(i.status?.toUpperCase()));
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:10, fontFamily:"'Courier New',monospace" }}>
-      <div style={{ fontSize:9, color:C.textDim, letterSpacing:2, marginBottom:4 }}>
-        INSPECTION HISTORY · {REPORTS.length} REPORTS
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, fontFamily: "'Courier New',monospace" }}>
+      <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.yellow, fontSize: 13, cursor: 'pointer', padding: '0 0 2px', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>‹ Reports</button>
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderTop: `2px solid ${C.yellow}`, borderRadius: 12, padding: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+          <div>
+            <div style={{ fontSize: 9, color: C.textDim, letterSpacing: 1, marginBottom: 3 }}>INSPECTION REPORT</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: C.white }}>{insp.asset_id}</div>
+          </div>
+          <DotSummary counts={counts} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', fontSize: 11 }}>
+          {([['Date', new Date(insp.created_at).toLocaleDateString()], ['Inspector', insp.inspector_name], ['SMU', `${insp.smu_hours} hrs`], ['Location', insp.location || '—']] as [string, string][]).map(([l, v]) => (
+            <div key={l}><div style={{ fontSize: 9, color: C.textDim, letterSpacing: 1, marginBottom: 1 }}>{l}</div><div style={{ color: C.textPrimary, fontWeight: 600 }}>{v}</div></div>
+          ))}
+        </div>
+        {insp.executive_summary && <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.border}`, fontSize: 11, color: C.textMid }}>{insp.executive_summary}</div>}
       </div>
+      {issues.length > 0 && (
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
+          <div style={{ fontSize: 9, color: C.textDim, letterSpacing: 2, marginBottom: 10 }}>OPEN ITEMS · {issues.length}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+            {issues.map((item: any) => {
+              const col = STATUS_DOT[item.status?.toUpperCase()] || C.textDim;
+              return (
+                <div key={item.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '8px 10px', background: `${col}0C`, borderRadius: 8, borderLeft: `2px solid ${col}` }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0, marginTop: 2 }} />
+                  <div><div style={{ fontSize: 12, fontWeight: 600, color: C.textPrimary }}>{item.label}</div>{item.comment && <div style={{ fontSize: 11, color: C.textMid, marginTop: 2 }}>{item.comment}</div>}</div>
+                  <div style={{ marginLeft: 'auto', flexShrink: 0, fontSize: 10, fontWeight: 700, color: col }}>{item.status?.toUpperCase()}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {Object.entries(sections).map(([title, sectionItems]) => (
+        <div key={title} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: C.yellow, letterSpacing: 0.5 }}>{title.toUpperCase()}</span>
+            <span style={{ fontSize: 10, color: C.textDim }}>{sectionItems.length} items</span>
+          </div>
+          <div>
+            {sectionItems.map((item: any, i: number) => {
+              const col = STATUS_DOT[item.status?.toUpperCase()] || C.textDim;
+              return (
+                <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', borderBottom: i < sectionItems.length - 1 ? `1px solid ${C.border}` : 'none', background: item.status?.toUpperCase() === 'FAIL' ? `${C.critical}07` : item.status?.toUpperCase() === 'MONITOR' ? `${C.warning}06` : 'transparent' }}>
+                  <div style={{ width: 9, height: 9, borderRadius: '50%', background: col, flexShrink: 0, marginTop: 3 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 12, color: C.textPrimary, lineHeight: 1.4 }}>{item.label}</div>{item.comment && <div style={{ fontSize: 11, color: C.textMid, marginTop: 3, lineHeight: 1.4 }}>{item.comment}</div>}</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: col, flexShrink: 0 }}>{item.status?.toUpperCase()}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ReportsSection({ machineId }: { machineId?: string }) {
+  const [selected, setSelected] = useState<Report | null>(null);
+  const [selectedDbId, setSelectedDbId] = useState<string | null>(null);
+  const { getInspectionHistory } = useInspectionStorage();
+  const [dbInspections, setDbInspections] = useState<any[]>([]);
+  const [loadingDb, setLoadingDb] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      setLoadingDb(true);
+      const data = await getInspectionHistory(machineId);
+      setDbInspections(data);
+      setLoadingDb(false);
+    })();
+  }, [machineId, getInspectionHistory]);
+
+  if (selected) return <ReportDetail report={selected} onBack={() => setSelected(null)} />;
+  if (selectedDbId) return <DbReportDetail inspectionId={selectedDbId} onBack={() => setSelectedDbId(null)} />;
+
+  const totalCount = REPORTS.length + dbInspections.length;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontFamily: "'Courier New',monospace" }}>
+      <div style={{ fontSize: 9, color: C.textDim, letterSpacing: 2, marginBottom: 4 }}>
+        INSPECTION HISTORY · {totalCount} REPORTS
+      </div>
+
+      {/* DB inspections first (most recent) */}
+      {dbInspections.map(insp => {
+        const analysis = insp.analysis_json as any;
+        const safetyClearance = analysis?.executiveSummary?.safetyClearance;
+        const clearanceColors: Record<string, string> = { GO: C.safe, CONDITIONAL: C.warning, NO_GO: C.critical };
+        const borderCol = safetyClearance ? (clearanceColors[safetyClearance] || C.yellow) : C.yellow;
+        return (
+          <button key={insp.id} onClick={() => setSelectedDbId(insp.id)} style={{
+            background: C.card, border: `1px solid ${borderCol}30`, borderLeft: `3px solid ${borderCol}`,
+            borderRadius: 10, padding: '14px 14px', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'all 0.12s',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+              <div>
+                <div style={{ fontSize: 9, color: C.textDim, letterSpacing: 1, marginBottom: 2 }}>
+                  {safetyClearance ? (safetyClearance === 'GO' ? '✓ CLEAR' : safetyClearance === 'CONDITIONAL' ? '⚠ CONDITIONAL' : '✕ NO-GO') : 'AI INSPECTION'}
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: C.white }}>{new Date(insp.created_at).toLocaleDateString()}</div>
+                <div style={{ fontSize: 10, color: C.textDim, marginTop: 1 }}>{new Date(insp.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {insp.inspector_name}</div>
+              </div>
+              {insp.health_score != null && (
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: insp.health_score >= 80 ? C.safe : insp.health_score >= 50 ? C.warning : C.critical }}>{insp.health_score}</div>
+                  <div style={{ fontSize: 8, color: C.textDim }}>/100</div>
+                </div>
+              )}
+            </div>
+            {insp.executive_summary && <div style={{ fontSize: 11, color: C.textMid, marginBottom: 8, lineHeight: 1.4 }} className="line-clamp-2">{insp.executive_summary}</div>}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 10, color: C.textDim }}>SMH {insp.smu_hours?.toLocaleString()}</div>
+              <span style={{ color: C.textDim, fontSize: 16 }}>›</span>
+            </div>
+          </button>
+        );
+      })}
+
+      {loadingDb && <div style={{ fontSize: 11, color: C.textDim, textAlign: 'center', padding: 8 }}>Loading saved inspections...</div>}
+
+      {/* Mock historical reports */}
       {REPORTS.map(r => {
         const hasFailures = r.counts.FAIL > 0;
         const borderCol = hasFailures ? C.critical : r.counts.MONITOR > 0 ? C.warning : C.border;
         return (
           <button key={r.id} onClick={() => setSelected(r)} style={{
-            background:C.card,
-            border:`1px solid ${borderCol}30`,
-            borderLeft:`3px solid ${hasFailures ? C.critical : r.counts.MONITOR > 0 ? C.warning : C.yellow}`,
-            borderRadius:10, padding:'14px 14px',
-            cursor:'pointer', textAlign:'left', width:'100%', transition:'all 0.12s',
+            background: C.card, border: `1px solid ${borderCol}30`, borderLeft: `3px solid ${hasFailures ? C.critical : r.counts.MONITOR > 0 ? C.warning : C.yellow}`,
+            borderRadius: 10, padding: '14px 14px', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'all 0.12s',
           }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
               <div>
-                <div style={{ fontSize:9, color:C.textDim, letterSpacing:1, marginBottom:2 }}>#{r.id}</div>
-                <div style={{ fontSize:15, fontWeight:700, color:C.white }}>{r.date}</div>
-                <div style={{ fontSize:10, color:C.textDim, marginTop:1 }}>{r.time} · {r.inspector}</div>
+                <div style={{ fontSize: 9, color: C.textDim, letterSpacing: 1, marginBottom: 2 }}>#{r.id}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: C.white }}>{r.date}</div>
+                <div style={{ fontSize: 10, color: C.textDim, marginTop: 1 }}>{r.time} · {r.inspector}</div>
               </div>
-              <DotSummary counts={r.counts}/>
+              <DotSummary counts={r.counts} />
             </div>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <div style={{ fontSize:10, color:C.textDim }}>SMH {r.smu} · {r.workOrder}</div>
-              <span style={{ color:C.textDim, fontSize:16 }}>›</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 10, color: C.textDim }}>SMH {r.smu} · {r.workOrder}</div>
+              <span style={{ color: C.textDim, fontSize: 16 }}>›</span>
             </div>
           </button>
         );
@@ -880,7 +1028,7 @@ export default function PreInspection() {
           >
             <History className="w-4 h-4 text-primary shrink-0"/>
             <h3 className="text-sm font-bold flex-1">Inspection Reports</h3>
-            <span className="text-xs text-muted-foreground font-mono mr-1">{REPORTS.length} reports</span>
+            <span className="text-xs text-muted-foreground font-mono mr-1">Reports</span>
             {activeSection === 'reports'
               ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0"/>
               : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0"/>}
@@ -888,7 +1036,7 @@ export default function PreInspection() {
           {activeSection === 'reports' && (
             <div className="px-4 pb-4 border-t border-border/40">
               <div className="pt-4">
-                <ReportsSection/>
+                <ReportsSection machineId={machineId}/>
               </div>
             </div>
           )}
