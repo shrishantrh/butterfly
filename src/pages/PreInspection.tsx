@@ -13,23 +13,23 @@ import {
   ChevronDown, ChevronRight,
 } from 'lucide-react';
 
-// ─── PALETTE ──────────────────────────────────────────────────────────────────
+// ─── PALETTE (uses CSS variables from design system) ──────────────────────────
 const C = {
-  yellow:      '#FFCD11',
-  yellowFaint: '#FFCD1114',
-  yellowDim:   '#FFCD1130',
-  black:       '#0B0B0B',
-  card:        '#161616',
-  cardRaised:  '#1E1E1E',
-  border:      '#282828',
-  borderMid:   '#333333',
-  white:       '#FFFFFF',
-  textPrimary: '#F0F0F0',
-  textMid:     '#999999',
-  textDim:     '#555555',
-  safe:        '#22C55E',
-  warning:     '#F59E0B',
-  critical:    '#EF4444',
+  yellow:      'hsl(var(--primary))',
+  yellowFaint: 'hsl(var(--primary) / 0.08)',
+  yellowDim:   'hsl(var(--primary) / 0.19)',
+  black:       'hsl(var(--background))',
+  card:        'hsl(var(--surface-1))',
+  cardRaised:  'hsl(var(--surface-2))',
+  border:      'hsl(var(--border))',
+  borderMid:   'hsl(var(--border))',
+  white:       'hsl(var(--foreground))',
+  textPrimary: 'hsl(var(--foreground))',
+  textMid:     'hsl(var(--muted-foreground))',
+  textDim:     'hsl(var(--muted-foreground) / 0.6)',
+  safe:        'hsl(var(--status-pass))',
+  warning:     'hsl(var(--status-monitor))',
+  critical:    'hsl(var(--status-fail))',
 };
 
 // ─── REPORT DATA ──────────────────────────────────────────────────────────────
@@ -37,7 +37,7 @@ const STATUS_DOT: Record<string, string> = {
   FAIL:    C.critical,
   MONITOR: C.warning,
   PASS:    C.safe,
-  NORMAL:  '#555555',
+  NORMAL:  'hsl(var(--status-normal))',
 };
 
 type ReportItem  = { label: string; status: string; comment: string };
@@ -380,13 +380,19 @@ function Sparkline({ k }: { k: string }) {
 }
 
 function DotSummary({ counts, size = 'md' }: { counts: Record<string,number>; size?: 'sm'|'md' }) {
-  const fs = size === 'sm' ? 10 : 13;
-  const ds = size === 'sm' ? 7  : 9;
+  const dotCls = size === 'sm' ? 'w-[7px] h-[7px]' : 'w-[9px] h-[9px]';
+  const textCls = size === 'sm' ? 'text-[10px]' : 'text-[13px]';
+  const entries: [string, string, string][] = [
+    ['FAIL',    'text-status-fail',    'status-dot-fail'],
+    ['MONITOR', 'text-status-monitor', 'status-dot-monitor'],
+    ['PASS',    'text-status-pass',    'status-dot-pass'],
+    ['NORMAL',  'text-muted-foreground','status-dot-normal'],
+  ];
   return (
-    <div style={{ display:'flex', gap: size==='sm'?8:10, alignItems:'center' }}>
-      {([['FAIL',C.critical],['MONITOR',C.warning],['PASS',C.safe],['NORMAL','#555']] as [string,string][]).map(([k,col])=>(
-        <span key={k} style={{ display:'flex', alignItems:'center', gap:3, fontSize:fs, color:col, fontWeight:700 }}>
-          <span style={{ width:ds, height:ds, borderRadius:'50%', background:col, display:'inline-block', flexShrink:0 }}/>
+    <div className={`flex items-center ${size === 'sm' ? 'gap-2' : 'gap-2.5'}`}>
+      {entries.map(([k, textColor, dotClass]) => (
+        <span key={k} className={`flex items-center gap-1 ${textCls} font-mono font-bold ${textColor}`}>
+          <span className={`${dotCls} rounded-full inline-block shrink-0 ${dotClass}`} />
           {counts[k] ?? 0}
         </span>
       ))}
