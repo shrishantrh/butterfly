@@ -6,6 +6,7 @@ import {
   ReferenceLine, ReferenceArea, ResponsiveContainer,
 } from 'recharts';
 import { mockMachines } from '@/lib/mock-data';
+import excavatorHero from '@/assets/cat-320-hero.jpg';
 import { PageHeader } from '@/components/PageHeader';
 import { StatusSummary } from '@/components/StatusBadge';
 import {
@@ -909,36 +910,60 @@ export default function PreInspection() {
     <div className="min-h-screen bg-background">
       <PageHeader title="Pre-Inspection Brief" subtitle={machine.assetId} back="/" />
 
-      <div className="px-5 py-5 space-y-3 pb-36">
-        {/* ── Machine header ───────────────────────────────────────────── */}
-        <div className="card-elevated p-4 animate-slide-up">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h2 className="text-lg font-bold text-foreground">{machine.model}</h2>
-              <p className="text-sm text-muted-foreground font-mono mt-0.5">S/N {machine.serial} • {machine.assetId}</p>
+      <div className="px-5 py-5 space-y-4 pb-36">
+        {/* ── Machine Hero ───────────────────────────────────────────── */}
+        <div className="card-elevated overflow-hidden animate-slide-up">
+          <div className="relative h-48 bg-gradient-to-br from-surface-2 to-surface-3 overflow-hidden">
+            <img
+              src={excavatorHero}
+              alt={machine.model}
+              className="absolute inset-0 w-full h-full object-cover opacity-70"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
+            <div className="absolute bottom-4 left-4 right-4">
+              <h2 className="text-xl font-bold text-foreground">{machine.model}</h2>
+              <p className="text-sm text-muted-foreground font-mono mt-0.5">{machine.assetId} · S/N {machine.serial}</p>
             </div>
-            {machine.lastInspection && <StatusSummary {...machine.lastInspection.summary}/>}
+            {machine.lastInspection && (
+              <div className="absolute top-3 right-3">
+                <StatusSummary {...machine.lastInspection.summary}/>
+              </div>
+            )}
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex items-center gap-3 inset-surface p-3.5 rounded-lg">
-              <Clock className="w-4 h-4 text-primary shrink-0"/>
-              <div>
-                <p className="text-xs text-muted-foreground">SMU Hours</p>
+
+          {/* Specification Grid */}
+          <div className="p-4">
+            <p className="label-caps mb-3">Specification</p>
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              <div className="inset-surface p-3 rounded-2xl text-center">
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <Clock className="w-3.5 h-3.5 text-primary"/>
+                  <span className="text-[10px] text-muted-foreground">SMU</span>
+                </div>
                 <p className="font-mono font-bold text-base text-foreground">{machine.smuHours.toLocaleString()}</p>
+                <p className="text-[9px] text-muted-foreground mt-0.5">hours</p>
+              </div>
+              <div className="inset-surface p-3 rounded-2xl text-center">
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <Fuel className="w-3.5 h-3.5 text-primary"/>
+                  <span className="text-[10px] text-muted-foreground">Fuel</span>
+                </div>
+                <p className={`font-mono font-bold text-base ${machine.fuelLevel < 25 ? 'text-status-fail' : 'text-foreground'}`}>{machine.fuelLevel}%</p>
+                <p className="text-[9px] text-muted-foreground mt-0.5">level</p>
+              </div>
+              <div className="inset-surface p-3 rounded-2xl text-center">
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <Activity className="w-3.5 h-3.5 text-status-pass"/>
+                  <span className="text-[10px] text-muted-foreground">Status</span>
+                </div>
+                <p className="font-mono font-bold text-sm text-status-pass">ON</p>
+                <p className="text-[9px] text-muted-foreground mt-0.5">online</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 inset-surface p-3.5 rounded-lg">
-              <Fuel className="w-4 h-4 text-primary shrink-0"/>
-              <div>
-                <p className="text-xs text-muted-foreground">Fuel Level</p>
-                <p className="font-mono font-bold text-base text-foreground">{machine.fuelLevel}%</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 inset-surface p-3.5 rounded-lg col-span-2">
+            <div className="inset-surface p-3 rounded-2xl flex items-center gap-3">
               <MapPin className="w-4 h-4 text-primary shrink-0"/>
-              <div>
-                <p className="text-xs text-muted-foreground">Location</p>
-                <p className="font-medium text-sm text-foreground">{machine.location}</p>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm text-foreground truncate">{machine.location}</p>
                 <p className="text-xs text-muted-foreground font-mono">
                   {machine.gpsCoords.lat.toFixed(3)}°N, {machine.gpsCoords.lng.toFixed(3)}°W
                 </p>
@@ -950,20 +975,22 @@ export default function PreInspection() {
         {/* ── Active Fault Codes ───────────────────────────────────────── */}
         {machine.activeFaultCodes.length > 0 && (
           <div className="card-elevated p-4 border-status-fail/20 animate-slide-up" style={{ animationDelay:'0.05s' }}>
-            <div className="flex items-center gap-2 mb-3">
-              <AlertTriangle className="w-4 h-4 text-status-fail"/>
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="w-8 h-8 rounded-xl bg-status-fail/12 flex items-center justify-center">
+                <AlertTriangle className="w-4 h-4 text-status-fail"/>
+              </div>
               <h3 className="text-sm font-bold text-status-fail">Active Fault Codes</h3>
-              <span className="ml-auto text-xs font-mono bg-status-fail/10 text-status-fail px-2 py-0.5 rounded-md border border-status-fail/15">
+              <span className="ml-auto metric-pill-status bg-status-fail/12 text-status-fail border border-status-fail/20 text-[10px]">
                 {machine.activeFaultCodes.length}
               </span>
             </div>
             <div className="space-y-2">
               {machine.activeFaultCodes.map((fc) => (
-                <div key={fc.code} className="inset-surface rounded-lg p-3.5">
+                <div key={fc.code} className="inset-surface rounded-2xl p-3.5">
                   <div className="flex items-center gap-2 mb-1">
                     <Cpu className="w-3.5 h-3.5 text-sensor"/>
                     <span className="font-mono text-sm text-sensor font-bold">{fc.code}</span>
-                    <span className={`ml-auto text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md border ${fc.severity === 'critical' ? 'bg-status-fail/10 text-status-fail border-status-fail/15' : 'bg-status-monitor/10 text-status-monitor border-status-monitor/15'}`}>
+                    <span className={`ml-auto text-[10px] font-semibold uppercase px-2.5 py-1 rounded-full border ${fc.severity === 'critical' ? 'bg-status-fail/10 text-status-fail border-status-fail/15' : 'bg-status-monitor/10 text-status-monitor border-status-monitor/15'}`}>
                       {fc.severity}
                     </span>
                   </div>
@@ -979,20 +1006,22 @@ export default function PreInspection() {
         <div className="card-elevated animate-slide-up" style={{ animationDelay:'0.1s' }}>
           <button
             onClick={() => setActiveSection(activeSection === 'telemetry' ? null : 'telemetry')}
-            className="w-full flex items-center gap-2 p-4 text-left"
+            className="w-full flex items-center gap-3 p-4 text-left"
           >
-            <Activity className="w-4 h-4 text-primary shrink-0"/>
+            <div className="w-8 h-8 rounded-xl bg-primary/12 flex items-center justify-center">
+              <Activity className="w-4 h-4 text-primary"/>
+            </div>
             <h3 className="text-sm font-bold flex-1">VisionLink Telemetry</h3>
-            <div className="flex items-center gap-1.5 mr-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary" style={{ boxShadow:`0 0 5px var(--color-primary,#FFCD11)` }}/>
-              <span className="text-[10px] text-primary font-mono font-semibold tracking-widest">LIVE</span>
+            <div className="flex items-center gap-1.5 mr-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-status-pass" style={{ boxShadow:'0 0 5px hsl(var(--status-pass))' }}/>
+              <span className="text-[10px] text-status-pass font-mono font-semibold tracking-widest">LIVE</span>
             </div>
             {activeSection === 'telemetry'
               ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0"/>
               : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0"/>}
           </button>
           {activeSection === 'telemetry' && (
-            <div className="px-4 pb-4 border-t border-border/40">
+            <div className="px-4 pb-4 border-t border-border/30">
               <TelemetrySection/>
             </div>
           )}
@@ -1000,8 +1029,10 @@ export default function PreInspection() {
 
         {/* ── S·O·S Fluid Analysis ─────────────────────────────────────── */}
         <div className="card-elevated p-4 animate-slide-up" style={{ animationDelay:'0.15s' }}>
-          <div className="flex items-center gap-2 mb-3">
-            <Droplets className="w-4 h-4 text-sensor"/>
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-8 h-8 rounded-xl bg-sensor/12 flex items-center justify-center">
+              <Droplets className="w-4 h-4 text-sensor"/>
+            </div>
             <h3 className="text-sm font-bold">S·O·S Fluid Analysis</h3>
             <span className="ml-auto text-xs text-muted-foreground font-mono">02/15/2026</span>
           </div>
@@ -1012,9 +1043,9 @@ export default function PreInspection() {
               ['Coolant',          'Normal',                'text-status-pass'],
               ['Final Drive Oil',  'Normal',                'text-status-pass'],
             ] as [string,string,string][]).map(([label, value, cls], i) => (
-              <div key={label} className={`flex justify-between py-3 ${i < 3 ? 'divider' : ''}`}>
+              <div key={label} className={`flex justify-between items-center py-3 ${i < 3 ? 'divider' : ''}`}>
                 <span className="text-sm text-muted-foreground">{label}</span>
-                <span className={`text-sm font-medium ${cls}`}>{value}</span>
+                <span className={`metric-pill-status text-[11px] ${cls === 'text-status-pass' ? 'bg-status-pass/10 border border-status-pass/20' : 'bg-status-monitor/10 border border-status-monitor/20'} ${cls}`}>{value}</span>
               </div>
             ))}
           </div>
@@ -1024,17 +1055,19 @@ export default function PreInspection() {
         <div className="card-elevated animate-slide-up" style={{ animationDelay:'0.2s' }}>
           <button
             onClick={() => setActiveSection(activeSection === 'reports' ? null : 'reports')}
-            className="w-full flex items-center gap-2 p-4 text-left"
+            className="w-full flex items-center gap-3 p-4 text-left"
           >
-            <History className="w-4 h-4 text-primary shrink-0"/>
+            <div className="w-8 h-8 rounded-xl bg-primary/12 flex items-center justify-center">
+              <History className="w-4 h-4 text-primary"/>
+            </div>
             <h3 className="text-sm font-bold flex-1">Inspection Reports</h3>
-            <span className="text-xs text-muted-foreground font-mono mr-1">Reports</span>
+            <span className="text-xs text-muted-foreground font-mono mr-2">Reports</span>
             {activeSection === 'reports'
               ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0"/>
               : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0"/>}
           </button>
           {activeSection === 'reports' && (
-            <div className="px-4 pb-4 border-t border-border/40">
+            <div className="px-4 pb-4 border-t border-border/30">
               <div className="pt-4">
                 <ReportsSection machineId={machineId}/>
               </div>
@@ -1045,16 +1078,23 @@ export default function PreInspection() {
         {/* ── Open Items from Last Inspection ──────────────────────────── */}
         {machine.lastInspection && (machine.lastInspection.summary.fail > 0 || machine.lastInspection.summary.monitor > 0) && (
           <div className="card-elevated p-4 animate-slide-up" style={{ animationDelay:'0.25s' }}>
-            <h3 className="text-sm font-bold mb-1.5">Open Items from Last Inspection</h3>
-            <p className="text-xs text-muted-foreground mb-3">
-              {machine.lastInspection.date} — Inspector: {machine.lastInspection.inspector}
-            </p>
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="w-8 h-8 rounded-xl bg-status-monitor/12 flex items-center justify-center">
+                <AlertTriangle className="w-4 h-4 text-status-monitor"/>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold">Open Items</h3>
+                <p className="text-[10px] text-muted-foreground">
+                  {machine.lastInspection.date} — {machine.lastInspection.inspector}
+                </p>
+              </div>
+            </div>
             <div className="space-y-2">
-              <div className="flex items-center gap-3 bg-status-fail/6 border border-status-fail/12 rounded-lg p-3.5">
+              <div className="flex items-center gap-3 bg-status-fail/6 border border-status-fail/12 rounded-2xl p-3.5">
                 <span className="status-dot status-dot-fail"/>
                 <span className="text-sm">Right rear work light not functioning</span>
               </div>
-              <div className="flex items-center gap-3 bg-status-monitor/6 border border-status-monitor/12 rounded-lg p-3.5">
+              <div className="flex items-center gap-3 bg-status-monitor/6 border border-status-monitor/12 rounded-2xl p-3.5">
                 <span className="status-dot status-dot-monitor"/>
                 <span className="text-sm">Bucket teeth wearing — monitor for replacement</span>
               </div>
@@ -1067,22 +1107,23 @@ export default function PreInspection() {
       <div className="fixed bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-background via-background/95 to-transparent safe-bottom space-y-2.5">
         <button
           onClick={() => navigate(`/inspect/${machine.id}`)}
-          className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-base glow-primary active:scale-[0.98] transition-all"
+          className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-base glow-primary active:scale-[0.98] transition-all"
         >
           <Play className="w-5 h-5"/>
-          Start Live Inspection
+          Start Inspection
+          <ChevronRight className="w-5 h-5 opacity-60" />
         </button>
         <div className="flex gap-2.5">
           <button
             onClick={() => navigate(`/inspect/${machine.id}?mode=upload`)}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-surface-2 text-secondary-foreground font-semibold text-sm border border-border/50 active:scale-[0.98] transition-all"
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-surface-2 text-secondary-foreground font-semibold text-sm border border-border/40 active:scale-[0.98] transition-all"
           >
             <Upload className="w-4 h-4"/>
             Upload Video
           </button>
           <button
             onClick={() => navigate(`/history/${machine.id}`)}
-            className="flex items-center justify-center gap-2 py-3 px-5 rounded-xl bg-surface-2 text-secondary-foreground font-semibold text-sm border border-border/50 active:scale-[0.98] transition-all"
+            className="flex items-center justify-center gap-2 py-3.5 px-5 rounded-2xl bg-surface-2 text-secondary-foreground font-semibold text-sm border border-border/40 active:scale-[0.98] transition-all"
           >
             <History className="w-4 h-4"/>
           </button>
