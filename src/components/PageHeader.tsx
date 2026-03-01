@@ -15,11 +15,11 @@ export function PageHeader({ title, subtitle, back, right, className, large = fa
   const navigate = useNavigate();
   return (
     <header className={cn(
-      'sticky top-0 z-40 glass-surface border-b border-border/30',
+      'sticky top-0 z-40 glass-surface',
       className
     )}>
       {/* iOS-style nav bar */}
-      <div className="flex items-center justify-between px-4 pt-14 pb-1.5 min-h-[44px]">
+      <div className="flex items-center justify-between px-5 pt-14 pb-2 min-h-[48px]">
         {back ? (
           <button
             onClick={() => navigate(back)}
@@ -41,13 +41,13 @@ export function PageHeader({ title, subtitle, back, right, className, large = fa
         </div>
       </div>
       {large && (
-        <div className="px-4 pb-2">
+        <div className="px-5 pb-3">
           <h1 className="ios-large-title text-foreground">{title}</h1>
-          {subtitle && <p className="ios-subhead text-muted-foreground mt-1">{subtitle}</p>}
+          {subtitle && <p className="ios-subhead text-muted-foreground mt-1.5">{subtitle}</p>}
         </div>
       )}
       {!large && subtitle && (
-        <div className="px-4 pb-1.5">
+        <div className="px-5 pb-2">
           <p className="ios-caption text-muted-foreground text-center">{subtitle}</p>
         </div>
       )}

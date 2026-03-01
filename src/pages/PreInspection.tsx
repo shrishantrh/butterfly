@@ -338,8 +338,8 @@ export default function PreInspection() {
   return (
     <div className="min-h-screen bg-background">
       {/* iOS Nav Bar */}
-      <header className="sticky top-0 z-40 glass-surface" style={{ borderBottom: '0.33px solid hsl(var(--ios-separator))' }}>
-        <div className="flex items-center justify-between px-4 pt-14 pb-2">
+      <header className="sticky top-0 z-40 glass-surface">
+        <div className="flex items-center justify-between px-5 pt-14 pb-2.5">
           <button onClick={() => navigate('/')} className="flex items-center gap-0.5 text-primary active:opacity-50 transition-opacity touch-target">
             <ChevronLeft className="w-[22px] h-[22px]" />
             <span className="ios-body">Fleet</span>
@@ -347,7 +347,7 @@ export default function PreInspection() {
           <div className="text-center absolute left-1/2 -translate-x-1/2">
             <p className="ios-title text-foreground">{machine.model.replace('Hydraulic Excavator', '').trim()}</p>
           </div>
-          <button className="w-[34px] h-[34px] rounded-full bg-surface-2 flex items-center justify-center">
+          <button className="w-[36px] h-[36px] rounded-full bg-white/[0.06] backdrop-blur-xl flex items-center justify-center ring-1 ring-white/[0.06]">
             <Share2 className="w-[16px] h-[16px] text-muted-foreground" />
           </button>
         </div>
@@ -356,17 +356,18 @@ export default function PreInspection() {
       <div className="pb-44">
         {/* Hero image */}
         <div className="relative">
-          <div className="h-[220px] bg-surface-2 overflow-hidden">
+          <div className="h-[240px] bg-surface-2 overflow-hidden">
             <img src={excavatorHero} alt={machine.model} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
           </div>
-          <div className="absolute bottom-3 right-3 bg-primary text-primary-foreground ios-footnote font-bold px-3 py-1.5 rounded-lg">
+          <div className="absolute bottom-4 right-4 ios-footnote font-bold px-3.5 py-2 rounded-xl bg-primary text-primary-foreground shadow-lg">
             {liveFuel.toFixed(0)}% Fuel
           </div>
         </div>
 
-        {/* Machine Info — iOS grouped section */}
-        <div className="ios-section-header mt-3">Specification</div>
-        <div className="mx-4 ios-card">
+        {/* Machine Info */}
+        <div className="ios-section-header mt-4">Specification</div>
+        <div className="mx-5 ios-card">
           {[
             { label: 'Asset ID', value: machine.assetId },
             { label: 'Serial Number', value: machine.serial },
@@ -374,8 +375,8 @@ export default function PreInspection() {
             { label: 'Fuel Level', value: `${liveFuel.toFixed(0)}%`, alert: liveFuel < 25 },
             { label: 'Engine', value: 'ON', good: true },
           ].map((row, i, arr) => (
-            <div key={row.label} className="ios-cell py-3"
-              style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsl(var(--ios-separator))' } : {}}>
+            <div key={row.label} className="ios-cell py-3.5"
+              style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsla(220, 10%, 24%, 0.3)' } : {}}>
               <span className="ios-body text-foreground flex-1">{row.label}</span>
               <span className={`ios-body font-mono ${row.alert ? 'text-status-fail font-semibold' : row.good ? 'text-status-pass font-semibold' : 'text-muted-foreground'}`}>
                 {row.value}
@@ -385,8 +386,8 @@ export default function PreInspection() {
         </div>
 
         {/* Live Metrics */}
-        <div className="ios-section-header mt-5">Live Metrics</div>
-        <div className="mx-4 ios-card">
+        <div className="ios-section-header mt-6">Live Metrics</div>
+        <div className="mx-5 ios-card">
           {[
             { label: 'Hydraulic Pressure', key: 'pump_pressure_front', unit: 'bar' },
             { label: 'Engine RPM', key: 'engine_rpm', unit: 'rpm' },
@@ -398,8 +399,8 @@ export default function PreInspection() {
             const val = getData(m.key, machineId).filter(d => d.value !== null).slice(-1)[0]?.value;
             const alert = getAlert(m.key, machineId);
             return (
-              <div key={m.key} className="ios-cell py-3"
-                style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsl(var(--ios-separator))' } : {}}>
+              <div key={m.key} className="ios-cell py-3.5"
+                style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsla(220, 10%, 24%, 0.3)' } : {}}>
                 <div className={`w-2 h-2 rounded-full shrink-0 ${alert === 'critical' ? 'bg-status-fail' : alert === 'warning' ? 'bg-status-monitor' : 'bg-status-pass'}`} />
                 <span className="ios-body text-foreground flex-1">{m.label}</span>
                 <span className={`ios-body font-mono ${alert === 'critical' ? 'text-status-fail font-semibold' : alert === 'warning' ? 'text-status-monitor font-semibold' : 'text-muted-foreground'}`}>
@@ -411,9 +412,9 @@ export default function PreInspection() {
         </div>
 
         {/* Location */}
-        <div className="ios-section-header mt-5">Location</div>
-        <div className="mx-4 ios-card">
-          <div className="ios-cell py-3">
+        <div className="ios-section-header mt-6">Location</div>
+        <div className="mx-5 ios-card">
+          <div className="ios-cell py-3.5">
             <MapPin className="w-5 h-5 text-primary shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="ios-body text-foreground truncate">{machine.location}</p>
@@ -427,13 +428,13 @@ export default function PreInspection() {
         {/* Active Faults */}
         {machine.activeFaultCodes.length > 0 && (
           <>
-            <div className="ios-section-header mt-5 text-status-fail">
+            <div className="ios-section-header mt-6 text-status-fail">
               Active Fault Codes · {machine.activeFaultCodes.length}
             </div>
-            <div className="mx-4 ios-card border border-status-fail/20">
+            <div className="mx-5 ios-card" style={{ border: '0.5px solid hsla(0, 76%, 58%, 0.15)' }}>
               {machine.activeFaultCodes.map((fc, i) => (
-                <div key={fc.code} className="px-4 py-3"
-                  style={i < machine.activeFaultCodes.length - 1 ? { borderBottom: '0.33px solid hsl(var(--ios-separator))' } : {}}>
+                <div key={fc.code} className="px-4 py-3.5"
+                  style={i < machine.activeFaultCodes.length - 1 ? { borderBottom: '0.33px solid hsla(220, 10%, 24%, 0.3)' } : {}}>
                   <div className="flex items-center gap-2 mb-1">
                     <AlertTriangle className="w-4 h-4 text-status-fail shrink-0" />
                     <span className="font-mono ios-subhead text-sensor font-bold">{fc.code}</span>
@@ -451,11 +452,11 @@ export default function PreInspection() {
         )}
 
         {/* Telemetry — expandable */}
-        <div className="ios-section-header mt-5">VisionLink Telemetry</div>
-        <div className="mx-4 ios-card">
+        <div className="ios-section-header mt-6">VisionLink Telemetry</div>
+        <div className="mx-5 ios-card">
           <button
             onClick={() => setActiveSection(activeSection === 'telemetry' ? null : 'telemetry')}
-            className="ios-cell py-3.5 w-full active:bg-surface-2 transition-colors"
+            className="ios-cell py-4 w-full active:bg-white/[0.03] transition-colors"
           >
             <Activity className="w-5 h-5 text-primary shrink-0" />
             <span className="ios-body text-foreground flex-1">Sensor Dashboard</span>
@@ -490,16 +491,16 @@ export default function PreInspection() {
             </div>
           )}
           {activeSection === 'telemetry' && (
-            <div className="px-4 pb-4" style={{ borderTop: '0.33px solid hsl(var(--ios-separator))' }}>
+            <div className="px-4 pb-4" style={{ borderTop: '0.33px solid hsla(220, 10%, 24%, 0.3)' }}>
               <TelemetrySection machineId={machineId} />
             </div>
           )}
         </div>
 
         {/* S·O·S Fluid Analysis */}
-        <div className="ios-section-header mt-5">S·O·S Fluid Analysis</div>
-        <div className="mx-4 ios-card">
-          <div className="ios-cell py-3" style={{ borderBottom: '0.33px solid hsl(var(--ios-separator))' }}>
+        <div className="ios-section-header mt-6">S·O·S Fluid Analysis</div>
+        <div className="mx-5 ios-card">
+          <div className="ios-cell py-3.5" style={{ borderBottom: '0.33px solid hsla(220, 10%, 24%, 0.3)' }}>
             <Droplets className="w-5 h-5 text-sensor shrink-0" />
             <span className="ios-body text-foreground flex-1">Last Sample</span>
             <span className="ios-subhead font-mono text-muted-foreground">02/15/2026</span>
@@ -510,8 +511,8 @@ export default function PreInspection() {
             ['Coolant', 'Normal', 'text-status-pass'],
             ['Final Drive Oil', 'Normal', 'text-status-pass'],
           ] as [string, string, string][]).map(([label, value, cls], i, arr) => (
-            <div key={label} className="ios-cell py-3"
-              style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsl(var(--ios-separator))' } : {}}>
+            <div key={label} className="ios-cell py-3.5"
+              style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsla(220, 10%, 24%, 0.3)' } : {}}>
               <span className="ios-body text-foreground flex-1">{label}</span>
               <span className={`ios-subhead font-semibold ${cls}`}>{value}</span>
             </div>
@@ -519,18 +520,18 @@ export default function PreInspection() {
         </div>
 
         {/* Inspection Reports — expandable */}
-        <div className="ios-section-header mt-5">Inspection Reports</div>
-        <div className="mx-4 ios-card">
+        <div className="ios-section-header mt-6">Inspection Reports</div>
+        <div className="mx-5 ios-card">
           <button
             onClick={() => setActiveSection(activeSection === 'reports' ? null : 'reports')}
-            className="ios-cell py-3.5 w-full active:bg-surface-2 transition-colors"
+            className="ios-cell py-4 w-full active:bg-white/[0.03] transition-colors"
           >
             <History className="w-5 h-5 text-primary shrink-0" />
             <span className="ios-body text-foreground flex-1">View Reports</span>
             <ChevronRight className={`w-[14px] h-[14px] text-muted-foreground/40 transition-transform ${activeSection === 'reports' ? 'rotate-90' : ''}`} />
           </button>
           {activeSection === 'reports' && (
-            <div className="px-4 pb-4" style={{ borderTop: '0.33px solid hsl(var(--ios-separator))' }}>
+            <div className="px-4 pb-4" style={{ borderTop: '0.33px solid hsla(220, 10%, 24%, 0.3)' }}>
               <ReportsSection machineId={machineId} />
             </div>
           )}
@@ -538,25 +539,39 @@ export default function PreInspection() {
       </div>
 
       {/* Sticky CTA */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 glass-surface safe-bottom space-y-2" style={{ borderTop: '0.33px solid hsl(var(--ios-separator))' }}>
+      <div className="fixed bottom-0 left-0 right-0 p-5 glass-surface-elevated safe-bottom space-y-2.5">
         <button
           onClick={() => navigate(`/inspect/${machine.id}`)}
-          className="w-full flex items-center justify-center gap-2.5 py-[14px] rounded-xl bg-primary text-primary-foreground font-semibold text-[17px] glow-primary active:scale-[0.98] transition-all"
+          className="w-full flex items-center justify-center gap-2.5 py-[15px] rounded-2xl bg-primary text-primary-foreground font-semibold text-[17px] glow-primary active:scale-[0.98] transition-all"
         >
           <Play className="w-5 h-5" />
           Start Inspection
         </button>
-        <div className="flex gap-2">
+        <div className="flex gap-2.5">
           <button
             onClick={() => navigate(`/inspect/${machine.id}?mode=upload`)}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-surface-2 text-foreground font-medium ios-subhead active:scale-[0.98] transition-all"
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl ios-subhead font-medium active:scale-[0.98] transition-all"
+            style={{
+              background: 'hsla(220, 10%, 14%, 0.5)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: '0.5px solid hsla(220, 10%, 24%, 0.25)',
+              color: 'hsl(var(--foreground))',
+            }}
           >
             <Upload className="w-4 h-4" />
             Upload Video
           </button>
           <button
             onClick={() => navigate(`/history/${machine.id}`)}
-            className="flex items-center justify-center gap-2 py-3 px-5 rounded-xl bg-surface-2 text-foreground font-medium ios-subhead active:scale-[0.98] transition-all"
+            className="flex items-center justify-center gap-2 py-3.5 px-5 rounded-2xl ios-subhead font-medium active:scale-[0.98] transition-all"
+            style={{
+              background: 'hsla(220, 10%, 14%, 0.5)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: '0.5px solid hsla(220, 10%, 24%, 0.25)',
+              color: 'hsl(var(--foreground))',
+            }}
           >
             <History className="w-4 h-4" />
           </button>

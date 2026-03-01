@@ -253,8 +253,8 @@ export default function Debrief() {
   return (
     <div className="min-h-screen bg-background">
       {/* iOS header */}
-      <header className="sticky top-0 z-50 glass-surface" style={{ borderBottom: '0.33px solid hsl(var(--ios-separator))' }}>
-        <div className="px-4 pt-14 pb-2 flex items-center justify-between">
+      <header className="sticky top-0 z-50 glass-surface">
+        <div className="px-5 pt-14 pb-2.5 flex items-center justify-between">
           <button onClick={() => navigate('/')} className="flex items-center gap-0.5 text-primary active:opacity-50 transition-opacity touch-target">
             <Home className="w-5 h-5" />
           </button>
@@ -264,12 +264,12 @@ export default function Debrief() {
           </div>
           <div className="flex items-center gap-2">
             <button onClick={handleDownloadPdf} disabled={isDownloadingPdf}
-              className="w-[34px] h-[34px] rounded-full bg-surface-2 flex items-center justify-center"
+              className="w-[36px] h-[36px] rounded-full bg-white/[0.06] backdrop-blur-xl flex items-center justify-center ring-1 ring-white/[0.06]"
             >
               {isDownloadingPdf ? <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" /> : <Download className="w-4 h-4 text-muted-foreground" />}
             </button>
             <button onClick={() => navigate(`/history/${machineId}`)}
-              className="w-[34px] h-[34px] rounded-full bg-surface-2 flex items-center justify-center"
+              className="w-[36px] h-[36px] rounded-full bg-white/[0.06] backdrop-blur-xl flex items-center justify-center ring-1 ring-white/[0.06]"
             >
               <History className="w-4 h-4 text-muted-foreground" />
             </button>
