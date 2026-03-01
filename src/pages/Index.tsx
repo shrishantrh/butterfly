@@ -5,7 +5,7 @@ import {
   Search, History, BarChart3, MapPin, Clock, ChevronRight, Fuel, AlertTriangle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useState, useRef } from 'react';
+import { useState, useRef, useLayoutEffect } from 'react';
 import { getData } from '@/lib/sensor-data';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -15,6 +15,47 @@ const tabVariants = {
   center: { x: 0, opacity: 1 },
   exit: (dir: number) => ({ x: dir > 0 ? -60 : 60, opacity: 0 }),
 };
+
+// ─── Animated Segmented Control with sliding pill ────────────────────────────
+function SegmentedControl<T extends string>({ tabs, active, onChange }: { tabs: readonly T[]; active: T; onChange: (t: T) => void }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [pillStyle, setPillStyle] = useState({ left: 0, width: 0 });
+  const activeIdx = tabs.indexOf(active);
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const buttons = container.querySelectorAll<HTMLButtonElement>('[data-seg-btn]');
+    const btn = buttons[activeIdx];
+    if (btn) {
+      setPillStyle({ left: btn.offsetLeft, width: btn.offsetWidth });
+    }
+  }, [activeIdx, tabs]);
+
+  return (
+    <div ref={containerRef} className="ios-segmented relative">
+      {/* Animated pill background */}
+      <motion.div
+        className="absolute top-[3px] bottom-[3px] rounded-[7px] bg-foreground/10 dark:bg-white/12 shadow-sm"
+        animate={{ left: pillStyle.left, width: pillStyle.width }}
+        transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+        style={{ zIndex: 0 }}
+      />
+      {tabs.map(tab => (
+        <button
+          key={tab}
+          data-seg-btn
+          onClick={() => onChange(tab)}
+          className={`ios-segmented-btn capitalize relative z-10 transition-colors duration-200 ${
+            active === tab ? 'text-foreground font-semibold' : 'text-muted-foreground'
+          }`}
+        >
+          {tab}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 const Index = () => {
   const navigate = useNavigate();
@@ -76,19 +117,9 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Segmented Control */}
+        {/* Animated Segmented Control */}
         <div className="px-5 pb-3.5">
-          <div className="ios-segmented">
-            {tabOrder.map(tab => (
-              <button
-                key={tab}
-                onClick={() => switchTab(tab)}
-                className={`ios-segmented-btn capitalize ${activeTab === tab ? 'ios-segmented-btn-active' : ''}`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl tabs={tabOrder} active={activeTab} onChange={switchTab} />
         </div>
       </header>
 

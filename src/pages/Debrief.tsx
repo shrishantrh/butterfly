@@ -1,4 +1,5 @@
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { AnimatedHealthRing } from '@/components/AnimatedHealthRing';
 import { mockMachines, completedInspection, getStatusCounts, InspectionSection } from '@/lib/mock-data';
 import { PageHeader } from '@/components/PageHeader';
 import { StatusSummary, StatusBadge } from '@/components/StatusBadge';
@@ -311,19 +312,7 @@ export default function Debrief() {
                       )}
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="relative w-14 h-14">
-                        <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
-                          <circle cx="28" cy="28" r="23" fill="none" stroke="hsl(var(--border))" strokeWidth="4" />
-                          <circle cx="28" cy="28" r="23" fill="none"
-                            stroke={clearance === 'GO' ? 'hsl(var(--status-pass))' : clearance === 'NO_GO' ? 'hsl(var(--status-fail))' : 'hsl(var(--status-monitor))'}
-                            strokeWidth="4" strokeLinecap="round"
-                            strokeDasharray={`${(analysis.executiveSummary.healthScore / 100) * 144.5} 144.5`}
-                          />
-                        </svg>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-lg font-bold font-mono text-foreground">{analysis.executiveSummary.healthScore}</span>
-                        </div>
-                      </div>
+                      <AnimatedHealthRing score={analysis.executiveSummary.healthScore} size={56} strokeWidth={4} />
                     </div>
                   </div>
 

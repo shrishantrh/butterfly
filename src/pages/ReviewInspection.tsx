@@ -1,6 +1,7 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { mockMachines, inspectionFormSections, completedInspection, getStatusCounts, InspectionSection, InspectionStatus } from '@/lib/mock-data';
 import { StatusBadge, StatusSummary } from '@/components/StatusBadge';
+import { GearStatusIndicator } from '@/components/GearStatusIndicator';
 import { Send, ChevronDown, ChevronUp, X, Check, AlertCircle } from 'lucide-react';
 import { useMemo, useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -257,7 +258,7 @@ export default function ReviewInspection() {
                               )}
                             </div>
                           </div>
-                          <StatusBadge status={item.status} showLabel={false} className="shrink-0" />
+                          <GearStatusIndicator status={item.status} showLabel={false} size="sm" />
                         </button>
 
                         {/* Inline editor - works for ALL items */}
@@ -280,7 +281,7 @@ export default function ReviewInspection() {
                                       : ''
                                   }`}
                                 >
-                                  <StatusBadge status={opt.status} className="w-full justify-center text-[10px]" />
+                                  <GearStatusIndicator status={opt.status} size="md" />
                                 </button>
                               ))}
                             </div>
