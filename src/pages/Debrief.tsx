@@ -212,8 +212,15 @@ export default function Debrief() {
       if (fnError) throw fnError;
       if (!data?.html) throw new Error('No report generated');
       const blob = new Blob([data.html], { type: 'text/html' });
-      window.open(URL.createObjectURL(blob), '_blank');
-      toast({ title: 'Report generated', description: 'Use Ctrl+P / ⌘+P to save as PDF.' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `inspection-report-${machine.assetId}-${new Date().toISOString().slice(0, 10)}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: 'Report downloaded', description: 'Open the file in any browser to view or print.' });
     } catch (e) {
       console.error('PDF generation error:', e);
       toast({ title: 'PDF generation failed', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
