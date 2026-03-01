@@ -48,8 +48,21 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string,
     frameBuffer.current = [...frameBuffer.current.slice(-2), base64];
   }, []);
 
+  const pendingAnalysis = useRef<{ transcript: string; frames: string[] } | null>(null);
+
   const runAnalysis = useCallback(async (transcript: string, frames: string[]) => {
-    if ((!transcript.trim() && frames.length === 0) || analysisInFlight.current) return;
+    if (!transcript.trim() && frames.length === 0) return;
+
+    // If already in-flight, queue this for later (don't lose frames)
+    if (analysisInFlight.current) {
+      pendingAnalysis.current = {
+        transcript: pendingAnalysis.current
+          ? pendingAnalysis.current.transcript + ' ' + transcript
+          : transcript,
+        frames: [...(pendingAnalysis.current?.frames || []), ...frames],
+      };
+      return;
+    }
 
     analysisInFlight.current = true;
     setIsAnalyzing(true);
@@ -63,7 +76,7 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string,
       const { data, error: fnError } = await supabase.functions.invoke('analyze-inspection', {
         body: {
           transcript,
-          frames,
+          frames: frames.slice(-3), // Send last 3 frames max
           faultCodes: faultCodesStr,
           previousItems: prevItemsStr || previousItems || 'None',
           sensorTelemetry: sensorContext || 'None',
@@ -73,7 +86,6 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string,
       if (fnError) throw fnError;
 
       if (data?.items && Array.isArray(data.items)) {
-        // Capture frame for ALL items — universal visual evidence
         let frameUrl: string | null = null;
         if (captureFrameFn.current) {
           frameUrl = captureFrameFn.current();
@@ -85,7 +97,6 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string,
             const existing = next.get(item.id);
             const severityOrder: Record<string, number> = { fail: 4, conflicted: 3, monitor: 2, pass: 1, normal: 0 };
 
-            // Auto-mark as 'conflicted' when AI disagrees due to sensor evidence
             let finalStatus = item.status;
             if (item.aiAgreement === 'disagree' && item.sensorEvidence) {
               finalStatus = 'conflicted';
@@ -114,8 +125,15 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string,
     } finally {
       setIsAnalyzing(false);
       analysisInFlight.current = false;
+
+      // Process queued analysis if any
+      if (pendingAnalysis.current) {
+        const pending = pendingAnalysis.current;
+        pendingAnalysis.current = null;
+        runAnalysis(pending.transcript, pending.frames);
+      }
     }
-  }, [faultCodesStr, previousItems, analyzedItems]);
+  }, [faultCodesStr, previousItems, analyzedItems, sensorContext]);
 
   const addTranscript = useCallback((text: string) => {
     transcriptBuffer.current += ' ' + text;
