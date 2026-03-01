@@ -1,12 +1,23 @@
 import { useNavigate } from 'react-router-dom';
 import { mockMachines } from '@/lib/mock-data';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Navigation, ChevronRight, Compass } from 'lucide-react';
-import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Navigation, ChevronRight } from 'lucide-react';
 
 export function FleetMap() {
   const navigate = useNavigate();
-  const [selectedMachine, setSelectedMachine] = useState<string | null>(null);
+
+  const lats = mockMachines.map(m => m.gpsCoords.lat);
+  const lngs = mockMachines.map(m => m.gpsCoords.lng);
+  const latMin = Math.min(...lats) - 0.005;
+  const latMax = Math.max(...lats) + 0.005;
+  const lngMin = Math.min(...lngs) - 0.005;
+  const lngMax = Math.max(...lngs) + 0.005;
+
+  const mapW = 360;
+  const mapH = 280;
+
+  const toX = (lng: number) => ((lng - lngMin) / (lngMax - lngMin)) * (mapW - 60) + 30;
+  const toY = (lat: number) => mapH - ((lat - latMin) / (latMax - latMin)) * (mapH - 60) - 30;
 
   const statusColor = (m: typeof mockMachines[0]) => {
     if (m.activeFaultCodes.some(f => f.severity === 'critical')) return 'hsl(var(--status-fail))';
@@ -14,156 +25,128 @@ export function FleetMap() {
     return 'hsl(var(--status-pass))';
   };
 
-  const statusLabel = (m: typeof mockMachines[0]) => {
-    if (m.activeFaultCodes.some(f => f.severity === 'critical')) return 'Critical';
-    if (m.activeFaultCodes.length > 0) return 'Warning';
-    return 'Online';
-  };
-
-  // Spread markers across the map area
-  const markerPositions = [
-    { top: '25%', left: '42%' },
-    { top: '48%', right: '18%' },
-    { top: '68%', left: '25%' },
-    { top: '35%', right: '28%' },
-    { top: '58%', left: '55%' },
-  ];
-
   return (
     <div>
       <div className="mx-5 ios-card overflow-hidden">
-        {/* 2D Map Area */}
-        <div className="relative" style={{ height: 340 }}>
-          {/* Dark map background with grid/road lines */}
-          <div className="absolute inset-0" style={{
-            background: 'linear-gradient(160deg, hsl(var(--card)), hsl(var(--background)))',
-          }}>
-            {/* Road/grid lines */}
-            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 400 340" preserveAspectRatio="none">
-              {/* Diagonal roads */}
-              <line x1="0" y1="280" x2="400" y2="60" stroke="hsl(var(--border))" strokeWidth="0.5" opacity="0.3" />
-              <line x1="50" y1="340" x2="350" y2="0" stroke="hsl(var(--border))" strokeWidth="0.5" opacity="0.2" />
-              <line x1="0" y1="180" x2="400" y2="200" stroke="hsl(var(--border))" strokeWidth="0.5" opacity="0.15" />
-              <line x1="200" y1="0" x2="150" y2="340" stroke="hsl(var(--border))" strokeWidth="0.5" opacity="0.2" />
-              {/* Curved path */}
-              <path d="M 0 120 Q 200 80 400 160" fill="none" stroke="hsl(var(--border))" strokeWidth="0.5" opacity="0.25" />
-              <path d="M 100 0 Q 180 170 300 340" fill="none" stroke="hsl(var(--border))" strokeWidth="0.5" opacity="0.2" />
-            </svg>
+        {/* SVG Map */}
+        <div className="relative p-2">
+          <svg
+            viewBox={`0 0 ${mapW} ${mapH}`}
+            className="w-full"
+            style={{ height: 'auto' }}
+          >
+            <defs>
+              <radialGradient id="mapBg" cx="50%" cy="50%" r="70%">
+                <stop offset="0%" stopColor="hsl(var(--surface-2))" />
+                <stop offset="100%" stopColor="hsl(var(--background))" />
+              </radialGradient>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
 
-            {/* Subtle scan line effect */}
-            <div className="absolute inset-0 opacity-[0.03]" style={{
-              backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, hsl(var(--foreground)) 3px, hsl(var(--foreground)) 4px)',
-            }} />
-          </div>
+            {/* Background */}
+            <rect x="0" y="0" width={mapW} height={mapH} fill="url(#mapBg)" rx="12" />
+            <rect x="0" y="0" width={mapW} height={mapH} fill="none" stroke="hsl(var(--border))" strokeOpacity="0.15" rx="12" />
 
-          {/* Compass indicator */}
-          <div className="absolute top-3 right-4 z-10 flex flex-col items-center gap-0.5">
-            <span className="text-[10px] font-bold tracking-wider" style={{ color: 'hsl(var(--status-fail))' }}>N</span>
-            <div className="w-px h-3" style={{ background: 'hsl(var(--muted-foreground) / 0.4)' }} />
-          </div>
+            {/* Terrain contours */}
+            {[0.3, 0.5, 0.7].map((r, i) => (
+              <ellipse
+                key={i}
+                cx={mapW * 0.45}
+                cy={mapH * 0.5}
+                rx={mapW * r * 0.6}
+                ry={mapH * r * 0.5}
+                fill="none"
+                stroke="hsl(var(--border))"
+                strokeOpacity={0.08 + i * 0.03}
+                strokeWidth="0.5"
+                strokeDasharray="4 6"
+              />
+            ))}
 
-          {/* Machine markers */}
-          {mockMachines.slice(0, 5).map((m, i) => {
-            const pos = markerPositions[i] || markerPositions[0];
-            const color = statusColor(m);
-            const isSelected = selectedMachine === m.id;
+            {/* Roads */}
+            <line x1="20" y1={mapH * 0.7} x2={mapW - 20} y2={mapH * 0.25} stroke="hsl(var(--border))" strokeOpacity="0.2" strokeWidth="0.8" />
+            <path d={`M 60 ${mapH - 20} Q ${mapW * 0.4} ${mapH * 0.3} ${mapW - 40} ${mapH * 0.6}`} fill="none" stroke="hsl(var(--border))" strokeOpacity="0.15" strokeWidth="0.8" />
 
-            return (
-              <motion.button
-                key={m.id}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.3 + i * 0.1, type: 'spring', stiffness: 300 }}
-                className="absolute z-10"
-                style={{ ...pos } as React.CSSProperties}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedMachine(isSelected ? null : m.id);
-                }}
-              >
-                {/* Outer glow ring */}
-                <span className="absolute rounded-full"
-                  style={{
-                    width: 44,
-                    height: 44,
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    background: `radial-gradient(circle, ${color}15 0%, ${color}08 50%, transparent 70%)`,
-                  }}
-                />
+            {/* Site areas (subtle glow behind each machine) */}
+            {mockMachines.map((m, i) => {
+              const cx = toX(m.gpsCoords.lng);
+              const cy = toY(m.gpsCoords.lat);
+              return (
+                <g key={`site-${i}`}>
+                  <circle cx={cx} cy={cy} r="28" fill={statusColor(m)} fillOpacity="0.04" />
+                  <circle cx={cx} cy={cy} r="18" fill={statusColor(m)} fillOpacity="0.06" />
+                </g>
+              );
+            })}
 
-                {/* Pulse ring */}
-                <span className="absolute inset-0 rounded-full animate-ping"
-                  style={{ background: color, opacity: 0.15, animationDuration: '3s' }}
-                />
-
-                {/* Dot with border */}
-                <span className="relative flex items-center justify-center w-6 h-6 rounded-full"
-                  style={{
-                    background: `${color}20`,
-                    border: `1.5px solid ${color}80`,
-                    boxShadow: `0 0 16px ${color}30`,
-                  }}
+            {/* Machine markers */}
+            {mockMachines.map((m, i) => {
+              const cx = toX(m.gpsCoords.lng);
+              const cy = toY(m.gpsCoords.lat);
+              const color = statusColor(m);
+              return (
+                <g
+                  key={m.id}
+                  className="cursor-pointer"
+                  onClick={() => navigate(`/pre-inspection/${m.id}`)}
                 >
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />
-                </span>
+                  {/* Animated pulse ring */}
+                  <circle cx={cx} cy={cy} r="12" fill="none" stroke={color} strokeOpacity="0.2" strokeWidth="1">
+                    <animate attributeName="r" values="10;18;10" dur="3s" repeatCount="indefinite" />
+                    <animate attributeName="stroke-opacity" values="0.3;0;0.3" dur="3s" repeatCount="indefinite" />
+                  </circle>
 
-                {/* Label tag */}
-                <div className="absolute left-8 top-1/2 -translate-y-1/2 whitespace-nowrap px-2.5 py-1 rounded-lg"
-                  style={{
-                    background: 'hsl(var(--card) / 0.9)',
-                    backdropFilter: 'blur(16px)',
-                    border: '0.5px solid hsl(var(--border) / 0.3)',
-                  }}
-                >
-                  <span className="text-[11px] font-semibold text-foreground">{m.assetId}</span>
-                </div>
+                  {/* Outer ring */}
+                  <circle cx={cx} cy={cy} r="10" fill={color} fillOpacity="0.12" stroke={color} strokeOpacity="0.5" strokeWidth="1" />
 
-                {/* Expanded info card on tap */}
-                <AnimatePresence>
-                  {isSelected && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.85, y: 6 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.85, y: 6 }}
-                      className="absolute left-8 top-8 z-20 min-w-[150px]"
-                      style={{
-                        background: 'hsl(var(--card) / 0.95)',
-                        backdropFilter: 'blur(24px)',
-                        border: `0.5px solid ${color}25`,
-                        borderRadius: 14,
-                        padding: '10px 14px',
-                        boxShadow: `0 8px 32px hsl(var(--background) / 0.6)`,
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <p className="text-[11px] font-semibold text-foreground">{m.assetId}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{m.location}</p>
-                      <div className="flex items-center gap-1.5 mt-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
-                        <span className="text-[9px] font-medium" style={{ color }}>{statusLabel(m)}</span>
-                      </div>
-                      <button
-                        onClick={() => navigate(`/pre-inspection/${m.id}`)}
-                        className="mt-2 w-full text-[10px] font-semibold py-1.5 rounded-lg transition-colors"
-                        style={{
-                          background: `${color}15`,
-                          color: color,
-                          border: `0.5px solid ${color}25`,
-                        }}
-                      >
-                        Inspect →
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.button>
-            );
-          })}
+                  {/* Inner dot */}
+                  <circle cx={cx} cy={cy} r="4" fill={color} filter="url(#glow)" />
 
-          {/* Bottom legend */}
-          <div className="absolute bottom-3 left-3 flex items-center gap-3 px-3 py-1.5 rounded-xl z-10"
+                  {/* Label background */}
+                  <rect
+                    x={cx + 14}
+                    y={cy - 9}
+                    width={m.assetId.length * 7.5 + 14}
+                    height="18"
+                    rx="9"
+                    fill="hsl(var(--card))"
+                    fillOpacity="0.9"
+                    stroke="hsl(var(--border))"
+                    strokeOpacity="0.2"
+                    strokeWidth="0.5"
+                  />
+                  <text
+                    x={cx + 21}
+                    y={cy + 3}
+                    fill="hsl(var(--foreground))"
+                    fontSize="10"
+                    fontWeight="600"
+                    fontFamily="-apple-system, system-ui, sans-serif"
+                  >
+                    {m.assetId}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* Compass */}
+            <g transform={`translate(${mapW - 28}, 24)`}>
+              <line x1="0" y1="-10" x2="0" y2="10" stroke="hsl(var(--muted-foreground))" strokeOpacity="0.3" strokeWidth="0.8" />
+              <text x="0" y="-14" textAnchor="middle" fill="hsl(var(--status-fail))" fontSize="9" fontWeight="700">N</text>
+              <line x1="-4" y1="-6" x2="0" y2="-10" stroke="hsl(var(--muted-foreground))" strokeOpacity="0.3" strokeWidth="0.8" />
+              <line x1="4" y1="-6" x2="0" y2="-10" stroke="hsl(var(--muted-foreground))" strokeOpacity="0.3" strokeWidth="0.8" />
+            </g>
+          </svg>
+
+          {/* Legend overlay */}
+          <div
+            className="absolute bottom-4 left-4 flex items-center gap-3 px-3 py-1.5 rounded-xl"
             style={{
               background: 'hsl(var(--card) / 0.85)',
               backdropFilter: 'blur(20px)',
@@ -194,7 +177,8 @@ export function FleetMap() {
             className="ios-cell py-3.5 w-full text-left active:bg-foreground/[0.03] transition-colors"
             style={i < mockMachines.length - 1 ? { borderBottom: '0.33px solid hsl(var(--border) / 0.3)' } : {}}
           >
-            <div className="w-[32px] h-[32px] rounded-[10px] flex items-center justify-center shrink-0"
+            <div
+              className="w-[32px] h-[32px] rounded-[10px] flex items-center justify-center shrink-0"
               style={{ background: `${statusColor(m)}15` }}
             >
               <Navigation className="w-[14px] h-[14px]" style={{ color: statusColor(m) }} />
