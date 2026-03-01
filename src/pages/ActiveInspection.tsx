@@ -1,6 +1,6 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { mockMachines, inspectionFormSections } from '@/lib/mock-data';
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Square, Camera, Mic, MicOff, Upload, AlertCircle, Volume2, Play, Pause, SkipForward, Film } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useInspectionAI } from '@/hooks/useInspectionAI';
@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { LiveFormChecklist } from '@/components/inspection/LiveFormChecklist';
 import { CameraOverlay } from '@/components/inspection/CameraOverlay';
 import { VoiceAgent, FormState } from '@/components/inspection/VoiceAgent';
+import { buildSensorContextForAI, buildSensorSnapshot } from '@/lib/sensor-data';
 
 export default function ActiveInspection() {
   const { machineId } = useParams();
@@ -47,9 +48,13 @@ export default function ActiveInspection() {
 
   const totalFields = inspectionFormSections.reduce((acc, s) => acc + s.items.length, 0);
 
+  // Build sensor context for AI cross-reference
+  const sensorContext = useMemo(() => buildSensorContextForAI(), []);
+  const sensorSnapshot = useMemo(() => buildSensorSnapshot(), []);
+
   const {
     analyzedItems, isAnalyzing, error: aiError, addTranscript, addFrame, analyzeNow, itemCount, registerFrameCapture, setManualItem,
-  } = useInspectionAI(machine?.activeFaultCodes ?? []);
+  } = useInspectionAI(machine?.activeFaultCodes ?? [], undefined, sensorContext);
 
   const speech = useSpeechRecognition({
     onTranscript: useCallback((text: string) => {
@@ -649,7 +654,7 @@ export default function ActiveInspection() {
         </div>
       </div>
 
-      {!isUploadMode && <VoiceAgent formState={formState} setFormState={setFormState} speechTranscript={committedTexts.join(' ')} />}
+      {!isUploadMode && <VoiceAgent formState={formState} setFormState={setFormState} speechTranscript={committedTexts.join(' ')} sensorSnapshot={sensorSnapshot} />}
 
       {/* Bottom controls */}
       <div className="p-4 bg-background/80 backdrop-blur-2xl border-t border-border/40 safe-bottom shrink-0">

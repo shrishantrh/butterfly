@@ -382,32 +382,87 @@ export default function Debrief() {
               )}
             </button>
 
-            {/* AI Validation (compact) */}
-            {analysis.aiValidationSummary && analysis.aiValidationSummary.disagreements.length > 0 && (
-              <button onClick={() => toggleExpand('validation')} className="w-full rounded-2xl bg-amber-500/5 border border-amber-500/15 overflow-hidden text-left">
-                <div className="px-4 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Eye className="w-4 h-4 text-amber-400" />
-                    <span className="text-sm font-semibold text-zinc-300">AI Flagged {analysis.aiValidationSummary.disagreements.length} Discrepanc{analysis.aiValidationSummary.disagreements.length === 1 ? 'y' : 'ies'}</span>
+            {/* AI Validation — sensor-backed disagreements */}
+            {(() => {
+              // Collect sensor-backed disagreements from inspection items
+              const sensorDisagreements = sections.flatMap(s =>
+                s.items.filter(item => {
+                  const ai = item as any;
+                  return ai.aiAgreement === 'disagree' && ai.sensorEvidence;
+                }).map(item => {
+                  const ai = item as any;
+                  return {
+                    itemId: item.id,
+                    itemLabel: item.label,
+                    inspectorStatus: item.status,
+                    inspectorComment: item.comment,
+                    aiVisualNote: ai.aiVisualNote,
+                    sensorEvidence: ai.sensorEvidence as { sensorLabel: string; latestValue: number; unit: string; status: string; time: string },
+                  };
+                })
+              );
+              // Also include debrief-level disagreements
+              const debriefDisagreements = analysis.aiValidationSummary?.disagreements || [];
+              const totalDisagreements = sensorDisagreements.length + debriefDisagreements.length;
+
+              if (totalDisagreements === 0) return null;
+
+              return (
+                <button onClick={() => toggleExpand('validation')} className="w-full rounded-2xl bg-amber-500/5 border border-amber-500/15 overflow-hidden text-left">
+                  <div className="px-4 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Eye className="w-4 h-4 text-amber-400" />
+                      <span className="text-sm font-semibold text-zinc-300">AI Flagged {totalDisagreements} Discrepanc{totalDisagreements === 1 ? 'y' : 'ies'}</span>
+                    </div>
+                    <ChevronDown className={`w-4 h-4 text-zinc-500 transition-transform ${expandedCards.has('validation') ? 'rotate-180' : ''}`} />
                   </div>
-                  <ChevronDown className={`w-4 h-4 text-zinc-500 transition-transform ${expandedCards.has('validation') ? 'rotate-180' : ''}`} />
-                </div>
-                {expandedCards.has('validation') && (
-                  <div className="px-4 pb-4 space-y-2 border-t border-amber-500/10 pt-3">
-                    {analysis.aiValidationSummary.disagreements.map((d, i) => (
-                      <div key={i} className="rounded-lg bg-zinc-900/60 p-3">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-mono text-[11px] text-zinc-500">{d.itemId}</span>
-                          <span className="text-xs font-semibold text-zinc-300">{d.itemLabel}</span>
-                          <span className={`text-[9px] font-bold uppercase ml-auto ${d.severity === 'high' ? 'text-red-400' : 'text-amber-400'}`}>{d.severity}</span>
+                  {expandedCards.has('validation') && (
+                    <div className="px-4 pb-4 space-y-2 border-t border-amber-500/10 pt-3">
+                      {/* Sensor-backed disagreements — shown prominently with data evidence */}
+                      {sensorDisagreements.map((d, i) => (
+                        <div key={`sensor-${i}`} className="rounded-lg bg-zinc-900/60 p-3 space-y-2">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-mono text-[11px] text-zinc-500">{d.itemId}</span>
+                            <span className="text-xs font-semibold text-zinc-300">{d.itemLabel}</span>
+                            <span className="text-[9px] font-bold uppercase ml-auto text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">SENSOR CONFLICT</span>
+                          </div>
+                          {/* Inspector vs AI side by side */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="rounded-lg bg-zinc-800/50 p-2.5">
+                              <p className="text-[9px] text-zinc-500 uppercase tracking-wider mb-1">Inspector Says</p>
+                              <p className="text-xs text-zinc-200 font-semibold uppercase">{d.inspectorStatus}</p>
+                              {d.inspectorComment && <p className="text-[10px] text-zinc-400 mt-1 leading-snug">{d.inspectorComment}</p>}
+                            </div>
+                            <div className="rounded-lg bg-red-500/5 border border-red-500/10 p-2.5">
+                              <p className="text-[9px] text-red-400 uppercase tracking-wider mb-1">Telemetry Shows</p>
+                              <p className="text-lg font-bold font-mono text-red-400 leading-none">
+                                {d.sensorEvidence.latestValue}<span className="text-[10px] text-zinc-500 ml-1">{d.sensorEvidence.unit}</span>
+                              </p>
+                              <p className="text-[10px] text-zinc-400 mt-1">{d.sensorEvidence.sensorLabel} · {d.sensorEvidence.status.toUpperCase()}</p>
+                              <p className="text-[9px] text-zinc-600 mt-0.5">at {d.sensorEvidence.time}</p>
+                            </div>
+                          </div>
+                          {d.aiVisualNote && (
+                            <p className="text-[10px] text-amber-400 leading-snug">AI Note: {d.aiVisualNote}</p>
+                          )}
                         </div>
-                        <p className="text-xs text-zinc-400">{d.concern}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </button>
-            )}
+                      ))}
+                      {/* Standard debrief disagreements */}
+                      {debriefDisagreements.map((d, i) => (
+                        <div key={`debrief-${i}`} className="rounded-lg bg-zinc-900/60 p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-mono text-[11px] text-zinc-500">{d.itemId}</span>
+                            <span className="text-xs font-semibold text-zinc-300">{d.itemLabel}</span>
+                            <span className={`text-[9px] font-bold uppercase ml-auto ${d.severity === 'high' ? 'text-red-400' : 'text-amber-400'}`}>{d.severity}</span>
+                          </div>
+                          <p className="text-xs text-zinc-400">{d.concern}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </button>
+              );
+            })()}
 
             {/* ─── TABS ─── */}
             <div className="flex gap-1 p-1 rounded-xl bg-zinc-900/80 border border-zinc-800/50">
