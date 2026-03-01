@@ -41,6 +41,7 @@
     --status-monitor: 38 92% 50%;
     --status-fail: 0 72% 50%;
     --status-normal: 220 8% 44%;
+    --status-conflicted: 280 70% 55%;
 
     /* Sensor */
     --sensor: 190 80% 50%;
@@ -140,6 +141,11 @@
 
   .status-dot-normal {
     background-color: hsl(var(--status-normal));
+  }
+
+  .status-dot-conflicted {
+    background-color: hsl(var(--status-conflicted));
+    box-shadow: 0 0 6px hsl(var(--status-conflicted) / 0.4);
   }
 
   .glow-primary {
