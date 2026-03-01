@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { Mic, Bot } from 'lucide-react';
 import { inspectionFormSections } from '@/lib/mock-data';
 import type { SensorSnapshot } from '@/lib/sensor-data';
+import { detectSensorConflicts, buildConflictInterjection } from '@/lib/sensor-conflict-detector';
 
 export interface FormComponentState {
   id: string;
@@ -51,6 +52,8 @@ export function VoiceAgent({ formState, setFormState, speechTranscript, sensorSn
   const sensorRef = useRef<SensorSnapshot[]>(sensorSnapshot || []);
   sensorRef.current = sensorSnapshot || [];
   const lastProcessedTranscript = useRef('');
+  const lastConflictCheck = useRef('');
+  const pendingConflictMessage = useRef<string | null>(null);
   const conversationHistory = useRef<Array<{ role: 'user' | 'agent'; text: string }>>([]);
   const wasSpeakingRef = useRef(false);
   const autoDisconnectTimer = useRef<number | null>(null);
@@ -64,6 +67,10 @@ export function VoiceAgent({ formState, setFormState, speechTranscript, sensorSn
             ? buildSensorSummaryForAgent(sensorRef.current)
             : 'No sensor data available.';
 
+          // Check if this connection was triggered by a sensor conflict
+          const conflictMsg = pendingConflictMessage.current;
+          pendingConflictMessage.current = null;
+
           const context = {
             formSchema: buildFormSchemaDescription(),
             currentState: formStateRef.current,
@@ -72,7 +79,9 @@ export function VoiceAgent({ formState, setFormState, speechTranscript, sensorSn
             previousConversation: conversationHistory.current.length > 0
               ? conversationHistory.current
               : 'No previous conversation — this is the first activation.',
-            instruction: `You have access to real-time sensor telemetry data. CRITICAL BEHAVIOR: If the inspector states something about a component's condition, cross-reference it with the sensor data. If the sensor data CONTRADICTS the inspector (e.g. inspector says "battery voltage is fine" but sensor shows 11.5V which is below the 11.8V warning threshold), you MUST interject and say something like: "Hold on — the telemetry shows battery voltage at 11.5 volts, which is below the 11.8 volt warning threshold. That reading suggests it's not fine." Be specific with the actual value and threshold. Be concise — max 2 sentences. If there's no conflict, don't mention telemetry unless asked.`,
+            instruction: conflictMsg
+              ? conflictMsg
+              : `You have access to real-time sensor telemetry data. CRITICAL BEHAVIOR: If the inspector states something about a component's condition, cross-reference it with the sensor data. If the sensor data CONTRADICTS the inspector (e.g. inspector says "battery voltage is fine" but sensor shows 11.5V which is below the 11.8V warning threshold), you MUST interject and say something like: "Hold on — the telemetry shows battery voltage at 11.5 volts, which is below the 11.8 volt warning threshold. That reading suggests it's not fine." Be specific with the actual value and threshold. Be concise — max 2 sentences. If there's no conflict, don't mention telemetry unless asked.`,
           };
           conversation.sendContextualUpdate(JSON.stringify(context));
         } catch (e) {
@@ -123,6 +132,28 @@ export function VoiceAgent({ formState, setFormState, speechTranscript, sensorSn
       startSession();
     }
   }, [speechTranscript, wakeWordCooldown, conversation.status]);
+
+  // Auto-detect sensor conflicts from speech and trigger interjection
+  useEffect(() => {
+    if (!speechTranscript || conversation.status === 'connected') return;
+    if (sensorRef.current.length === 0) return;
+
+    // Only check new content since last conflict check
+    const newContent = speechTranscript.slice(lastConflictCheck.current.length);
+    if (newContent.length < 15) return; // Need enough context
+    lastConflictCheck.current = speechTranscript;
+
+    const conflicts = detectSensorConflicts(newContent, sensorRef.current);
+    if (conflicts.length > 0) {
+      const conflict = conflicts[0]; // Handle the first conflict
+      console.log('[VoiceAgent] Sensor conflict detected!', conflict.sensorLabel, conflict.latestValue, conflict.unit);
+
+      // Set the conflict message so the agent speaks it upon connecting
+      pendingConflictMessage.current = buildConflictInterjection(conflict);
+      setWakeWordCooldown(true);
+      startSession();
+    }
+  }, [speechTranscript, conversation.status]);
 
   // Auto-disconnect after agent finishes speaking
   useEffect(() => {

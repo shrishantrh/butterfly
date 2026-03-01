@@ -759,6 +759,73 @@ export default function Debrief() {
                     )}
                   </div>
                 )}
+
+                {/* AI Disagreements with sensor evidence */}
+                {(() => {
+                  const disagreements = sections.flatMap(s => s.items.filter(i => (i as any).aiAgreement === 'disagree'));
+                  if (disagreements.length === 0) return null;
+                  return (
+                    <div className="rounded-xl bg-red-500/5 border border-red-500/15 p-4 space-y-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <AlertTriangle className="w-4 h-4 text-red-400" />
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-red-400">AI Disagreements ({disagreements.length})</p>
+                      </div>
+                      {disagreements.map((item) => {
+                        const ai = item as any;
+                        return (
+                          <div key={item.id} className="rounded-lg bg-zinc-900/60 border border-zinc-800/40 p-3">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-mono text-zinc-600">{item.id}</span>
+                                <span className="text-xs font-semibold text-zinc-200">{item.label}</span>
+                              </div>
+                              <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded ${
+                                item.status === 'pass' ? 'bg-emerald-500/15 text-emerald-400' :
+                                item.status === 'monitor' ? 'bg-amber-500/15 text-amber-400' :
+                                item.status === 'fail' ? 'bg-red-500/15 text-red-400' :
+                                'bg-zinc-700 text-zinc-400'
+                              }`}>{item.status}</span>
+                            </div>
+                            {/* Inspector says vs AI says */}
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                              <div className="rounded-md bg-zinc-800/50 p-2">
+                                <p className="text-[9px] font-bold uppercase text-zinc-500 mb-0.5">Inspector Says</p>
+                                <p className="text-[11px] text-zinc-300">{item.comment || `Marked as ${item.status}`}</p>
+                              </div>
+                              <div className="rounded-md bg-red-500/8 p-2">
+                                <p className="text-[9px] font-bold uppercase text-red-400/70 mb-0.5">AI Says</p>
+                                <p className="text-[11px] text-zinc-300">{ai.aiVisualNote || 'Telemetry contradicts this rating.'}</p>
+                              </div>
+                            </div>
+                            {/* Sensor evidence */}
+                            {ai.sensorEvidence && (
+                              <div className="mt-2 rounded-md bg-amber-500/5 border border-amber-500/10 p-2">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <Target className="w-3 h-3 text-amber-400" />
+                                  <span className="text-[9px] font-bold uppercase tracking-widest text-amber-400">Telemetry Evidence</span>
+                                </div>
+                                <div className="flex items-baseline gap-2">
+                                  <span className="text-xs text-zinc-300">{ai.sensorEvidence.sensorLabel}</span>
+                                  <span className={`text-sm font-bold font-mono ${
+                                    ai.sensorEvidence.status === 'critical' ? 'text-red-400' :
+                                    ai.sensorEvidence.status === 'warning' ? 'text-amber-400' :
+                                    'text-zinc-200'
+                                  }`}>{ai.sensorEvidence.latestValue} {ai.sensorEvidence.unit}</span>
+                                  <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                                    ai.sensorEvidence.status === 'critical' ? 'bg-red-500/15 text-red-400' :
+                                    ai.sensorEvidence.status === 'warning' ? 'bg-amber-500/15 text-amber-400' :
+                                    'bg-zinc-700 text-zinc-400'
+                                  }`}>{ai.sensorEvidence.status}</span>
+                                </div>
+                                <p className="text-[9px] text-zinc-500 mt-0.5">at {ai.sensorEvidence.time}</p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </>
