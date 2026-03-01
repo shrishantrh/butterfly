@@ -91,8 +91,8 @@ export default function InspectionHistory() {
                   <button
                     key={insp.id}
                     onClick={() => navigate(`/inspection-detail/${insp.id}`)}
-                    className="w-full text-left px-4 py-4 active:bg-white/[0.03] transition-colors"
-                    style={i < inspections.length - 1 ? { borderBottom: '0.33px solid hsla(220, 10%, 24%, 0.3)' } : {}}
+                    className="w-full text-left px-4 py-4 active:bg-foreground/[0.03] transition-colors"
+                    style={i < inspections.length - 1 ? { borderBottom: '0.33px solid hsl(var(--border) / 0.3)' } : {}}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">

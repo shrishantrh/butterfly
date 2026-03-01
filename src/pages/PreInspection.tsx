@@ -457,7 +457,7 @@ export default function PreInspection() {
         <div className="mx-5 ios-card">
           <button
             onClick={() => setActiveSection(activeSection === 'telemetry' ? null : 'telemetry')}
-            className="ios-cell py-4 w-full active:bg-white/[0.03] transition-colors"
+            className="ios-cell py-4 w-full active:bg-foreground/[0.03] transition-colors"
           >
             <Activity className="w-5 h-5 text-primary shrink-0" />
             <span className="ios-body text-foreground flex-1">Sensor Dashboard</span>
@@ -525,7 +525,7 @@ export default function PreInspection() {
         <div className="mx-5 ios-card">
           <button
             onClick={() => setActiveSection(activeSection === 'reports' ? null : 'reports')}
-            className="ios-cell py-4 w-full active:bg-white/[0.03] transition-colors"
+            className="ios-cell py-4 w-full active:bg-foreground/[0.03] transition-colors"
           >
             <History className="w-5 h-5 text-primary shrink-0" />
             <span className="ios-body text-foreground flex-1">View Reports</span>

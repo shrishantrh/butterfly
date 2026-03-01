@@ -102,11 +102,19 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string,
               finalStatus = 'conflicted';
             }
 
+            // Only update if new item or severity increased
             if (!existing || (severityOrder[finalStatus] ?? 0) >= (severityOrder[existing.status] ?? 0)) {
+              // Only capture a new photo if this is a NEW item (no existing photo)
+              // or if the status actually changed (re-evaluation)
+              const isNewItem = !existing;
+              const statusChanged = existing && existing.status !== finalStatus;
+              const commentChanged = existing && item.comment && existing.comment !== item.comment;
+              const shouldCaptureNewPhoto = isNewItem || statusChanged || commentChanged;
+
               next.set(item.id, {
                 ...item,
                 status: finalStatus,
-                photoUrl: frameUrl || existing?.photoUrl,
+                photoUrl: shouldCaptureNewPhoto ? (frameUrl || existing?.photoUrl) : (existing?.photoUrl || frameUrl),
                 annotation: item.annotation || existing?.annotation,
                 sensorEvidence: item.sensorEvidence || existing?.sensorEvidence,
               });

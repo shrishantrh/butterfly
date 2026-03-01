@@ -127,7 +127,7 @@ export function FleetMap() {
 
                   {/* Label */}
                   <rect x={cx + 14} y={cy - 12} width={68} height={22} rx={6}
-                    fill="hsla(224, 14%, 8%, 0.85)" stroke={color} strokeWidth="0.5" strokeOpacity="0.3" />
+                    fill="hsl(var(--card))" stroke={color} strokeWidth="0.5" strokeOpacity="0.3" />
                   <text x={cx + 18} y={cy + 2} fill="hsl(var(--foreground))" fontSize="9" fontWeight="600" fontFamily="SF Mono, monospace">
                     {m.assetId}
                   </text>
@@ -137,7 +137,7 @@ export function FleetMap() {
 
             {/* Compass */}
             <g transform={`translate(${mapW - 30}, 25)`}>
-              <circle r="14" fill="hsla(224, 14%, 8%, 0.6)" stroke="hsla(210, 20%, 40%, 0.1)" strokeWidth="0.5" />
+              <circle r="14" fill="hsl(var(--card) / 0.6)" stroke="hsl(var(--border) / 0.3)" strokeWidth="0.5" />
               <text textAnchor="middle" y="-3" fill="hsl(var(--primary))" fontSize="7" fontWeight="700">N</text>
               <line x1="0" y1="1" x2="0" y2="8" stroke="hsl(var(--muted-foreground))" strokeWidth="1" opacity="0.3" />
             </g>
@@ -146,9 +146,9 @@ export function FleetMap() {
           {/* Legend overlay */}
           <div className="absolute bottom-3 left-3 flex items-center gap-3 px-3 py-1.5 rounded-xl"
             style={{
-              background: 'hsla(224, 14%, 8%, 0.7)',
+              background: 'hsl(var(--card) / 0.85)',
               backdropFilter: 'blur(20px)',
-              border: '0.5px solid hsla(210, 20%, 40%, 0.1)',
+              border: '0.5px solid hsl(var(--border) / 0.3)',
             }}
           >
             {[
@@ -172,8 +172,8 @@ export function FleetMap() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 + i * 0.05, duration: 0.3 }}
             onClick={() => navigate(`/pre-inspection/${m.id}`)}
-            className="ios-cell py-3.5 w-full text-left active:bg-white/[0.03] transition-colors"
-            style={i < mockMachines.length - 1 ? { borderBottom: '0.33px solid hsla(210, 20%, 40%, 0.08)' } : {}}
+            className="ios-cell py-3.5 w-full text-left active:bg-foreground/[0.03] transition-colors"
+            style={i < mockMachines.length - 1 ? { borderBottom: '0.33px solid hsl(var(--border) / 0.3)' } : {}}
           >
             <div className="w-[32px] h-[32px] rounded-[10px] flex items-center justify-center shrink-0"
               style={{
