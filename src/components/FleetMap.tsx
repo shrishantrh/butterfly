@@ -1,25 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import { mockMachines } from '@/lib/mock-data';
-import { motion } from 'framer-motion';
-import { MapPin, Navigation, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Navigation, ChevronRight, Maximize2, RotateCcw, Eye } from 'lucide-react';
+import { useState, useRef } from 'react';
 
-// Simple SVG map illustration showing positions
 export function FleetMap() {
   const navigate = useNavigate();
-
-  // Normalize GPS coords to map space
-  const lats = mockMachines.map(m => m.gpsCoords.lat);
-  const lngs = mockMachines.map(m => m.gpsCoords.lng);
-  const latMin = Math.min(...lats) - 0.005;
-  const latMax = Math.max(...lats) + 0.005;
-  const lngMin = Math.min(...lngs) - 0.005;
-  const lngMax = Math.max(...lngs) + 0.005;
-
-  const mapW = 360;
-  const mapH = 280;
-
-  const toX = (lng: number) => ((lng - lngMin) / (lngMax - lngMin)) * (mapW - 60) + 30;
-  const toY = (lat: number) => mapH - ((lat - latMin) / (latMax - latMin)) * (mapH - 60) - 30;
+  const [selectedMachine, setSelectedMachine] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const statusColor = (m: typeof mockMachines[0]) => {
     if (m.activeFaultCodes.some(f => f.severity === 'critical')) return 'hsl(var(--status-fail))';
@@ -27,124 +16,160 @@ export function FleetMap() {
     return 'hsl(var(--status-pass))';
   };
 
+  const statusLabel = (m: typeof mockMachines[0]) => {
+    if (m.activeFaultCodes.some(f => f.severity === 'critical')) return 'Critical';
+    if (m.activeFaultCodes.length > 0) return 'Warning';
+    return 'Online';
+  };
+
+  // Position machine markers around the 3D model viewport
+  const markerPositions = [
+    { top: '18%', left: '12%' },
+    { top: '72%', left: '78%' },
+    { top: '28%', right: '10%' },
+    { top: '65%', left: '15%' },
+    { top: '45%', right: '8%' },
+  ];
+
+  const toggleFullscreen = () => {
+    if (!isFullscreen && containerRef.current) {
+      containerRef.current.requestFullscreen?.();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen?.();
+      setIsFullscreen(false);
+    }
+  };
+
   return (
     <div>
-      {/* Map visualization */}
-      <div className="mx-5 ios-card overflow-hidden">
-        <div className="relative">
-          <svg
-            viewBox={`0 0 ${mapW} ${mapH}`}
-            className="w-full"
-            style={{ height: 280 }}
-          >
-            <defs>
-              <radialGradient id="mapBg" cx="50%" cy="50%" r="60%">
-                <stop offset="0%" stopColor="hsl(var(--surface-3))" stopOpacity="0.6" />
-                <stop offset="100%" stopColor="hsl(var(--surface-1))" stopOpacity="0.3" />
-              </radialGradient>
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="4" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-              <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
-                <path d="M 30 0 L 0 0 0 30" fill="none" stroke="hsla(210, 20%, 40%, 0.06)" strokeWidth="0.5" />
-              </pattern>
-            </defs>
+      {/* 3D Model Viewer */}
+      <div className="mx-5 ios-card overflow-hidden" ref={containerRef}>
+        <div className="relative" style={{ height: isFullscreen ? '100vh' : 340 }}>
+          {/* Sketchfab Embed */}
+          <iframe
+            title="Excavator (CAT) 3D Model"
+            src="https://sketchfab.com/models/5f195244108c46e495a1e78040f02f7e/embed?autostart=1&ui_hint=0&ui_theme=dark&dnt=1&ui_infos=0&ui_watermark_link=0&ui_watermark=0&ui_ar=0&ui_help=0&ui_settings=0&ui_inspector=0&ui_fullscreen=0&ui_annotations=0&ui_vr=0&ui_color=FFCD11&preload=1&transparent=1&camera=0"
+            className="absolute inset-0 w-full h-full"
+            style={{ border: 'none', background: 'transparent' }}
+            allow="autoplay; fullscreen; xr-spatial-tracking"
+          />
 
-            {/* Background */}
-            <rect width={mapW} height={mapH} fill="url(#mapBg)" rx="0" />
-            <rect width={mapW} height={mapH} fill="url(#grid)" />
+          {/* Gradient overlays for depth */}
+          <div className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'linear-gradient(180deg, hsl(var(--background) / 0.3) 0%, transparent 20%, transparent 80%, hsl(var(--background) / 0.5) 100%)',
+            }}
+          />
 
-            {/* Terrain contours */}
-            {[0.3, 0.5, 0.7].map((r, i) => (
-              <ellipse
-                key={i}
-                cx={mapW * 0.45}
-                cy={mapH * 0.5}
-                rx={mapW * r}
-                ry={mapH * r * 0.65}
-                fill="none"
-                stroke="hsla(210, 20%, 40%, 0.04)"
-                strokeWidth="0.5"
-                strokeDasharray="4 8"
-              />
-            ))}
+          {/* Floating machine markers */}
+          {mockMachines.slice(0, 5).map((m, i) => {
+            const pos = markerPositions[i] || markerPositions[0];
+            const color = statusColor(m);
+            const isSelected = selectedMachine === m.id;
 
-            {/* Roads */}
-            <path
-              d={`M 10,${mapH * 0.7} Q ${mapW * 0.3},${mapH * 0.5} ${mapW * 0.6},${mapH * 0.4} T ${mapW - 10},${mapH * 0.3}`}
-              fill="none"
-              stroke="hsla(210, 20%, 40%, 0.1)"
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-            <path
-              d={`M ${mapW * 0.2},10 Q ${mapW * 0.35},${mapH * 0.4} ${mapW * 0.5},${mapH - 10}`}
-              fill="none"
-              stroke="hsla(210, 20%, 40%, 0.08)"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeDasharray="6 4"
-            />
-
-            {/* Site areas */}
-            {mockMachines.map((m, i) => {
-              const cx = toX(m.gpsCoords.lng);
-              const cy = toY(m.gpsCoords.lat);
-              return (
-                <g key={`area-${m.id}`}>
-                  <circle cx={cx} cy={cy} r={35} fill={statusColor(m)} fillOpacity={0.04} />
-                  <circle cx={cx} cy={cy} r={35} fill="none" stroke={statusColor(m)} strokeOpacity={0.1} strokeWidth="0.5" strokeDasharray="3 3" />
-                </g>
-              );
-            })}
-
-            {/* Machine markers */}
-            {mockMachines.map((m, i) => {
-              const cx = toX(m.gpsCoords.lng);
-              const cy = toY(m.gpsCoords.lat);
-              const color = statusColor(m);
-              return (
-                <g
-                  key={m.id}
-                  className="cursor-pointer"
-                  onClick={() => navigate(`/pre-inspection/${m.id}`)}
+            return (
+              <motion.button
+                key={m.id}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.5 + i * 0.12, type: 'spring', stiffness: 300 }}
+                className="absolute z-10 group"
+                style={{ ...pos } as React.CSSProperties}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedMachine(isSelected ? null : m.id);
+                }}
+              >
+                {/* Pulse */}
+                <span className="absolute inset-0 rounded-full animate-ping"
+                  style={{
+                    background: color,
+                    opacity: 0.2,
+                    animationDuration: '2.5s',
+                  }}
+                />
+                {/* Dot */}
+                <span className="relative flex items-center justify-center w-5 h-5 rounded-full"
+                  style={{
+                    background: `${color}25`,
+                    border: `1.5px solid ${color}`,
+                    boxShadow: `0 0 12px ${color}40`,
+                  }}
                 >
-                  {/* Pulse ring */}
-                  <circle cx={cx} cy={cy} r={12} fill="none" stroke={color} strokeWidth="1" opacity="0.3">
-                    <animate attributeName="r" from="12" to="22" dur="2s" repeatCount="indefinite" />
-                    <animate attributeName="opacity" from="0.4" to="0" dur="2s" repeatCount="indefinite" />
-                  </circle>
+                  <span className="w-2 h-2 rounded-full" style={{ background: color }} />
+                </span>
 
-                  {/* Outer ring */}
-                  <circle cx={cx} cy={cy} r={12} fill={`${color}`} fillOpacity={0.15} stroke={color} strokeWidth="1" strokeOpacity={0.4} />
+                {/* Expanded info card */}
+                <AnimatePresence>
+                  {isSelected && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8, y: 4 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.8, y: 4 }}
+                      className="absolute left-7 top-1/2 -translate-y-1/2 z-20 min-w-[160px]"
+                      style={{
+                        background: 'hsl(var(--card) / 0.92)',
+                        backdropFilter: 'blur(24px)',
+                        border: `0.5px solid ${color}30`,
+                        borderRadius: 14,
+                        padding: '10px 14px',
+                        boxShadow: `0 8px 32px hsl(var(--background) / 0.5), 0 0 0 0.5px ${color}15`,
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <p className="text-[11px] font-semibold text-foreground">{m.assetId}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{m.location}</p>
+                      <div className="flex items-center gap-1.5 mt-2">
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
+                        <span className="text-[9px] font-medium" style={{ color }}>{statusLabel(m)}</span>
+                      </div>
+                      <button
+                        onClick={() => navigate(`/pre-inspection/${m.id}`)}
+                        className="mt-2 w-full text-[10px] font-semibold py-1.5 rounded-lg transition-colors"
+                        style={{
+                          background: `${color}18`,
+                          color: color,
+                          border: `0.5px solid ${color}30`,
+                        }}
+                      >
+                        Inspect →
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.button>
+            );
+          })}
 
-                  {/* Inner dot */}
-                  <circle cx={cx} cy={cy} r={5} fill={color} filter="url(#glow)" />
+          {/* Top-right controls */}
+          <div className="absolute top-3 right-3 flex gap-1.5 z-10">
+            <button
+              onClick={toggleFullscreen}
+              className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors"
+              style={{
+                background: 'hsl(var(--card) / 0.7)',
+                backdropFilter: 'blur(16px)',
+                border: '0.5px solid hsl(var(--border) / 0.3)',
+              }}
+            >
+              <Maximize2 className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          </div>
 
-                  {/* Label */}
-                  <rect x={cx + 14} y={cy - 12} width={68} height={22} rx={6}
-                    fill="hsl(var(--card))" stroke={color} strokeWidth="0.5" strokeOpacity="0.3" />
-                  <text x={cx + 18} y={cy + 2} fill="hsl(var(--foreground))" fontSize="9" fontWeight="600" fontFamily="SF Mono, monospace">
-                    {m.assetId}
-                  </text>
-                </g>
-              );
-            })}
+          {/* Title badge */}
+          <div className="absolute top-3 left-3 z-10 px-3 py-1.5 rounded-xl"
+            style={{
+              background: 'hsl(var(--card) / 0.8)',
+              backdropFilter: 'blur(20px)',
+              border: '0.5px solid hsl(var(--border) / 0.3)',
+            }}
+          >
+            <p className="text-[10px] font-semibold text-foreground tracking-wide uppercase">Live Fleet · 3D</p>
+          </div>
 
-            {/* Compass */}
-            <g transform={`translate(${mapW - 30}, 25)`}>
-              <circle r="14" fill="hsl(var(--card) / 0.6)" stroke="hsl(var(--border) / 0.3)" strokeWidth="0.5" />
-              <text textAnchor="middle" y="-3" fill="hsl(var(--primary))" fontSize="7" fontWeight="700">N</text>
-              <line x1="0" y1="1" x2="0" y2="8" stroke="hsl(var(--muted-foreground))" strokeWidth="1" opacity="0.3" />
-            </g>
-          </svg>
-
-          {/* Legend overlay */}
-          <div className="absolute bottom-3 left-3 flex items-center gap-3 px-3 py-1.5 rounded-xl"
+          {/* Bottom legend */}
+          <div className="absolute bottom-3 left-3 flex items-center gap-3 px-3 py-1.5 rounded-xl z-10"
             style={{
               background: 'hsl(var(--card) / 0.85)',
               backdropFilter: 'blur(20px)',
@@ -156,15 +181,32 @@ export function FleetMap() {
               ['Warning', 'bg-status-monitor'],
               ['Critical', 'bg-status-fail'],
             ].map(([label, cls]) => (
-              <span key={label} className="flex items-center gap-1.5 ios-caption2 text-muted-foreground">
+              <span key={label} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                 <span className={`w-2 h-2 rounded-full ${cls}`} />
                 {label}
               </span>
             ))}
           </div>
+
+          {/* Interaction hint */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.5 }}
+            className="absolute bottom-3 right-3 z-10 px-2.5 py-1 rounded-lg"
+            style={{
+              background: 'hsl(var(--card) / 0.6)',
+              backdropFilter: 'blur(16px)',
+              border: '0.5px solid hsl(var(--border) / 0.2)',
+            }}
+          >
+            <p className="text-[9px] text-muted-foreground/60 flex items-center gap-1">
+              <RotateCcw className="w-2.5 h-2.5" /> Drag to rotate
+            </p>
+          </motion.div>
         </div>
 
-        {/* Machine list below map */}
+        {/* Machine list below model */}
         {mockMachines.map((m, i) => (
           <motion.button
             key={m.id}
@@ -176,9 +218,7 @@ export function FleetMap() {
             style={i < mockMachines.length - 1 ? { borderBottom: '0.33px solid hsl(var(--border) / 0.3)' } : {}}
           >
             <div className="w-[32px] h-[32px] rounded-[10px] flex items-center justify-center shrink-0"
-              style={{
-                background: `${statusColor(m)}15`,
-              }}
+              style={{ background: `${statusColor(m)}15` }}
             >
               <Navigation className="w-[14px] h-[14px]" style={{ color: statusColor(m) }} />
             </div>
