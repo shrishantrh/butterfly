@@ -330,3 +330,7 @@
       0 2px 8px -2px hsla(225, 30%, 3%, 0.3);
   }
 }
+
+#lovable-badge {
+  display: none !important;
+}
