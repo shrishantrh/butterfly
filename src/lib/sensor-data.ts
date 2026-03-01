@@ -128,6 +128,7 @@ export type DataPoint = { time: string; value: number | null; status: string };
 const CACHE: Record<string, DataPoint[]> = {};
 
 export function getData(key: string, machineId?: string): DataPoint[] {
+  if (!SENSORS[key]) return []; // guard against unknown sensor keys
   const cacheKey = machineId ? `${machineId}:${key}` : key;
   if (CACHE[cacheKey]) return CACHE[cacheKey];
 
