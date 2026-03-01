@@ -151,8 +151,20 @@ export function getData(key: string, machineId?: string): DataPoint[] {
     const label = new Date(startMs + i * 600000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     let val: number | null = null;
     if (i < 6) { val = null; }
-    else if (s.type === 'fuel')  { fuel = Math.max(0, fuel - gauss(rng,0.28,0.04)); val = +fuel.toFixed(1); }
-    else if (s.type === 'def')   { def  = Math.max(0, def  - gauss(rng,0.06,0.01)); val = +def.toFixed(1);  }
+    else if (s.type === 'fuel')  {
+      // Smooth exponential decay — realistic fuel consumption curve
+      const t = (i - 6) / (NUM - 6);
+      const burnRate = 0.0022 + 0.0008 * Math.sin(2 * Math.PI * t * 3); // slight variation
+      fuel = Math.max(0, fuel * (1 - burnRate));
+      val = +fuel.toFixed(1);
+    }
+    else if (s.type === 'def')   {
+      // Very slow, smooth decline
+      const t = (i - 6) / (NUM - 6);
+      const defRate = 0.0004 + 0.0001 * Math.sin(2 * Math.PI * t * 2);
+      def = Math.max(0, def * (1 - defRate));
+      val = +def.toFixed(1);
+    }
     else if (s.type === 'dpf')   { if (i>=85&&i<=90) dpf=Math.max(5,dpf-gauss(rng,8,0.5)); else dpf=Math.min(100,dpf+gauss(rng,0.22,0.04)); val=+dpf.toFixed(1); }
     else if (s.type === 'idle')  { idle=Math.min(100,idle+((i>=42&&i<=48)||(i>=100&&i<=106)?gauss(rng,0.9,0.1):gauss(rng,0.18,0.05))); val=+idle.toFixed(1); }
     else if (s.type === 'smu')   { smu+=10/60; val=+smu.toFixed(2); }

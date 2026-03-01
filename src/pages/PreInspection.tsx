@@ -856,7 +856,15 @@ export default function PreInspection() {
             )}
           </div>
 
-          {/* Specification Grid */}
+          {/* Specification Grid — uses live sensor data for consistency */}
+          {(() => {
+            const fuelData = getData('fuel_level', machineId);
+            const fuelVals = fuelData.filter(d => d.value !== null);
+            const liveFuel = fuelVals.length > 0 ? fuelVals[fuelVals.length - 1].value! : machine.fuelLevel;
+            const smuData = getData('service_meter_hours', machineId);
+            const smuVals = smuData.filter(d => d.value !== null);
+            const liveSmu = smuVals.length > 0 ? Math.round(smuVals[smuVals.length - 1].value!) : machine.smuHours;
+            return (
           <div className="p-4">
             <p className="label-caps mb-3">Specification</p>
             <div className="grid grid-cols-3 gap-2 mb-3">
@@ -865,7 +873,7 @@ export default function PreInspection() {
                   <Clock className="w-3.5 h-3.5 text-primary"/>
                   <span className="text-[10px] text-muted-foreground">SMU</span>
                 </div>
-                <p className="font-mono font-bold text-base text-foreground">{machine.smuHours.toLocaleString()}</p>
+                <p className="font-mono font-bold text-base text-foreground">{liveSmu.toLocaleString()}</p>
                 <p className="text-[9px] text-muted-foreground mt-0.5">hours</p>
               </div>
               <div className="inset-surface p-3 rounded-2xl text-center">
@@ -873,7 +881,7 @@ export default function PreInspection() {
                   <Fuel className="w-3.5 h-3.5 text-primary"/>
                   <span className="text-[10px] text-muted-foreground">Fuel</span>
                 </div>
-                <p className={`font-mono font-bold text-base ${machine.fuelLevel < 25 ? 'text-status-fail' : 'text-foreground'}`}>{machine.fuelLevel}%</p>
+                <p className={`font-mono font-bold text-base ${liveFuel < 25 ? 'text-status-fail' : liveFuel < 40 ? 'text-status-monitor' : 'text-foreground'}`}>{liveFuel.toFixed(0)}%</p>
                 <p className="text-[9px] text-muted-foreground mt-0.5">level</p>
               </div>
               <div className="inset-surface p-3 rounded-2xl text-center">
@@ -895,6 +903,8 @@ export default function PreInspection() {
               </div>
             </div>
           </div>
+            );
+          })()}
         </div>
 
         {/* ── Active Fault Codes ───────────────────────────────────────── */}
