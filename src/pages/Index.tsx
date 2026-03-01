@@ -7,6 +7,8 @@ import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import excavatorHero from '@/assets/cat-320-hero.jpg';
+import appIcon from '/app-icon.png';
 
 const tabVariants = {
   enter: (dir: number) => ({ x: dir > 0 ? 60 : -60, opacity: 0 }),
@@ -59,7 +61,18 @@ const Index = () => {
       {/* Header */}
       <header className="sticky top-0 z-40 glass-surface">
         <div className="px-5 pt-14 pb-2.5 flex items-center justify-between">
-          <h1 className="ios-large-title text-foreground">Fleet</h1>
+          <div className="flex items-center gap-3">
+            <img
+              src={appIcon}
+              alt="Butterfly"
+              className="w-[34px] h-[34px] rounded-[10px] shrink-0"
+              style={{
+                boxShadow: '0 2px 8px hsl(var(--background) / 0.4)',
+                border: '0.5px solid hsl(var(--border) / 0.3)',
+              }}
+            />
+            <h1 className="ios-large-title text-foreground">Fleet</h1>
+          </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <button
@@ -140,37 +153,6 @@ const Index = () => {
                         }}
                       />
 
-                      {/* Status dots on 3D model */}
-                      {(() => {
-                        const color = statusColor(selectedMachine);
-                        const label = statusLabel(selectedMachine);
-                        const dotPositions = [
-                          { top: '25%', left: '35%' },
-                          { top: '55%', left: '60%' },
-                          { top: '40%', right: '25%' },
-                        ];
-                        return dotPositions.map((pos, i) => (
-                          <span
-                            key={i}
-                            className="absolute z-10"
-                            style={pos as React.CSSProperties}
-                          >
-                            <span className="absolute inset-0 rounded-full animate-ping"
-                              style={{ background: color, opacity: 0.15, animationDuration: `${2.5 + i * 0.5}s` }}
-                            />
-                            <span className="relative flex items-center justify-center w-3.5 h-3.5 rounded-full"
-                              style={{
-                                background: `${color}20`,
-                                border: `1.5px solid ${color}`,
-                                boxShadow: `0 0 10px ${color}30`,
-                              }}
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
-                            </span>
-                          </span>
-                        ));
-                      })()}
-
                       {/* Title badge */}
                       <div className="absolute top-3 left-3 z-10 px-3 py-1.5 rounded-xl"
                         style={{
@@ -246,19 +228,20 @@ const Index = () => {
                           ...(isSelected ? { background: 'hsl(var(--primary) / 0.06)' } : {}),
                         }}
                       >
-                        {/* Status indicator */}
-                        <div className="w-[42px] h-[42px] rounded-[12px] flex items-center justify-center shrink-0 relative"
+                        {/* Thumbnail */}
+                        <div className="w-[52px] h-[52px] rounded-[14px] overflow-hidden shrink-0 relative"
                           style={{
-                            background: `${color}12`,
-                            border: isSelected ? `1.5px solid ${color}40` : `0.5px solid ${color}15`,
+                            background: 'linear-gradient(145deg, hsl(var(--muted) / 0.5), hsl(var(--muted) / 0.3))',
+                            border: isSelected ? `1.5px solid ${color}40` : '0.5px solid hsl(var(--border) / 0.2)',
+                            boxShadow: '0 2px 8px -2px hsl(var(--background) / 0.4)',
                           }}
                         >
-                          <span className="w-3 h-3 rounded-full" style={{ background: color }} />
+                          <img src={excavatorHero} alt={machine.model} className="w-full h-full object-cover" />
                           {isSelected && (
-                            <motion.span
-                              layoutId="machine-ring"
-                              className="absolute inset-0 rounded-[12px]"
-                              style={{ border: `2px solid ${color}50` }}
+                            <motion.div
+                              layoutId="machine-select-ring"
+                              className="absolute inset-0 rounded-[14px]"
+                              style={{ border: `2px solid ${color}60` }}
                             />
                           )}
                         </div>
@@ -271,14 +254,17 @@ const Index = () => {
                           <p className="ios-subhead text-muted-foreground truncate mt-0.5">
                             {machine.assetId} · {machine.smuHours.toLocaleString()} hrs
                           </p>
-                          {machine.activeFaultCodes.length > 0 && (
-                            <div className="flex items-center gap-1 mt-1">
-                              <AlertTriangle className="w-3 h-3 text-status-fail" />
-                              <span className="ios-caption font-medium text-status-fail">
+                          <div className="flex items-center gap-2.5 mt-1">
+                            <span className="ios-caption font-medium" style={{ color }}>
+                              {machine.activeFaultCodes.length > 0 ? 'Needs Attention' : 'Ready'}
+                            </span>
+                            {machine.activeFaultCodes.length > 0 && (
+                              <span className="ios-caption font-medium text-status-fail flex items-center gap-1">
+                                <AlertTriangle className="w-3 h-3" />
                                 {machine.activeFaultCodes.length} Fault{machine.activeFaultCodes.length !== 1 ? 's' : ''}
                               </span>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
 
                         <ChevronRight className="w-[14px] h-[14px] text-muted-foreground/20 shrink-0" />
