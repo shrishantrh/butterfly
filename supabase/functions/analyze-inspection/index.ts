@@ -81,10 +81,11 @@ For EVERY item, provide:
 - sensorEvidence: ONLY include when a sensor contradicts or strongly supports the inspector's claim. Include the exact data point.
 
 ## RATING RULES
-- PASS (Green): Functioning normally.
-- MONITOR (Yellow): Wear or minor issue.
-- FAIL (Red): Safety hazard or immediate action.
-- NORMAL (Gray): Routine factual confirmation.
+- PASS (Green): Component is functioning normally, acceptable condition, no issues found. THIS IS THE DEFAULT for anything that looks OK or the inspector confirms is fine.
+- MONITOR (Yellow): Wear, minor issue, or something to watch. Not urgent but needs attention soon.
+- FAIL (Red): Safety hazard, broken, or requires immediate action before operating.
+
+IMPORTANT: Do NOT use "normal" status. If the inspector checks something and it's fine, that is a PASS. Use PASS liberally — any item the inspector looks at and doesn't flag a problem with should be PASS.
 
 ## LANGUAGE RULES
 - Understand jobsite slang: "she's sweating" = seepage = MONITOR.
@@ -179,7 +180,7 @@ serve(async (req) => {
                       type: "object",
                       properties: {
                         id: { type: "string", description: "Form item ID like 1.1, 2.3, 4.5" },
-                        status: { type: "string", enum: ["pass", "monitor", "fail", "normal"] },
+                        status: { type: "string", enum: ["pass", "monitor", "fail"], description: "Use 'pass' for anything OK/normal/fine. Only use 'monitor' or 'fail' for actual issues." },
                         comment: { type: "string", description: "Professional 1-2 sentence finding" },
                         evidence: {
                           type: "array",
@@ -262,7 +263,9 @@ serve(async (req) => {
 
     items = items.filter((item: any) =>
       item && item.id && item.status &&
-      ['pass', 'monitor', 'fail', 'normal'].includes(item.status)
+      ['pass', 'monitor', 'fail', 'normal'].includes(item.status) &&
+      // Remap "normal" to "pass" since they mean the same thing
+      ((item.status === 'normal' ? item.status = 'pass' : true), true)
     );
 
     console.log(`Returning ${items.length} inspection items`);
