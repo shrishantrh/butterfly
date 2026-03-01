@@ -312,6 +312,7 @@ export default function PreInspection() {
   const navigate = useNavigate();
   const machine = mockMachines.find(m => m.id === machineId);
   const [activeSection, setActiveSection] = useState<'telemetry' | 'reports' | null>(null);
+  const [heroMode, setHeroMode] = useState<'2d' | '3d'>('2d');
 
   const tick = useLiveTick(machineId, 5000);
 
@@ -355,11 +356,56 @@ export default function PreInspection() {
       </header>
 
       <div className="pb-44">
-        {/* Hero image */}
+        {/* Hero image / 3D toggle */}
         <div className="relative">
-          <div className="h-[240px] bg-surface-2 overflow-hidden">
-            <img src={excavatorHero} alt={machine.model} className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+          <div className="h-[280px] bg-surface-2 overflow-hidden relative">
+            {heroMode === '2d' ? (
+              <>
+                <img src={excavatorHero} alt={machine.model} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+              </>
+            ) : machine.sketchfabId ? (
+              <>
+                <iframe
+                  title={`${machine.model} 3D`}
+                  src={`https://sketchfab.com/models/${machine.sketchfabId}/embed?autostart=1&ui_hint=0&ui_theme=dark&dnt=1&ui_infos=0&ui_watermark_link=0&ui_watermark=0&ui_ar=0&ui_help=0&ui_settings=0&ui_inspector=0&ui_fullscreen=0&ui_annotations=0&ui_vr=0&ui_color=FFCD11&preload=1&transparent=1&camera=0&autospin=0.06`}
+                  className="absolute inset-0 w-full h-full"
+                  style={{ border: 'none', background: 'transparent' }}
+                  allow="autoplay; fullscreen; xr-spatial-tracking"
+                />
+                <div className="absolute inset-0 pointer-events-none"
+                  style={{ background: 'linear-gradient(180deg, hsl(var(--background) / 0.2) 0%, transparent 15%, transparent 85%, hsl(var(--background) / 0.4) 100%)' }}
+                />
+              </>
+            ) : (
+              <>
+                <img src={excavatorHero} alt={machine.model} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+              </>
+            )}
+
+            {/* 2D / 3D Toggle */}
+            <div className="absolute top-3 left-3 z-10 flex rounded-lg overflow-hidden"
+              style={{
+                background: 'hsl(var(--card) / 0.8)',
+                backdropFilter: 'blur(20px)',
+                border: '0.5px solid hsl(var(--border) / 0.3)',
+              }}
+            >
+              {(['2d', '3d'] as const).map(mode => (
+                <button
+                  key={mode}
+                  onClick={() => setHeroMode(mode)}
+                  className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors"
+                  style={{
+                    background: heroMode === mode ? 'hsl(var(--primary) / 0.2)' : 'transparent',
+                    color: heroMode === mode ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+                  }}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="absolute bottom-4 right-4 ios-footnote font-bold px-3.5 py-2 rounded-xl bg-primary text-primary-foreground shadow-lg">
             {liveFuel.toFixed(0)}% Fuel
