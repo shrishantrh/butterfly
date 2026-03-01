@@ -9,16 +9,16 @@
     --background: 220 16% 4%;
     --foreground: 40 6% 92%;
 
-    --card: 220 14% 7%;
+    --card: 220 14% 8%;
     --card-foreground: 40 6% 92%;
 
-    --popover: 220 14% 7%;
+    --popover: 220 14% 8%;
     --popover-foreground: 40 6% 92%;
 
     --primary: 44 92% 56%;
     --primary-foreground: 220 16% 4%;
 
-    --secondary: 220 12% 11%;
+    --secondary: 220 12% 12%;
     --secondary-foreground: 40 6% 72%;
 
     --muted: 220 12% 10%;
@@ -30,11 +30,11 @@
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 12% 12%;
-    --input: 220 12% 12%;
+    --border: 220 12% 13%;
+    --input: 220 12% 13%;
     --ring: 44 92% 56%;
 
-    --radius: 0.625rem;
+    --radius: 1rem;
 
     /* Status */
     --status-pass: 158 64% 42%;
@@ -47,9 +47,9 @@
     --sensor: 190 80% 50%;
 
     /* Surfaces — layered depth */
-    --surface-1: 220 14% 7%;
-    --surface-2: 220 12% 10%;
-    --surface-3: 220 10% 13%;
+    --surface-1: 220 14% 8%;
+    --surface-2: 220 12% 11%;
+    --surface-3: 220 10% 14%;
 
     /* Glow */
     --glow-primary: 44 92% 56%;
@@ -61,7 +61,7 @@
     --sidebar-primary-foreground: 220 16% 4%;
     --sidebar-accent: 220 12% 11%;
     --sidebar-accent-foreground: 40 6% 72%;
-    --sidebar-border: 220 12% 12%;
+    --sidebar-border: 220 12% 13%;
     --sidebar-ring: 44 92% 56%;
   }
 }
@@ -149,7 +149,7 @@
   }
 
   .glow-primary {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.2), 0 0 60px hsl(var(--primary) / 0.06);
+    box-shadow: 0 0 24px hsl(var(--primary) / 0.25), 0 0 80px hsl(var(--primary) / 0.08);
   }
 
   .glow-sensor {
@@ -157,7 +157,7 @@
   }
 
   .inset-surface {
-    @apply bg-surface-2 rounded-lg;
+    @apply bg-surface-2 rounded-2xl;
     box-shadow: 0 1px 2px 0 hsl(0 0% 0% / 0.15) inset;
   }
 
@@ -177,19 +177,30 @@
 
   /* Refined card */
   .card-elevated {
-    @apply bg-card border border-border/50 rounded-xl;
+    @apply bg-card border border-border/40 rounded-2xl;
     box-shadow: 0 1px 0 0 hsl(0 0% 100% / 0.03) inset,
-                0 2px 8px -2px hsl(0 0% 0% / 0.25);
+                0 4px 12px -4px hsl(0 0% 0% / 0.3);
   }
 
   /* Subtle divider */
   .divider {
-    @apply border-t border-border/40;
+    @apply border-t border-border/30;
   }
 
   /* Label style */
   .label-caps {
     @apply text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground;
     font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  /* Metric pill */
+  .metric-pill {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold font-mono;
+    background: hsl(var(--surface-2));
+    border: 1px solid hsl(var(--border) / 0.5);
+  }
+
+  .metric-pill-status {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold font-mono;
   }
 }
