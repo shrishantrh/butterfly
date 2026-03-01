@@ -16,8 +16,8 @@ export function MachineCard({ machine, showSeparator = true }: MachineCardProps)
   return (
     <button
       onClick={() => navigate(`/pre-inspection/${machine.id}`)}
-      className="w-full text-left flex items-center gap-3.5 px-4 py-3.5 active:bg-white/[0.03] transition-colors"
-      style={showSeparator ? { borderBottom: '0.33px solid hsla(210, 20%, 40%, 0.1)' } : {}}
+      className="w-full text-left flex items-center gap-3.5 px-4 py-3.5 active:bg-foreground/[0.03] transition-colors"
+      style={showSeparator ? { borderBottom: '0.33px solid hsl(var(--border) / 0.3)' } : {}}
     >
       {/* Thumbnail */}
       <div className="w-[52px] h-[52px] rounded-[14px] overflow-hidden shrink-0"

@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useRef } from 'react';
 import { getData } from '@/lib/sensor-data';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const tabVariants = {
   enter: (dir: number) => ({ x: dir > 0 ? 60 : -60, opacity: 0 }),
@@ -50,12 +51,15 @@ const Index = () => {
       <header className="sticky top-0 z-40 glass-surface">
         <div className="px-5 pt-14 pb-2.5 flex items-center justify-between">
           <h1 className="ios-large-title text-foreground">Fleet</h1>
-          <button
-            onClick={() => navigate('/history')}
-            className="glass-icon-btn w-[38px] h-[38px]"
-          >
-            <History className="w-[18px] h-[18px] text-muted-foreground" />
-          </button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <button
+              onClick={() => navigate('/history')}
+              className="glass-icon-btn w-[38px] h-[38px]"
+            >
+              <History className="w-[18px] h-[18px] text-muted-foreground" />
+            </button>
+          </div>
         </div>
 
         {/* Search */}
@@ -151,8 +155,8 @@ const Index = () => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.05 + i * 0.06, duration: 0.3 }}
                         onClick={() => navigate(`/pre-inspection/${m.id}`)}
-                        className="w-full text-left px-4 py-4 active:bg-white/[0.03] transition-colors"
-                        style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsla(210, 20%, 40%, 0.08)' } : {}}
+                        className="w-full text-left px-4 py-4 active:bg-foreground/[0.03] transition-colors"
+                        style={i < arr.length - 1 ? { borderBottom: '0.33px solid hsl(var(--border) / 0.3)' } : {}}
                       >
                         <div className="flex items-center justify-between mb-2">
                           <div>
