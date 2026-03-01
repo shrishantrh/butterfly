@@ -18,6 +18,14 @@ interface AIResult {
   annotation?: string;
   aiAgreement?: 'agree' | 'disagree' | 'uncertain';
   aiVisualNote?: string;
+  sensorEvidence?: {
+    sensorKey: string;
+    sensorLabel: string;
+    latestValue: number;
+    unit: string;
+    status: string;
+    time: string;
+  };
 }
 
 export default function ReviewInspection() {
@@ -48,6 +56,7 @@ export default function ReviewInspection() {
           annotation: result.annotation,
           aiAgreement: result.aiAgreement,
           aiVisualNote: result.aiVisualNote,
+          sensorEvidence: result.sensorEvidence,
         } as any;
         return item;
       }),
@@ -252,6 +261,7 @@ export default function ReviewInspection() {
                           <AIValidationIndicator
                             agreement={aiItem.aiAgreement}
                             visualNote={aiItem.aiVisualNote}
+                            sensorEvidence={aiItem.sensorEvidence}
                           />
                         </div>
                       )}
