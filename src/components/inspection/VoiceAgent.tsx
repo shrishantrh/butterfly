@@ -2,6 +2,7 @@ import { useConversation } from '@elevenlabs/react';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Mic, Bot } from 'lucide-react';
 import { inspectionFormSections } from '@/lib/mock-data';
+import type { SensorSnapshot } from '@/lib/sensor-data';
 
 export interface FormComponentState {
   id: string;
@@ -19,6 +20,7 @@ interface VoiceAgentProps {
   formState: FormState;
   setFormState: React.Dispatch<React.SetStateAction<FormState>>;
   speechTranscript?: string;
+  sensorSnapshot?: SensorSnapshot[];
 }
 
 const AGENT_ID = 'agent_9601kjhjsqyzf4mtbpdfc1m13xs8';
@@ -31,32 +33,46 @@ function buildFormSchemaDescription(): string {
   ).join('\n\n');
 }
 
-export function VoiceAgent({ formState, setFormState, speechTranscript }: VoiceAgentProps) {
+function buildSensorSummaryForAgent(snapshots: SensorSnapshot[]): string {
+  return snapshots.map(s => {
+    const thresholdInfo = s.warnThreshold !== null
+      ? ` [warn ${s.direction === 'above' ? '≥' : '≤'}${s.warnThreshold}, crit ${s.direction === 'above' ? '≥' : '≤'}${s.critThreshold}]`
+      : '';
+    const formItems = s.relatedFormItems.length > 0 ? ` → form items: ${s.relatedFormItems.join(', ')}` : '';
+    return `${s.label}: ${s.latestValue} ${s.unit} (${s.status.toUpperCase()} at ${s.latestTime})${thresholdInfo}${formItems}`;
+  }).join('\n');
+}
+
+export function VoiceAgent({ formState, setFormState, speechTranscript, sensorSnapshot }: VoiceAgentProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [wakeWordCooldown, setWakeWordCooldown] = useState(false);
   const formStateRef = useRef<FormState>(formState);
   formStateRef.current = formState;
+  const sensorRef = useRef<SensorSnapshot[]>(sensorSnapshot || []);
+  sensorRef.current = sensorSnapshot || [];
   const lastProcessedTranscript = useRef('');
-  // Conversation memory — persists across activations
   const conversationHistory = useRef<Array<{ role: 'user' | 'agent'; text: string }>>([]);
-  // Track speaking state to detect when agent finishes responding
   const wasSpeakingRef = useRef(false);
   const autoDisconnectTimer = useRef<number | null>(null);
 
   const conversation = useConversation({
     onConnect: () => {
       console.log('[VoiceAgent] Connected');
-      // Send rich context + conversation memory on connect
       setTimeout(() => {
         try {
+          const sensorSummary = sensorRef.current.length > 0
+            ? buildSensorSummaryForAgent(sensorRef.current)
+            : 'No sensor data available.';
+
           const context = {
             formSchema: buildFormSchemaDescription(),
             currentState: formStateRef.current,
             summary: buildProgressSummary(formStateRef.current),
+            sensorTelemetry: sensorSummary,
             previousConversation: conversationHistory.current.length > 0
               ? conversationHistory.current
               : 'No previous conversation — this is the first activation.',
-            instruction: 'Answer the user\'s question concisely, then stop. You will be disconnected after responding. The user will say "Hey Cat" again if they need you.',
+            instruction: `You have access to real-time sensor telemetry data. CRITICAL BEHAVIOR: If the inspector states something about a component's condition, cross-reference it with the sensor data. If the sensor data CONTRADICTS the inspector (e.g. inspector says "battery voltage is fine" but sensor shows 11.5V which is below the 11.8V warning threshold), you MUST interject and say something like: "Hold on — the telemetry shows battery voltage at 11.5 volts, which is below the 11.8 volt warning threshold. That reading suggests it's not fine." Be specific with the actual value and threshold. Be concise — max 2 sentences. If there's no conflict, don't mention telemetry unless asked.`,
           };
           conversation.sendContextualUpdate(JSON.stringify(context));
         } catch (e) {
@@ -67,18 +83,15 @@ export function VoiceAgent({ formState, setFormState, speechTranscript }: VoiceA
     onDisconnect: () => {
       console.log('[VoiceAgent] Disconnected');
       if (autoDisconnectTimer.current) clearTimeout(autoDisconnectTimer.current);
-      // Allow wake word again after disconnect
       setTimeout(() => setWakeWordCooldown(false), 2000);
     },
     onMessage: (message: any) => {
-      // Capture conversation history for memory
       if (message.type === 'user_transcript' && message.user_transcription_event?.user_transcript) {
         conversationHistory.current.push({ role: 'user', text: message.user_transcription_event.user_transcript });
       }
       if (message.type === 'agent_response' && message.agent_response_event?.agent_response) {
         conversationHistory.current.push({ role: 'agent', text: message.agent_response_event.agent_response });
       }
-      // Keep memory bounded
       if (conversationHistory.current.length > 50) {
         conversationHistory.current = conversationHistory.current.slice(-40);
       }
@@ -91,13 +104,11 @@ export function VoiceAgent({ formState, setFormState, speechTranscript }: VoiceA
     if (!speechTranscript || wakeWordCooldown) return;
     if (conversation.status === 'connected') return;
 
-    // Check only new transcript content
     const newContent = speechTranscript.slice(lastProcessedTranscript.current.length).toLowerCase();
     lastProcessedTranscript.current = speechTranscript;
 
     if (!newContent) return;
 
-    // Detect wake word variations
     const wakePatterns = [
       'hey cat', 'hey kat', 'a cat', 'hey cap',
       'hey cats', 'hay cat', 'hey cut',
@@ -117,16 +128,14 @@ export function VoiceAgent({ formState, setFormState, speechTranscript }: VoiceA
   useEffect(() => {
     const speaking = conversation.isSpeaking;
     if (wasSpeakingRef.current && !speaking && conversation.status === 'connected') {
-      // Agent just stopped speaking — schedule auto-disconnect
       console.log('[VoiceAgent] Agent finished speaking, auto-disconnecting in 3s...');
       autoDisconnectTimer.current = window.setTimeout(() => {
         if (conversation.status === 'connected') {
           console.log('[VoiceAgent] Auto-disconnecting');
           conversation.endSession().catch(() => {});
         }
-      }, 3000); // 3s grace period in case user speaks again
+      }, 3000);
     }
-    // If agent starts speaking again, cancel pending disconnect
     if (speaking && autoDisconnectTimer.current) {
       clearTimeout(autoDisconnectTimer.current);
       autoDisconnectTimer.current = null;
@@ -164,7 +173,6 @@ export function VoiceAgent({ formState, setFormState, speechTranscript }: VoiceA
           getComponentDetails: (params: { componentId: string }) => {
             const comp = formStateRef.current.components[params.componentId];
             if (!comp) {
-              // Try fuzzy match by name
               const match = Object.values(formStateRef.current.components)
                 .find(c => c.name.toLowerCase().includes(params.componentId.toLowerCase()));
               if (match) {
@@ -199,6 +207,37 @@ export function VoiceAgent({ formState, setFormState, speechTranscript }: VoiceA
               .filter(c => c.status === 'fail' || c.status === 'monitor')
               .map(c => ({ id: c.id, name: c.name, status: c.status, notes: c.notes }));
             return JSON.stringify({ count: failed.length, items: failed });
+          },
+          getSensorData: (params: { sensorKey?: string; formItemId?: string }) => {
+            const sensors = sensorRef.current;
+            if (!sensors.length) return JSON.stringify({ error: 'No sensor data available' });
+
+            // Lookup by specific sensor key
+            if (params.sensorKey) {
+              const sensor = sensors.find(s => s.sensorKey === params.sensorKey);
+              if (sensor) return JSON.stringify(sensor);
+              return JSON.stringify({ error: `Sensor '${params.sensorKey}' not found` });
+            }
+
+            // Lookup by form item ID — find sensors related to that form item
+            if (params.formItemId) {
+              const related = sensors.filter(s => s.relatedFormItems.includes(params.formItemId!));
+              if (related.length > 0) return JSON.stringify({ formItemId: params.formItemId, sensors: related });
+              return JSON.stringify({ error: `No sensors mapped to form item '${params.formItemId}'` });
+            }
+
+            // Return all sensors with alerts
+            const alerts = sensors.filter(s => s.status !== 'normal');
+            return JSON.stringify({
+              totalSensors: sensors.length,
+              alertCount: alerts.length,
+              alerts: alerts.map(s => ({
+                label: s.label,
+                value: `${s.latestValue} ${s.unit}`,
+                status: s.status,
+                relatedFormItems: s.relatedFormItems,
+              })),
+            });
           },
           playAcknowledgment: async () => {
             const ctx = new AudioContext();

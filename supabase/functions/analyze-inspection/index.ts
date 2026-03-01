@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `You are an expert CAT 320 Hydraulic Excavator daily inspection AI. You analyze inspector speech transcripts AND live camera frames to map observations to a 38-item Safety & Maintenance form.
+const SYSTEM_PROMPT = `You are an expert CAT 320 Hydraulic Excavator daily inspection AI. You analyze inspector speech transcripts, live camera frames, AND real-time sensor telemetry to map observations to a 38-item Safety & Maintenance form.
 
 ## FORM SCHEMA
 
@@ -56,49 +56,54 @@ const SYSTEM_PROMPT = `You are an expert CAT 320 Hydraulic Excavator daily inspe
 4.8 Windshield Wipers & Washer
 4.9 Monitor Display & Cat Grade System
 
-## MULTIMODAL ANALYSIS
-You receive BOTH audio transcripts and camera frames. Use them together:
+## MULTIMODAL + TELEMETRY ANALYSIS
+You receive AUDIO transcripts, CAMERA frames, AND REAL-TIME SENSOR TELEMETRY. Use ALL three together:
 - AUDIO: Inspector's verbal observations, descriptions, and callouts
-- VIDEO FRAMES: Visual evidence of machine condition — look for leaks, damage, wear, fluid levels, lights, debris, cracks, missing parts
-- Cross-reference what the inspector says with what you see in the frames
-- If you see something concerning in a frame that the inspector didn't mention, flag it
-- If the inspector describes an issue, look for visual confirmation in the frames
+- VIDEO FRAMES: Visual evidence of machine condition
+- SENSOR TELEMETRY: Live VisionLink data with values, thresholds, and alert statuses
 
-## AI CROSS-VALIDATION (CRITICAL)
-For EVERY item you identify, you MUST provide:
-- aiAgreement: whether your visual analysis AGREES with the inspector's verbal assessment
-  - "agree" = your visual assessment matches the inspector's stated condition
-  - "disagree" = you see evidence that contradicts the inspector (e.g., they say PASS but you see damage)
-  - "uncertain" = insufficient visual evidence to confirm or deny
-- aiVisualNote: a brief (1 sentence) independent visual observation describing what YOU see, regardless of what the inspector said
-  - For PASS items: describe the visual confirmation (e.g., "Track pads appear intact with normal wear patterns")
-  - For disagreements: describe what you see that differs (e.g., "Visible fluid residue at seal junction despite inspector marking PASS")
-  - DO NOT override the inspector's rating — just note your observation
+## SENSOR CROSS-REFERENCE (CRITICAL)
+The sensor telemetry section maps each sensor to its related form items. When an inspector makes a claim about a component:
+1. Find the sensor(s) mapped to that form item
+2. Compare the inspector's assessment against the ACTUAL sensor reading
+3. If the inspector says PASS but the sensor is in WARNING or CRITICAL → set aiAgreement to "disagree"
+4. Include the specific sensor data point in sensorEvidence so it can be displayed as proof
 
-## RATING RULES (CAT Inspect standard)
-- PASS (Green): Functioning normally. Keywords: "good", "fine", "within spec", "no issues".
-- MONITOR (Yellow): Wear or minor issue, doesn't affect immediate safety. Keywords: "wearing", "minor", "seepage", "slightly low", "debris".
-- FAIL (Red): Safety hazard or immediate action. Keywords: "broken", "not working", "cracked", "leaking", "damaged".
+EXAMPLES:
+- Inspector says "battery voltage looks good" → check battery_voltage sensor → if it reads 11.5V (below 11.8V warn threshold) → DISAGREE, sensorEvidence = {sensorKey:"battery_voltage", sensorLabel:"Battery Voltage", latestValue:11.5, unit:"V", status:"warning", time:"14:30"}
+- Inspector says "hydraulic oil temp is fine" → check hydraulic_oil_temp → if 95.4°C (above 95°C critical) → DISAGREE with evidence
+- Inspector says "coolant is low" → check engine_coolant_temp → if temp is elevated → AGREE, sensor confirms the issue
+
+## AI CROSS-VALIDATION
+For EVERY item, provide:
+- aiAgreement: "agree", "disagree", or "uncertain"
+- aiVisualNote: 1-sentence independent observation
+- sensorEvidence: ONLY include when a sensor contradicts or strongly supports the inspector's claim. Include the exact data point.
+
+## RATING RULES
+- PASS (Green): Functioning normally.
+- MONITOR (Yellow): Wear or minor issue.
+- FAIL (Red): Safety hazard or immediate action.
 - NORMAL (Gray): Routine factual confirmation.
 
 ## LANGUAGE RULES
-- Understand jobsite slang: "she's sweating" = seepage = MONITOR. "Grinding" = mechanical issue.
+- Understand jobsite slang: "she's sweating" = seepage = MONITOR.
 - Context matters: "tracks look good, tension within spec" → 1.2 PASS.
-- One sentence can cover multiple items.
-
-## FAULT CODE CORRELATION
-Cross-reference active fault codes with visual findings.
 
 ## ACTIVE FAULT CODES
 {faultCodes}
 
+## CURRENT SENSOR TELEMETRY
+{sensorTelemetry}
+
 ## RULES
-- Only return items you can CONFIDENTLY identify from transcript or frames. Never fabricate.
+- Only return items you can CONFIDENTLY identify from transcript, frames, or sensor data. Never fabricate.
 - Always include "audio" in evidence if identified from speech.
 - Add "video" if identified or confirmed from camera frames.
-- Add "sensor" if correlating with a fault code.
+- Add "sensor" if correlating with sensor telemetry or a fault code.
 - Write professional, concise comments (1-2 sentences).
-- ALWAYS include aiAgreement and aiVisualNote for every item.`;
+- ALWAYS include aiAgreement and aiVisualNote.
+- Include sensorEvidence ONLY when relevant sensor data exists for the item.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -109,7 +114,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const { transcript, frames, faultCodes, previousItems } = await req.json();
+    const { transcript, frames, faultCodes, previousItems, sensorTelemetry } = await req.json();
 
     if ((!transcript || transcript.trim().length === 0) && (!frames || frames.length === 0)) {
       return new Response(JSON.stringify({ items: [] }), {
@@ -117,7 +122,9 @@ serve(async (req) => {
       });
     }
 
-    const systemPrompt = SYSTEM_PROMPT.replace("{faultCodes}", faultCodes || "None");
+    const systemPrompt = SYSTEM_PROMPT
+      .replace("{faultCodes}", faultCodes || "None")
+      .replace("{sensorTelemetry}", sensorTelemetry || "None available");
 
     const userContent: any[] = [];
     let textPart = "";
@@ -127,7 +134,7 @@ serve(async (req) => {
     if (transcript && transcript.trim()) {
       textPart += `Inspector transcript:\n"${transcript}"`;
     } else {
-      textPart += "No speech transcript available — analyze from camera frames only.";
+      textPart += "No speech transcript available — analyze from camera frames and sensor data only.";
     }
     userContent.push({ type: "text", text: textPart });
 
@@ -162,7 +169,7 @@ serve(async (req) => {
             type: "function",
             function: {
               name: "submit_inspection_findings",
-              description: "Submit the inspection form items identified from the inspector's transcript and camera frames",
+              description: "Submit the inspection form items identified from the inspector's transcript, camera frames, and sensor telemetry",
               parameters: {
                 type: "object",
                 properties: {
@@ -179,9 +186,23 @@ serve(async (req) => {
                           items: { type: "string", enum: ["audio", "video", "sensor"] },
                         },
                         faultCode: { type: "string", description: "Active fault code if correlated" },
-                        annotation: { type: "string", description: "Brief visual annotation describing what was seen in the frame" },
-                        aiAgreement: { type: "string", enum: ["agree", "disagree", "uncertain"], description: "Whether AI visual analysis agrees with inspector's assessment" },
-                        aiVisualNote: { type: "string", description: "AI's independent 1-sentence visual observation of component condition" },
+                        annotation: { type: "string", description: "Brief visual annotation" },
+                        aiAgreement: { type: "string", enum: ["agree", "disagree", "uncertain"] },
+                        aiVisualNote: { type: "string", description: "AI's independent 1-sentence observation" },
+                        sensorEvidence: {
+                          type: "object",
+                          description: "Specific sensor data point that contradicts or supports the inspector. Include ONLY when sensor data is relevant.",
+                          properties: {
+                            sensorKey: { type: "string", description: "e.g. battery_voltage, hydraulic_oil_temp" },
+                            sensorLabel: { type: "string", description: "Human-readable label" },
+                            latestValue: { type: "number" },
+                            unit: { type: "string" },
+                            status: { type: "string", enum: ["normal", "warning", "critical"] },
+                            time: { type: "string", description: "Timestamp of the reading" },
+                          },
+                          required: ["sensorKey", "sensorLabel", "latestValue", "unit", "status", "time"],
+                          additionalProperties: false,
+                        },
                       },
                       required: ["id", "status", "comment", "evidence", "aiAgreement", "aiVisualNote"],
                       additionalProperties: false,

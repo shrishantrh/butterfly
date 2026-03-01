@@ -2,6 +2,15 @@ import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { FaultCode } from '@/lib/mock-data';
 
+export interface SensorEvidencePoint {
+  sensorKey: string;
+  sensorLabel: string;
+  latestValue: number;
+  unit: string;
+  status: string;
+  time: string;
+}
+
 export interface AnalysisResult {
   id: string;
   status: 'pass' | 'monitor' | 'fail' | 'normal';
@@ -9,12 +18,13 @@ export interface AnalysisResult {
   evidence: ('audio' | 'video' | 'sensor')[];
   faultCode?: string;
   photoUrl?: string;
-  annotation?: string; // AI-generated annotation for photo evidence
-  aiAgreement?: 'agree' | 'disagree' | 'uncertain'; // AI cross-validation
-  aiVisualNote?: string; // AI's independent visual assessment
+  annotation?: string;
+  aiAgreement?: 'agree' | 'disagree' | 'uncertain';
+  aiVisualNote?: string;
+  sensorEvidence?: SensorEvidencePoint; // telemetry data point backing a disagreement
 }
 
-export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string) {
+export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string, sensorContext?: string) {
   const [analyzedItems, setAnalyzedItems] = useState<Map<string, AnalysisResult>>(new Map());
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,9 +63,10 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string)
       const { data, error: fnError } = await supabase.functions.invoke('analyze-inspection', {
         body: {
           transcript,
-          frames, // base64 JPEG frames for vision analysis
+          frames,
           faultCodes: faultCodesStr,
           previousItems: prevItemsStr || previousItems || 'None',
+          sensorTelemetry: sensorContext || 'None',
         },
       });
 
@@ -74,11 +85,11 @@ export function useInspectionAI(faultCodes: FaultCode[], previousItems?: string)
             const existing = next.get(item.id);
             const severityOrder = { fail: 3, monitor: 2, pass: 1, normal: 0 };
             if (!existing || severityOrder[item.status] >= severityOrder[existing.status]) {
-              // Capture photo for ALL items (not just fail/monitor) for universal visual evidence
               next.set(item.id, {
                 ...item,
                 photoUrl: frameUrl || existing?.photoUrl,
                 annotation: item.annotation || existing?.annotation,
+                sensorEvidence: item.sensorEvidence || existing?.sensorEvidence,
               });
             }
           }
