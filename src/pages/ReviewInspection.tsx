@@ -1,9 +1,7 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { mockMachines, inspectionFormSections, completedInspection, getStatusCounts, InspectionSection, InspectionStatus } from '@/lib/mock-data';
-import { PageHeader } from '@/components/PageHeader';
 import { StatusBadge, StatusSummary } from '@/components/StatusBadge';
-import { AIValidationIndicator } from '@/components/inspection/AIValidationIndicator';
-import { Video, Mic2, Cpu, Send, PenLine, AlertCircle, ChevronDown, ChevronUp, Image, X, Eye } from 'lucide-react';
+import { Send, ChevronDown, ChevronUp, X, Check, AlertCircle } from 'lucide-react';
 import { useMemo, useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useInspectionStorage } from '@/hooks/useInspectionStorage';
@@ -27,6 +25,13 @@ interface AIResult {
     time: string;
   };
 }
+
+const STATUS_OPTIONS: { status: InspectionStatus; label: string }[] = [
+  { status: 'pass', label: 'Pass' },
+  { status: 'monitor', label: 'Monitor' },
+  { status: 'fail', label: 'Fail' },
+  { status: 'normal', label: 'N/A' },
+];
 
 export default function ReviewInspection() {
   const { machineId } = useParams();
@@ -66,44 +71,42 @@ export default function ReviewInspection() {
   const [sections, setSections] = useState(initialSections);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(initialSections.map(s => s.id)));
   const [editingItem, setEditingItem] = useState<string | null>(null);
-  const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
 
   const counts = getStatusCounts(sections);
   const unconfirmedCount = sections.reduce((acc, s) => acc + s.items.filter(i => i.status === 'unconfirmed').length, 0);
-  const conflictedCount = sections.reduce((acc, s) => acc + s.items.filter(i => i.status === 'conflicted').length, 0);
-  const hasUnconfirmed = unconfirmedCount > 0;
-  const hasConflicted = conflictedCount > 0;
-  const cannotSubmit = hasUnconfirmed || hasConflicted;
-
-  // Count AI disagreements
-  const disagreementCount = sections.reduce((acc, s) => 
-    acc + s.items.filter(i => (i as any).aiAgreement === 'disagree').length, 0);
+  const totalItems = sections.reduce((acc, s) => acc + s.items.length, 0);
+  const confirmedItems = totalItems - unconfirmedCount;
 
   const toggleSection = (id: string) => {
     setExpandedSections(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   };
 
-  const quickResolve = useCallback((sectionId: string, itemId: string, status: InspectionStatus) => {
+  const setItemStatus = useCallback((sectionId: string, itemId: string, status: InspectionStatus) => {
     setSections(prev => prev.map(s => {
       if (s.id !== sectionId) return s;
-      return { ...s, items: s.items.map(i => i.id !== itemId ? i : { ...i, status, comment: i.comment || `Manually marked ${status}`, evidence: [...(i.evidence || []), 'audio' as const] }) };
+      return {
+        ...s,
+        items: s.items.map(i => i.id !== itemId ? i : {
+          ...i,
+          status,
+          comment: i.comment || `Set to ${status}`,
+          evidence: [...(i.evidence || []), 'audio' as const],
+        }),
+      };
     }));
     setEditingItem(null);
     if (navigator.vibrate) navigator.vibrate(30);
   }, []);
 
   const handleSubmit = useCallback(async () => {
-    if (cannotSubmit) {
-      const msgs = [];
-      if (hasUnconfirmed) msgs.push(`${unconfirmedCount} unconfirmed`);
-      if (hasConflicted) msgs.push(`${conflictedCount} conflicted`);
-      toast({ title: 'Cannot submit', description: `${msgs.join(' and ')} field${(unconfirmedCount + conflictedCount) !== 1 ? 's' : ''} need review.`, variant: 'destructive' });
+    if (unconfirmedCount > 0) {
+      toast({ title: 'Items need review', description: `${unconfirmedCount} item${unconfirmedCount !== 1 ? 's' : ''} still unconfirmed. Tap to set status.`, variant: 'destructive' });
       return;
     }
     if (!machine) return;
 
     setIsSubmitting(true);
-    toast({ title: 'Saving inspection...', description: 'Uploading photos and data.' });
+    toast({ title: 'Saving inspection...', description: 'Uploading data.' });
 
     try {
       const inspectionId = await saveInspection({
@@ -114,11 +117,7 @@ export default function ReviewInspection() {
         analyzedItems: routerState?.analyzedItems,
       });
 
-      if (inspectionId) {
-        toast({ title: 'Inspection saved!', description: 'Report saved permanently with all evidence.' });
-      } else {
-        toast({ title: 'Save warning', description: 'Inspection submitted but some data may not have saved.', variant: 'destructive' });
-      }
+      toast({ title: 'Inspection saved', description: 'Report saved with all evidence.' });
 
       navigate(`/debrief/${machineId}`, {
         state: {
@@ -135,200 +134,181 @@ export default function ReviewInspection() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [hasUnconfirmed, unconfirmedCount, toast, navigate, machineId, sections, routerState, machine, saveInspection]);
+  }, [unconfirmedCount, toast, navigate, machineId, sections, routerState, machine, saveInspection]);
 
   if (!machine) return null;
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Photo lightbox */}
-      {viewingPhoto && (
-        <div className="fixed inset-0 z-[100] bg-background/90 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setViewingPhoto(null)}>
-          <div className="relative max-w-lg w-full">
-            <img src={viewingPhoto} alt="Evidence" className="w-full rounded-xl border border-border/30 shadow-2xl" />
-            <button onClick={() => setViewingPhoto(null)} className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 backdrop-blur-sm">
-              <X className="w-4 h-4 text-foreground" />
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-xl border-b border-border/30">
+        <div className="px-4 py-3 pt-14 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate(`/inspect/${machine.id}`)}
+              className="w-9 h-9 rounded-xl bg-surface-2 border border-border/40 flex items-center justify-center"
+            >
+              <X className="w-4 h-4 text-muted-foreground" />
             </button>
+            <div>
+              <h1 className="text-base font-bold">Review & Confirm</h1>
+              <p className="text-[11px] text-muted-foreground font-mono">{machine.assetId}</p>
+            </div>
           </div>
+          <StatusSummary {...counts} />
         </div>
-      )}
+      </header>
 
-      <PageHeader
-        title="Review Inspection"
-        subtitle={`${machine.assetId} • S/N ${machine.serial}`}
-        back={`/inspect/${machine.id}`}
-        right={<StatusSummary {...counts} />}
-      />
-
-      <div className="px-5 py-4 space-y-3 pb-32">
-        {/* General info */}
+      <div className="px-4 py-4 space-y-3 pb-28">
+        {/* Progress */}
         <div className="card-elevated p-4">
-          <p className="label-caps mb-3">General Information</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-muted-foreground">Confirmation Progress</span>
+            <span className="text-xs font-mono font-bold text-foreground">{confirmedItems}/{totalItems}</span>
+          </div>
+          <div className="h-1.5 bg-border/30 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${(confirmedItems / totalItems) * 100}%`,
+                background: unconfirmedCount === 0 ? 'hsl(var(--status-pass))' : 'hsl(var(--primary))',
+              }}
+            />
+          </div>
+          {unconfirmedCount > 0 && (
+            <p className="text-[11px] text-status-monitor mt-2">
+              {unconfirmedCount} item{unconfirmedCount !== 1 ? 's' : ''} need review — tap to set status
+            </p>
+          )}
+        </div>
+
+        {/* Meta */}
+        <div className="card-elevated p-4">
+          <div className="grid grid-cols-3 gap-3 text-center">
             <div>
-              <p className="text-xs text-muted-foreground">Inspector</p>
-              <p className="font-medium text-sm">Marcus Chen</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Inspector</p>
+              <p className="font-semibold text-sm mt-0.5">Marcus Chen</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Date</p>
-              <p className="font-mono font-medium text-sm">{new Date().toISOString().split('T')[0]}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Date</p>
+              <p className="font-mono font-semibold text-sm mt-0.5">{new Date().toISOString().split('T')[0]}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">SMU Hours</p>
-              <p className="font-mono font-medium text-sm">{machine.smuHours.toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Duration</p>
-              <p className="font-mono font-medium text-sm">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Duration</p>
+              <p className="font-mono font-semibold text-sm mt-0.5">
                 {routerState?.elapsed ? `${Math.floor(routerState.elapsed / 60)}m ${routerState.elapsed % 60}s` : '—'}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Conflicted items warning */}
-        {hasConflicted && (
-          <div className="flex items-center gap-2.5 bg-status-conflicted/6 border border-status-conflicted/15 rounded-lg p-3.5">
-            <Eye className="w-5 h-5 text-status-conflicted shrink-0" />
-            <p className="text-sm text-status-conflicted">
-              <span className="font-semibold">{conflictedCount} item{conflictedCount !== 1 ? 's' : ''} conflicted.</span> Sensor data disagrees — tap to review and resolve.
-            </p>
-          </div>
-        )}
+        {/* Sections */}
+        {sections.map((section) => {
+          const sectionConfirmed = section.items.filter(i => i.status !== 'unconfirmed').length;
+          const hasFails = section.items.some(i => i.status === 'fail');
+          const hasMonitors = section.items.some(i => i.status === 'monitor');
 
-        {/* AI Disagreements Warning */}
-        {disagreementCount > 0 && !hasConflicted && (
-          <div className="flex items-center gap-2.5 bg-accent/6 border border-accent/15 rounded-lg p-3.5">
-            <Eye className="w-5 h-5 text-accent shrink-0" />
-            <p className="text-sm text-accent">
-              <span className="font-semibold">AI flagged {disagreementCount} discrepanc{disagreementCount !== 1 ? 'ies' : 'y'}.</span> Review items marked with ⚠️.
-            </p>
-          </div>
-        )}
+          return (
+            <div key={section.id} className={`card-elevated overflow-hidden ${
+              hasFails ? 'border-status-fail/20' : hasMonitors ? 'border-status-monitor/15' : ''
+            }`}>
+              <button
+                onClick={() => toggleSection(section.id)}
+                className="w-full px-4 py-3 flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2">
+                  {sectionConfirmed === section.items.length ? (
+                    <Check className="w-4 h-4 text-status-pass" />
+                  ) : hasFails ? (
+                    <AlertCircle className="w-4 h-4 text-status-fail" />
+                  ) : null}
+                  <h3 className="text-sm font-semibold">{section.title}</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono text-muted-foreground">
+                    {sectionConfirmed}/{section.items.length}
+                  </span>
+                  {expandedSections.has(section.id)
+                    ? <ChevronUp className="w-4 h-4 text-muted-foreground/50" />
+                    : <ChevronDown className="w-4 h-4 text-muted-foreground/50" />
+                  }
+                </div>
+              </button>
 
-        {hasUnconfirmed && (
-          <div className="flex items-center gap-2.5 bg-status-monitor/6 border border-status-monitor/15 rounded-lg p-3.5">
-            <AlertCircle className="w-5 h-5 text-status-monitor shrink-0" />
-            <p className="text-sm text-status-monitor">
-              <span className="font-semibold">{unconfirmedCount} field{unconfirmedCount !== 1 ? 's' : ''} unconfirmed.</span> Tap to resolve.
-            </p>
-          </div>
-        )}
+              {expandedSections.has(section.id) && (
+                <div className="border-t border-border/20">
+                  {section.items.map((item, idx) => {
+                    const isEditing = editingItem === item.id;
 
-        {sections.map((section) => (
-          <div key={section.id} className="card-elevated overflow-hidden">
-            <button
-              onClick={() => toggleSection(section.id)}
-              className="w-full px-4 py-3 bg-surface-2/40 border-b border-border/30 flex items-center justify-between touch-target"
-            >
-              <h3 className="text-sm font-semibold">{section.title}</h3>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono text-muted-foreground">
-                  {section.items.filter(i => i.status !== 'unconfirmed' && i.status !== 'conflicted').length}/{section.items.length}
-                </span>
-                {expandedSections.has(section.id) ? <ChevronUp className="w-4 h-4 text-muted-foreground/50" /> : <ChevronDown className="w-4 h-4 text-muted-foreground/50" />}
-              </div>
-            </button>
-            {expandedSections.has(section.id) && (
-              <div>
-                {section.items.map((item, idx) => {
-                  const aiItem = item as any;
-                  return (
-                    <div key={item.id} className={`px-4 py-3 ${idx > 0 ? 'border-t border-border/20' : ''} ${item.status === 'unconfirmed' ? 'bg-surface-2/20' : item.status === 'conflicted' ? 'bg-status-conflicted/4' : aiItem.aiAgreement === 'disagree' ? 'bg-accent/4' : ''}`}>
-                      <div className="flex items-start justify-between gap-2.5">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-[11px] font-mono text-muted-foreground/50 shrink-0 w-7">{item.id}</span>
-                          <span className="text-sm font-medium text-foreground">{item.label}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {aiItem.aiAgreement && (
-                            <AIValidationIndicator agreement={aiItem.aiAgreement} compact />
-                          )}
-                          {(item.status === 'unconfirmed' || item.status === 'conflicted') ? (
-                            <button onClick={() => setEditingItem(editingItem === item.id ? null : item.id)} className="shrink-0">
-                              <StatusBadge status={item.status} />
-                            </button>
-                          ) : (
-                            <StatusBadge status={item.status} className="shrink-0" />
-                          )}
-                        </div>
+                    return (
+                      <div key={item.id} className={`${idx > 0 ? 'border-t border-border/10' : ''}`}>
+                        <button
+                          onClick={() => setEditingItem(isEditing ? null : item.id)}
+                          className={`w-full px-4 py-3 flex items-center justify-between gap-2 text-left transition-colors ${
+                            item.status === 'unconfirmed' ? 'bg-surface-2/30' : ''
+                          }`}
+                        >
+                          <div className="flex items-start gap-2 min-w-0">
+                            <span className="text-[11px] font-mono text-muted-foreground/40 shrink-0 w-7 pt-0.5">{item.id}</span>
+                            <div className="min-w-0">
+                              <span className="text-sm text-foreground">{item.label}</span>
+                              {item.comment && item.status !== 'unconfirmed' && (
+                                <p className="text-xs text-muted-foreground/60 mt-0.5 line-clamp-1">{item.comment}</p>
+                              )}
+                            </div>
+                          </div>
+                          <StatusBadge status={item.status} showLabel={false} className="shrink-0" />
+                        </button>
+
+                        {/* Inline editor - works for ALL items */}
+                        {isEditing && (
+                          <div className="px-4 py-3 bg-surface-2/40 border-t border-border/15">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Set Status</span>
+                              <button onClick={() => setEditingItem(null)} className="p-1">
+                                <X className="w-3.5 h-3.5 text-muted-foreground" />
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-4 gap-1.5">
+                              {STATUS_OPTIONS.map(opt => (
+                                <button
+                                  key={opt.status}
+                                  onClick={() => setItemStatus(section.id, item.id, opt.status)}
+                                  className={`py-2 rounded-lg transition-all active:scale-95 ${
+                                    item.status === opt.status
+                                      ? 'ring-2 ring-primary/50'
+                                      : ''
+                                  }`}
+                                >
+                                  <StatusBadge status={opt.status} className="w-full justify-center text-[10px]" />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
-
-                      {editingItem === item.id && (item.status === 'unconfirmed' || item.status === 'conflicted') && (
-                        <div className="flex gap-1.5 mt-2.5 pl-9 flex-wrap">
-                          {(['pass', 'monitor', 'fail', 'normal'] as InspectionStatus[]).map(s => (
-                            <button key={s} onClick={() => quickResolve(section.id, item.id, s)} className="touch-target">
-                              <StatusBadge status={s} />
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {item.comment && (
-                        <p className="text-xs text-muted-foreground/70 mt-1.5 pl-9 leading-relaxed">{item.comment}</p>
-                      )}
-                      {aiItem.annotation && (
-                        <p className="text-[10px] text-sensor mt-1 pl-9 leading-snug italic">🔍 {aiItem.annotation}</p>
-                      )}
-
-                      {/* AI Validation detail */}
-                      {aiItem.aiAgreement && (
-                        <div className="mt-1.5 pl-9">
-                          <AIValidationIndicator
-                            agreement={aiItem.aiAgreement}
-                            visualNote={aiItem.aiVisualNote}
-                            sensorEvidence={aiItem.sensorEvidence}
-                          />
-                        </div>
-                      )}
-
-                      {item.evidence && item.evidence.length > 0 && (
-                        <div className="flex items-center gap-2.5 mt-1.5 pl-9">
-                          {item.evidence.includes('video') && <Video className="w-3.5 h-3.5 text-primary/60" />}
-                          {item.evidence.includes('audio') && <Mic2 className="w-3.5 h-3.5 text-status-monitor/60" />}
-                          {item.evidence.includes('sensor') && (
-                            <span className="flex items-center gap-1">
-                              <Cpu className="w-3.5 h-3.5 text-sensor/60" />
-                              {item.faultCode && <span className="text-[10px] font-mono text-sensor/60">{item.faultCode}</span>}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      {aiItem.photoUrl && (
-                        <div className="mt-2 ml-9 rounded-lg overflow-hidden border border-border/20 max-w-[200px] cursor-pointer" onClick={() => setViewingPhoto(aiItem.photoUrl)}>
-                          <img src={aiItem.photoUrl} alt="Evidence" className="w-full h-16 object-cover" />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        ))}
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/95 to-transparent flex gap-2.5 safe-bottom">
-        <button
-          onClick={() => {
-            const firstResolvable = sections.flatMap(s => s.items).find(i => i.status === 'unconfirmed' || i.status === 'conflicted');
-            if (firstResolvable) { setEditingItem(firstResolvable.id); toast({ title: 'Edit mode', description: 'Tap conflicted or unconfirmed badges to set status.' }); }
-          }}
-          className="flex items-center justify-center gap-2 py-3.5 px-5 rounded-xl bg-surface-2 text-secondary-foreground font-semibold text-sm border border-border/40 active:scale-[0.98] transition-all"
-        >
-          <PenLine className="w-4 h-4" />
-        </button>
+      {/* Submit bar */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent safe-bottom">
         <button
           onClick={handleSubmit}
-          disabled={cannotSubmit || isSubmitting}
-          className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-base glow-primary active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          disabled={unconfirmedCount > 0 || isSubmitting}
+          className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-base active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed glow-primary"
         >
           {isSubmitting ? (
             <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
           ) : (
             <Send className="w-4 h-4" />
           )}
-          {isSubmitting ? 'Saving...' : 'Submit Report'}
+          {isSubmitting ? 'Saving...' : unconfirmedCount > 0 ? `${unconfirmedCount} Items Need Review` : 'Submit Report'}
         </button>
       </div>
     </div>

@@ -48,7 +48,6 @@ export default function ActiveInspection() {
 
   const totalFields = inspectionFormSections.reduce((acc, s) => acc + s.items.length, 0);
 
-  // Build sensor context for AI cross-reference (machine-specific)
   const sensorContext = useMemo(() => buildSensorContextForAI(machineId), [machineId]);
   const sensorSnapshot = useMemo(() => buildSensorSnapshot(machineId), [machineId]);
 
@@ -65,10 +64,9 @@ export default function ActiveInspection() {
     onPartial: useCallback((text: string) => { setLatestPartial(text); }, []),
   });
 
-  // Register frame capture — works for both camera and uploaded video
+  // Register frame capture
   useEffect(() => {
     registerFrameCapture(() => {
-      // Try upload video first, then camera
       const video = uploadVideoRef.current || videoRef.current;
       const canvas = uploadCanvasRef.current || canvasRef.current;
       if (!video || !canvas || video.readyState < 2) return null;
@@ -81,11 +79,13 @@ export default function ActiveInspection() {
     });
   }, [registerFrameCapture, uploadPhase]);
 
+  // Mount tracking
   useEffect(() => {
     isMounted.current = true;
     return () => { isMounted.current = false; };
   }, []);
 
+  // Item count toast
   useEffect(() => {
     if (itemCount > prevItemCount.current) {
       const newItems = Array.from(analyzedItems.values()).slice(prevItemCount.current);
@@ -97,19 +97,19 @@ export default function ActiveInspection() {
         else navigator.vibrate(50);
       }
       const count = itemCount - prevItemCount.current;
-      toast({ title: `${count} item${count > 1 ? 's' : ''} detected`, description: hasFail ? 'FAIL detected — review required' : hasMonitor ? 'MONITOR item flagged' : 'Items logged' });
+      toast({ title: `${count} item${count > 1 ? 's' : ''} detected`, description: hasFail ? 'FAIL detected' : hasMonitor ? 'MONITOR flagged' : 'Items logged' });
       prevItemCount.current = itemCount;
     }
   }, [itemCount, analyzedItems, toast]);
 
-  // Timer for live mode
+  // Timer
   useEffect(() => {
     if (isUploadMode) return;
     const timer = setInterval(() => setElapsed(e => e + 1), 1000);
     return () => clearInterval(timer);
   }, [isUploadMode]);
 
-  // ─── LIVE CAMERA MODE ───
+  // Camera
   const startCamera = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
@@ -118,7 +118,6 @@ export default function ActiveInspection() {
     } catch (err) { console.log('[Inspection] Camera not available:', err); }
   }, []);
 
-  // Capture frames every 6s for live camera
   useEffect(() => {
     if (!isCameraOn || isUploadMode) return;
     const captureInterval = setInterval(() => {
@@ -131,8 +130,7 @@ export default function ActiveInspection() {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const frameBase64 = canvas.toDataURL('image/jpeg', 0.6);
-      addFrame(frameBase64);
+      addFrame(canvas.toDataURL('image/jpeg', 0.6));
     }, 6000);
     return () => clearInterval(captureInterval);
   }, [isCameraOn, isUploadMode, addFrame]);
@@ -145,71 +143,49 @@ export default function ActiveInspection() {
     return () => { speech.stop(); cameraStream?.getTracks().forEach(t => t.stop()); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── UPLOAD MODE: VIDEO PLAYBACK + FRAME EXTRACTION ───
-
-  // Extract audio from video and transcribe via ElevenLabs Scribe
+  // Upload mode handlers
   const transcribeVideoAudio = useCallback(async (file: File): Promise<string> => {
     setIsTranscribing(true);
     setUploadPhase('transcribing');
     try {
-      // Send the file directly — ElevenLabs Scribe accepts video files too
       const formData = new FormData();
       formData.append('audio', file);
-
-      const { data, error } = await supabase.functions.invoke('transcribe-audio', {
-        body: formData,
-      });
-
+      const { data, error } = await supabase.functions.invoke('transcribe-audio', { body: formData });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-
-      const transcript = data?.text || '';
-      console.log('[Upload] Transcription complete:', transcript.length, 'chars');
-      return transcript;
+      return data?.text || '';
     } catch (e) {
       console.error('[Upload] Transcription failed:', e);
-      toast({ title: 'Transcription issue', description: 'Could not extract audio — proceeding with visual analysis only.', variant: 'destructive' });
+      toast({ title: 'Transcription issue', description: 'Proceeding with visual analysis only.', variant: 'destructive' });
       return '';
     } finally {
       setIsTranscribing(false);
     }
   }, [toast]);
 
-  // Start video playback and frame extraction
   const startVideoAnalysis = useCallback((transcript: string) => {
     const video = uploadVideoRef.current;
     if (!video) return;
-
     setUploadPhase('playing');
-
-    // Feed transcript to AI
     if (transcript.trim()) {
       addTranscript(transcript);
       setCommittedTexts([transcript]);
     }
-
-    // Play video
     video.currentTime = 0;
-    video.playbackRate = 2.0; // 2x speed for faster processing
+    video.playbackRate = 2.0;
     video.play().catch(console.error);
     setIsVideoPlaying(true);
-
-    // Capture frames every 3s of real time (= every 6s of video at 2x)
     frameIntervalRef.current = window.setInterval(() => {
       if (!video || video.paused || video.ended) return;
       const canvas = uploadCanvasRef.current;
       if (!canvas || video.readyState < 2) return;
-
       const scale = Math.min(640 / video.videoWidth, 640 / video.videoHeight, 1);
       canvas.width = Math.round(video.videoWidth * scale);
       canvas.height = Math.round(video.videoHeight * scale);
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const frameBase64 = canvas.toDataURL('image/jpeg', 0.6);
-      addFrame(frameBase64);
-
-      // Trigger analysis periodically
+      addFrame(canvas.toDataURL('image/jpeg', 0.6));
       analysisQueueRef.current++;
       if (analysisQueueRef.current >= 2) {
         analysisQueueRef.current = 0;
@@ -218,38 +194,25 @@ export default function ActiveInspection() {
     }, 3000);
   }, [addTranscript, addFrame, analyzeNow]);
 
-  // Handle video time updates
   useEffect(() => {
     const video = uploadVideoRef.current;
     if (!video) return;
-
-    const onTimeUpdate = () => {
-      setVideoProgress(video.currentTime);
-      setElapsed(Math.round(video.currentTime));
-    };
-    const onLoadedMetadata = () => {
-      setVideoDuration(video.duration);
-    };
+    const onTimeUpdate = () => { setVideoProgress(video.currentTime); setElapsed(Math.round(video.currentTime)); };
+    const onLoadedMetadata = () => { setVideoDuration(video.duration); };
     const onEnded = () => {
       setIsVideoPlaying(false);
       setUploadPhase('done');
-      if (frameIntervalRef.current) {
-        clearInterval(frameIntervalRef.current);
-        frameIntervalRef.current = null;
-      }
-      // Final analysis pass
+      if (frameIntervalRef.current) { clearInterval(frameIntervalRef.current); frameIntervalRef.current = null; }
       analyzeNow();
-      toast({ title: 'Video analysis complete', description: 'All frames processed. Review results below.' });
+      toast({ title: 'Video analysis complete', description: 'Review results below.' });
     };
     const onPlay = () => setIsVideoPlaying(true);
     const onPause = () => setIsVideoPlaying(false);
-
     video.addEventListener('timeupdate', onTimeUpdate);
     video.addEventListener('loadedmetadata', onLoadedMetadata);
     video.addEventListener('ended', onEnded);
     video.addEventListener('play', onPlay);
     video.addEventListener('pause', onPause);
-
     return () => {
       video.removeEventListener('timeupdate', onTimeUpdate);
       video.removeEventListener('loadedmetadata', onLoadedMetadata);
@@ -260,40 +223,28 @@ export default function ActiveInspection() {
     };
   }, [uploadedFile, analyzeNow, toast]);
 
-  // Handle file selection (from input or drop)
   const handleFileSelected = useCallback(async (file: File) => {
     if (!file.type.startsWith('video/') && !file.type.startsWith('audio/')) {
-      toast({ title: 'Invalid file', description: 'Please upload a video (MP4, MOV) or audio file.', variant: 'destructive' });
+      toast({ title: 'Invalid file', description: 'Please upload a video or audio file.', variant: 'destructive' });
       return;
     }
-
     setUploadedFile(file);
     const url = URL.createObjectURL(file);
     setUploadVideoUrl(url);
-
-    // Step 1: Transcribe audio
     const transcript = await transcribeVideoAudio(file);
-
-    // Step 2: Start playback + frame analysis (for video files)
     if (file.type.startsWith('video/')) {
-      // Wait for video to load before starting
       const waitForVideo = () => {
         const video = uploadVideoRef.current;
-        if (video && video.readyState >= 2) {
-          startVideoAnalysis(transcript);
-        } else {
-          setTimeout(waitForVideo, 200);
-        }
+        if (video && video.readyState >= 2) startVideoAnalysis(transcript);
+        else setTimeout(waitForVideo, 200);
       };
       setTimeout(waitForVideo, 500);
     } else {
-      // Audio-only — just feed transcript
       if (transcript.trim()) {
         addTranscript(transcript);
         setCommittedTexts([transcript]);
         setUploadPhase('done');
         await analyzeNow();
-        toast({ title: 'Audio analysis complete', description: 'Transcript processed.' });
       }
     }
   }, [transcribeVideoAudio, startVideoAnalysis, addTranscript, analyzeNow, toast]);
@@ -303,29 +254,15 @@ export default function ActiveInspection() {
     if (file) handleFileSelected(file);
   }, [handleFileSelected]);
 
-  // Drag and drop
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  }, []);
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFileSelected(file);
-  }, [handleFileSelected]);
+  const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); }, []);
+  const handleDragLeave = useCallback((e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); }, []);
+  const handleDrop = useCallback((e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); const file = e.dataTransfer.files[0]; if (file) handleFileSelected(file); }, [handleFileSelected]);
 
-  // Video playback controls
   const togglePlayPause = useCallback(() => {
     const video = uploadVideoRef.current;
     if (!video) return;
     if (video.paused) {
       video.play();
-      // Restart frame capture if stopped
       if (!frameIntervalRef.current) {
         frameIntervalRef.current = window.setInterval(() => {
           if (!video || video.paused || video.ended) return;
@@ -339,18 +276,12 @@ export default function ActiveInspection() {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           addFrame(canvas.toDataURL('image/jpeg', 0.6));
           analysisQueueRef.current++;
-          if (analysisQueueRef.current >= 2) {
-            analysisQueueRef.current = 0;
-            analyzeNow();
-          }
+          if (analysisQueueRef.current >= 2) { analysisQueueRef.current = 0; analyzeNow(); }
         }, 3000);
       }
     } else {
       video.pause();
-      if (frameIntervalRef.current) {
-        clearInterval(frameIntervalRef.current);
-        frameIntervalRef.current = null;
-      }
+      if (frameIntervalRef.current) { clearInterval(frameIntervalRef.current); frameIntervalRef.current = null; }
     }
   }, [addFrame, analyzeNow]);
 
@@ -359,7 +290,6 @@ export default function ActiveInspection() {
     if (video) video.currentTime = Math.min(video.currentTime + 10, video.duration);
   }, []);
 
-  // Cleanup
   useEffect(() => {
     return () => {
       if (uploadVideoUrl) URL.revokeObjectURL(uploadVideoUrl);
@@ -372,14 +302,10 @@ export default function ActiveInspection() {
     cameraStream?.getTracks().forEach(t => t.stop());
     setCameraStream(null);
     setIsCameraOn(false);
-    // Stop upload video too
     const uploadVideo = uploadVideoRef.current;
     if (uploadVideo) {
       uploadVideo.pause();
-      if (frameIntervalRef.current) {
-        clearInterval(frameIntervalRef.current);
-        frameIntervalRef.current = null;
-      }
+      if (frameIntervalRef.current) { clearInterval(frameIntervalRef.current); frameIntervalRef.current = null; }
     }
     await analyzeNow();
     navigate(`/review/${machine?.id}`, { state: { analyzedItems: Object.fromEntries(analyzedItems), transcript: committedTexts.join(' '), elapsed } });
@@ -424,118 +350,78 @@ export default function ActiveInspection() {
       <canvas ref={canvasRef} className="hidden" />
       <canvas ref={uploadCanvasRef} className="hidden" />
 
-      {/* Floating camera overlay — live mode only */}
       {!isUploadMode && (
-        <CameraOverlay
-          videoRef={videoRef}
-          cameraStream={cameraStream}
-          isAnalyzing={isAnalyzing}
-          isCameraOn={isCameraOn}
-        />
+        <CameraOverlay videoRef={videoRef} cameraStream={cameraStream} isAnalyzing={isAnalyzing} isCameraOn={isCameraOn} />
       )}
 
-      {/* Top bar */}
-      <header className="flex items-center justify-between px-4 py-2.5 pt-14 bg-background/80 backdrop-blur-2xl border-b border-border/40 shrink-0 z-40">
+      {/* Compact header */}
+      <header className="flex items-center justify-between px-4 py-2.5 pt-14 bg-background/90 backdrop-blur-xl border-b border-border/30 shrink-0 z-40">
         <div className="flex items-center gap-2.5">
           {!isUploadMode ? (
             <>
-              <div className={`w-2.5 h-2.5 rounded-full ${speech.isListening ? 'bg-status-fail animate-recording-pulse' : 'bg-muted-foreground/40'}`} />
-              <span className={`text-xs font-mono font-bold tracking-wider ${speech.isListening ? 'text-status-fail' : 'text-muted-foreground'}`}>
-                {speech.isListening ? 'REC' : 'STANDBY'}
+              <div className={`w-2 h-2 rounded-full ${speech.isListening ? 'bg-status-fail animate-recording-pulse' : 'bg-muted-foreground/30'}`} />
+              <span className={`text-xs font-mono font-bold ${speech.isListening ? 'text-status-fail' : 'text-muted-foreground/60'}`}>
+                {speech.isListening ? 'REC' : 'OFF'}
               </span>
-              <span className="text-xs font-mono text-muted-foreground/60">{formatTime(elapsed)}</span>
+              <span className="text-xs font-mono text-muted-foreground/40">{formatTime(elapsed)}</span>
             </>
           ) : (
             <>
               <Film className="w-4 h-4 text-primary" />
-              <span className="text-xs font-mono font-bold text-primary tracking-wider">
-                {uploadPhase === 'select' ? 'UPLOAD' : uploadPhase === 'transcribing' ? 'TRANSCRIBING' : uploadPhase === 'playing' ? 'ANALYZING' : 'COMPLETE'}
+              <span className="text-xs font-mono font-bold text-primary">
+                {uploadPhase === 'select' ? 'UPLOAD' : uploadPhase === 'transcribing' ? 'TRANSCRIBING' : uploadPhase === 'playing' ? 'ANALYZING' : 'DONE'}
               </span>
-              {videoDuration > 0 && (
-                <span className="text-xs font-mono text-muted-foreground/60">
-                  {formatTime(videoProgress)} / {formatTime(videoDuration)}
-                </span>
-              )}
             </>
           )}
         </div>
         <div className="flex items-center gap-2">
           {isAnalyzing && (
-            <div className="flex items-center gap-1.5 bg-sensor/8 border border-sensor/15 px-2 py-1 rounded-md">
+            <div className="flex items-center gap-1 bg-sensor/8 border border-sensor/15 px-2 py-0.5 rounded-md">
               <div className="w-1.5 h-1.5 rounded-full bg-sensor animate-pulse" />
               <span className="text-[10px] font-mono text-sensor font-bold">AI</span>
             </div>
           )}
-          <span className="text-xs font-mono text-muted-foreground/60 ml-1">{machine.assetId}</span>
+          <span className="text-[11px] font-mono text-muted-foreground/40">{machine.assetId}</span>
         </div>
       </header>
 
-      {/* Live transcript bar */}
-      <div className="px-4 py-2.5 bg-surface-2/40 border-b border-border/30 shrink-0">
-        <div className="flex items-center gap-2 mb-1">
-          {isUploadMode ? (
-            <div className="flex items-center gap-1.5">
-              <Film className="w-3.5 h-3.5 text-primary" />
-              <span className="text-[10px] font-mono text-primary font-bold tracking-wider">
-                {uploadPhase === 'transcribing' ? 'EXTRACTING AUDIO...' : uploadPhase === 'playing' ? 'LIVE ANALYSIS' : uploadPhase === 'done' ? 'COMPLETE' : 'AWAITING FILE'}
-              </span>
-            </div>
-          ) : speech.isListening ? (
-            <div className="flex items-center gap-1.5">
-              <Volume2 className="w-3.5 h-3.5 text-status-pass animate-pulse" />
-              <span className="text-[10px] font-mono text-status-pass font-bold tracking-wider">LISTENING</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <MicOff className="w-3.5 h-3.5 text-muted-foreground/40" />
-              <span className="text-[10px] font-mono text-muted-foreground/60 tracking-wider">
-                {speech.error ? 'ERROR' : 'MIC OFF'}
-              </span>
-            </div>
-          )}
-          <div className="flex-1" />
-          <span className="text-[10px] font-mono text-muted-foreground/40">
-            {committedTexts.length} segment{committedTexts.length !== 1 ? 's' : ''}
-          </span>
-        </div>
-        <div className="min-h-[2em] flex items-start">
+      {/* Transcript */}
+      <div className="px-4 py-2 bg-surface-2/30 border-b border-border/20 shrink-0">
+        <div className="min-h-[1.5em]">
           {latestPartial ? (
-            <p className="text-sm text-primary leading-snug animate-fade-in">{latestPartial}</p>
+            <p className="text-sm text-primary animate-fade-in line-clamp-2">{latestPartial}</p>
           ) : liveText ? (
-            <p className="text-sm text-foreground/60 leading-snug line-clamp-3">{liveText.slice(-300)}</p>
+            <p className="text-sm text-foreground/50 line-clamp-2">{liveText.slice(-200)}</p>
           ) : (
-            <p className="text-sm text-muted-foreground/30 italic">
-              {isUploadMode ? 'Drop a video file or tap below to begin' : speech.isListening ? 'Start speaking to inspect...' : 'Tap mic to begin'}
+            <p className="text-sm text-muted-foreground/20 italic">
+              {isUploadMode ? 'Upload a file to begin' : speech.isListening ? 'Speak to inspect...' : 'Tap mic to start'}
             </p>
           )}
         </div>
       </div>
 
-      {/* Connection error */}
+      {/* Errors */}
       {speech.error && !isUploadMode && (
-        <div className="mx-4 mt-3 flex items-start gap-3 bg-status-fail/6 border border-status-fail/12 rounded-lg p-3.5 shrink-0">
-          <AlertCircle className="w-4 h-4 text-status-fail shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-semibold text-status-fail">Microphone Issue</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{speech.error}</p>
-            <button onClick={speech.start} className="mt-1.5 text-sm text-primary font-semibold touch-target">Retry</button>
-          </div>
+        <div className="mx-4 mt-2 flex items-center gap-2 bg-status-fail/6 border border-status-fail/12 rounded-xl p-3 shrink-0">
+          <AlertCircle className="w-4 h-4 text-status-fail shrink-0" />
+          <p className="text-xs text-status-fail flex-1">{speech.error}</p>
+          <button onClick={speech.start} className="text-xs text-primary font-bold">Retry</button>
         </div>
       )}
 
       {aiError && (
-        <div className="mx-4 mt-3 flex items-center gap-2 bg-status-monitor/6 border border-status-monitor/12 rounded-lg p-3 shrink-0">
-          <AlertCircle className="w-3.5 h-3.5 text-status-monitor shrink-0" />
+        <div className="mx-4 mt-2 flex items-center gap-2 bg-status-monitor/6 border border-status-monitor/12 rounded-xl p-2.5 shrink-0">
+          <AlertCircle className="w-3.5 h-3.5 text-status-monitor" />
           <p className="text-xs text-status-monitor">{aiError}</p>
         </div>
       )}
 
-      {/* Progress bar */}
-      <div className="px-4 py-3 shrink-0">
+      {/* Progress */}
+      <div className="px-4 py-2 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="flex-1 h-1.5 bg-border/30 rounded-full overflow-hidden">
+          <div className="flex-1 h-1 bg-border/20 rounded-full overflow-hidden">
             <div
-              className="h-full rounded-full transition-all duration-700 ease-out"
+              className="h-full rounded-full transition-all duration-700"
               style={{
                 width: `${pct}%`,
                 background: pct >= 80 ? 'hsl(var(--status-pass))' : pct >= 40 ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
@@ -543,126 +429,85 @@ export default function ActiveInspection() {
             />
           </div>
           <span className="text-xs font-mono text-muted-foreground font-bold shrink-0">
-            {itemCount}<span className="text-muted-foreground/40">/{totalFields}</span>
+            {itemCount}<span className="text-muted-foreground/30">/{totalFields}</span>
           </span>
         </div>
       </div>
 
-      {/* ─── UPLOAD MODE: File Drop + Video Player ─── */}
+      {/* Upload mode content */}
       {isUploadMode && uploadPhase === 'select' && (
-        <div className="mx-4 mb-3 shrink-0">
+        <div className="mx-4 mb-2 shrink-0">
           <input ref={fileInputRef} type="file" accept="video/*,audio/*" onChange={handleVideoUpload} className="hidden" />
           <button
             onClick={() => fileInputRef.current?.click()}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`w-full flex flex-col items-center justify-center gap-3 py-14 rounded-xl border-2 border-dashed transition-all active:scale-[0.99] ${
-              isDragging
-                ? 'border-primary bg-primary/5'
-                : 'border-border/40 bg-surface-2/30 hover:border-primary/30'
+            className={`w-full flex flex-col items-center justify-center gap-3 py-12 rounded-2xl border-2 border-dashed transition-all ${
+              isDragging ? 'border-primary bg-primary/5' : 'border-border/30 bg-surface-2/20'
             }`}
           >
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <Upload className="w-7 h-7 text-primary" />
-            </div>
+            <Upload className="w-8 h-8 text-primary/60" />
             <div className="text-center">
-              <p className="text-sm font-bold text-foreground">Drop video here or tap to browse</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">MP4, MOV, WebM, MP3 — AI analyzes frames + audio</p>
+              <p className="text-sm font-bold">Drop video here or tap to browse</p>
+              <p className="text-xs text-muted-foreground/40 mt-1">MP4, MOV, WebM, MP3</p>
             </div>
           </button>
         </div>
       )}
 
-      {/* Transcribing state */}
       {isUploadMode && uploadPhase === 'transcribing' && (
-        <div className="mx-4 mb-3 shrink-0">
-          <div className="card-elevated p-6 flex flex-col items-center gap-4">
-            <div className="w-12 h-12 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <div className="text-center">
-              <p className="text-sm font-bold text-foreground">Extracting & Transcribing Audio</p>
-              <p className="text-xs text-muted-foreground mt-1">Processing {uploadedFile?.name}...</p>
-            </div>
+        <div className="mx-4 mb-2 shrink-0">
+          <div className="card-elevated p-6 flex flex-col items-center gap-3">
+            <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm font-bold">Transcribing Audio...</p>
+            <p className="text-xs text-muted-foreground/50">{uploadedFile?.name}</p>
           </div>
         </div>
       )}
 
-      {/* Video player — shown during playback and after */}
       {isUploadMode && uploadVideoUrl && (uploadPhase === 'playing' || uploadPhase === 'done') && (
-        <div className="mx-4 mb-3 shrink-0">
+        <div className="mx-4 mb-2 shrink-0">
           <div className="card-elevated overflow-hidden">
             <div className="relative">
-              <video
-                ref={uploadVideoRef}
-                src={uploadVideoUrl}
-                className="w-full aspect-video bg-black"
-                playsInline
-                muted={false}
-              />
-              {/* AI scanning overlay */}
-              {isAnalyzing && uploadPhase === 'playing' && (
-                <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-md">
-                    <div className="w-2 h-2 rounded-full bg-sensor animate-pulse" />
-                    <span className="text-[10px] font-mono text-sensor font-bold">AI SCANNING</span>
-                  </div>
-                </div>
-              )}
+              <video ref={uploadVideoRef} src={uploadVideoUrl} className="w-full aspect-video bg-black" playsInline />
               {uploadPhase === 'done' && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <div className="bg-card/90 backdrop-blur-xl rounded-xl px-5 py-3 text-center">
-                    <p className="text-sm font-bold text-status-pass">✓ Analysis Complete</p>
-                    <p className="text-xs text-muted-foreground mt-1">{itemCount} items detected</p>
+                  <div className="bg-card/90 backdrop-blur-xl rounded-xl px-4 py-2">
+                    <p className="text-sm font-bold text-status-pass">✓ Complete — {itemCount} items</p>
                   </div>
                 </div>
               )}
             </div>
-            {/* Video controls */}
-            <div className="p-3 flex items-center gap-3 bg-surface-2/60">
-              <button onClick={togglePlayPause} className="w-9 h-9 rounded-lg bg-card border border-border/50 flex items-center justify-center active:scale-95 transition-transform">
-                {isVideoPlaying ? <Pause className="w-4 h-4 text-foreground" /> : <Play className="w-4 h-4 text-foreground" />}
+            <div className="p-2.5 flex items-center gap-2 bg-surface-2/40">
+              <button onClick={togglePlayPause} className="w-8 h-8 rounded-lg bg-card border border-border/40 flex items-center justify-center">
+                {isVideoPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
               </button>
-              <button onClick={skipForward} className="w-9 h-9 rounded-lg bg-card border border-border/50 flex items-center justify-center active:scale-95 transition-transform">
-                <SkipForward className="w-4 h-4 text-muted-foreground" />
-              </button>
-              <div className="flex-1 h-1.5 bg-border/30 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary rounded-full transition-all"
-                  style={{ width: videoDuration > 0 ? `${(videoProgress / videoDuration) * 100}%` : '0%' }}
-                />
+              <div className="flex-1 h-1 bg-border/20 rounded-full overflow-hidden">
+                <div className="h-full bg-primary rounded-full" style={{ width: videoDuration > 0 ? `${(videoProgress / videoDuration) * 100}%` : '0%' }} />
               </div>
-              <span className="text-[10px] font-mono text-muted-foreground">
-                {formatTime(videoProgress)}
-              </span>
-              <span className="text-[10px] font-mono text-primary px-1.5 py-0.5 bg-primary/10 rounded">
-                2×
-              </span>
+              <span className="text-[10px] font-mono text-muted-foreground">{formatTime(videoProgress)}</span>
             </div>
           </div>
         </div>
       )}
 
-      {/* Main content — form checklist */}
+      {/* Form checklist */}
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="px-4 pb-4">
-          <LiveFormChecklist
-            sections={inspectionFormSections}
-            analyzedItems={analyzedItems}
-            isAnalyzing={isAnalyzing}
-            onManualEdit={handleManualEdit}
-          />
+          <LiveFormChecklist sections={inspectionFormSections} analyzedItems={analyzedItems} isAnalyzing={isAnalyzing} onManualEdit={handleManualEdit} />
         </div>
       </div>
 
       {!isUploadMode && <VoiceAgent formState={formState} setFormState={setFormState} speechTranscript={committedTexts.join(' ')} sensorSnapshot={sensorSnapshot} />}
 
       {/* Bottom controls */}
-      <div className="p-4 bg-background/80 backdrop-blur-2xl border-t border-border/40 safe-bottom shrink-0">
+      <div className="p-4 bg-background/90 backdrop-blur-xl border-t border-border/30 safe-bottom shrink-0">
         {isUploadMode ? (
           <button
             onClick={handleStop}
             disabled={uploadPhase === 'select' || uploadPhase === 'transcribing'}
-            className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-base active:scale-[0.98] transition-all disabled:opacity-30 touch-target"
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-primary text-primary-foreground font-bold text-base active:scale-[0.98] transition-all disabled:opacity-30"
           >
             Review Results ({itemCount}/{totalFields})
           </button>
@@ -670,28 +515,20 @@ export default function ActiveInspection() {
           <div className="flex gap-2.5">
             <button
               onClick={speech.toggle}
-              className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all ${
+              className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
                 speech.isListening
                   ? 'bg-status-pass/10 border border-status-pass/30'
-                  : 'bg-surface-2/60 border border-border/40 hover:border-muted-foreground/30'
+                  : 'bg-surface-2 border border-border/40'
               }`}
             >
-              {speech.isListening
-                ? <Mic className="w-5 h-5 text-status-pass" />
-                : <MicOff className="w-5 h-5 text-muted-foreground/50" />
-              }
+              {speech.isListening ? <Mic className="w-5 h-5 text-status-pass" /> : <MicOff className="w-5 h-5 text-muted-foreground/40" />}
             </button>
-            {isCameraOn && (
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/8 border border-primary/15">
-                <Camera className="w-5 h-5 text-primary" />
-              </div>
-            )}
             <button
               onClick={handleStop}
-              className="flex-1 flex items-center justify-center gap-2.5 py-3 rounded-xl bg-status-fail text-accent-foreground font-bold text-sm active:scale-[0.98] transition-all touch-target"
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm active:scale-[0.98] transition-all"
             >
               <Square className="w-4 h-4" />
-              End Inspection ({itemCount}/{totalFields})
+              End & Review ({itemCount}/{totalFields})
             </button>
           </div>
         )}
