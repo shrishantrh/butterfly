@@ -172,7 +172,7 @@ export default function ActiveInspection() {
       setCommittedTexts([transcript]);
     }
     video.currentTime = 0;
-    video.playbackRate = 2.0;
+    video.playbackRate = 1.0;
     video.play().catch(console.error);
     setIsVideoPlaying(true);
     frameIntervalRef.current = window.setInterval(() => {
@@ -231,23 +231,20 @@ export default function ActiveInspection() {
     setUploadedFile(file);
     const url = URL.createObjectURL(file);
     setUploadVideoUrl(url);
-    const transcript = await transcribeVideoAudio(file);
+    // Skip server-side transcription — play locally and analyze live via frames + browser speech
     if (file.type.startsWith('video/')) {
       const waitForVideo = () => {
         const video = uploadVideoRef.current;
-        if (video && video.readyState >= 2) startVideoAnalysis(transcript);
+        if (video && video.readyState >= 2) startVideoAnalysis('');
         else setTimeout(waitForVideo, 200);
       };
       setTimeout(waitForVideo, 500);
     } else {
-      if (transcript.trim()) {
-        addTranscript(transcript);
-        setCommittedTexts([transcript]);
-        setUploadPhase('done');
-        await analyzeNow();
-      }
+      // For audio-only files, just start analysis with empty transcript
+      setUploadPhase('done');
+      toast({ title: 'Audio uploaded', description: 'Use mic for live narration during playback.' });
     }
-  }, [transcribeVideoAudio, startVideoAnalysis, addTranscript, analyzeNow, toast]);
+  }, [startVideoAnalysis, toast]);
 
   const handleVideoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
